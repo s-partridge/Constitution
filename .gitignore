@@ -1,0 +1,58 @@
+# Visual Studio
+*.suo
+*.user
+*.sln.docstates
+*.obj
+*.pch
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.exe
+*.dll
+*.log
+*.tlog
+*.lastbuildstate
+*.idb
+*.res
+*.aps
+
+# Visual Studio directories
+Debug/
+Release/
+x64/
+x86/
+.vs/
+
+# Build outputs
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+
+# Compiled object files
+*.o
+*.obj
+
+# Precompiled headers
+*.pch
+*.gch
+
+# Xcode
+*.xcworkspace
+*.xcuserstate
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# macOS
+.DS_Store
+
+# Clang/GCC
+*.out
+
+# CMake
+build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake

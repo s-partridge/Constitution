@@ -1,0 +1,3 @@
+[submodule "tests/partest"]
+	path = tests/partest
+	url = git@github.com:s-partridge/partest.git
