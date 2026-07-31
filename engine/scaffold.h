@@ -1,5 +1,5 @@
-#ifndef SCAFFOLD_H
-#define SCAFFOLD_H
+#ifndef CGE_SCAFFOLD_H
+#define CGE_SCAFFOLD_H
 
 #include "engine.h"
 
