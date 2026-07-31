@@ -47,10 +47,15 @@ struct TickChannel
 {
 	TickType type; // redundant copy of the owning key, sanity check only
 	std::string name;
-	size_t count = 0;
+	size_t count;
 	std::chrono::steady_clock::time_point lastAccess;
 	std::chrono::steady_clock::duration interval; // preferred spacing; zero = uncapped
-	double timeScale = 1.0; // per-channel slow-motion / fast-forward multiplier
+	double timeScale; // per-channel slow-motion / fast-forward multiplier
+
+	TickChannel(const TickType &type, const std::string &name, std::chrono::steady_clock::duration interval)
+		: type(type), name(name), count(0), lastAccess(std::chrono::steady_clock::now()), interval(interval), timeScale(1.0)
+	{
+	}
 };
 
 class Clock
