@@ -6,81 +6,87 @@
 #include <string>
 #include <unordered_map>
 
-class TickType
+namespace cge
 {
-	const unsigned m_id;
-
-	static unsigned nextId() noexcept
+	class TickType
 	{
-		static std::atomic<unsigned> idCount(0);
-		return idCount.fetch_add(1, std::memory_order_relaxed);
-	}
+		const unsigned m_id;
 
-public:
-	explicit TickType() noexcept : m_id(nextId()) {}
-	TickType(const TickType &other) noexcept : m_id(other.m_id) {}
+		static unsigned nextId() noexcept
+		{
+			static std::atomic<unsigned> idCount(0);
+			return idCount.fetch_add(1, std::memory_order_relaxed);
+		}
 
-	unsigned id() const noexcept { return m_id; }
+	public:
+		explicit TickType() noexcept : m_id(nextId()) {}
+		TickType(const TickType &other) noexcept : m_id(other.m_id) {}
 
-	bool operator==(const TickType &rhs) const noexcept { return m_id == rhs.m_id; }
-};
+		unsigned id() const noexcept { return m_id; }
 
-template<>
-struct std::hash<TickType>
-{
-	size_t operator()(const TickType &type) const noexcept { return std::hash<unsigned>()(type.id()); }
-};
-
-namespace TickTypes
-{
-	namespace detail
-	{
-		inline const TickType &getUpdate() noexcept { static const TickType update; return update; }
-		inline const TickType &getPhysics() noexcept { static const TickType physics; return physics; }
-	}
-
-	static const TickType Update = detail::getUpdate();
-	static const TickType Physics = detail::getPhysics();
+		bool operator==(const TickType &rhs) const noexcept { return m_id == rhs.m_id; }
+	};
 }
 
-struct TickChannel
+template<>
+struct std::hash<cge::TickType>
 {
-	TickType type; // redundant copy of the owning key, sanity check only
-	std::string name;
-	size_t count;
-	std::chrono::steady_clock::time_point lastAccess;
-	std::chrono::steady_clock::duration interval; // preferred spacing; zero = uncapped
-	double timeScale; // per-channel slow-motion / fast-forward multiplier
+	size_t operator()(const cge::TickType &type) const noexcept { return std::hash<unsigned>()(type.id()); }
+};
 
-	TickChannel(const TickType &type, const std::string &name, std::chrono::steady_clock::duration interval)
-		: type(type), name(name), count(0), lastAccess(std::chrono::steady_clock::now()), interval(interval), timeScale(1.0)
+namespace cge
+{
+	namespace TickTypes
 	{
+		namespace detail
+		{
+			inline const TickType &getUpdate() noexcept { static const TickType update; return update; }
+			inline const TickType &getPhysics() noexcept { static const TickType physics; return physics; }
+		}
+
+		static const TickType Update = detail::getUpdate();
+		static const TickType Physics = detail::getPhysics();
 	}
-};
 
-class Clock
-{
-public:
-	Clock(); // registers the Update and Physics channels
+	struct TickChannel
+	{
+		TickType type; // redundant copy of the owning key, sanity check only
+		std::string name;
+		size_t count;
+		std::chrono::steady_clock::time_point lastAccess;
+		std::chrono::steady_clock::duration interval; // preferred spacing; zero = uncapped
+		double timeScale; // per-channel slow-motion / fast-forward multiplier
 
-	bool registerChannel(const TickType &type, const std::string &name, std::chrono::steady_clock::duration interval); // false if a channel for this type already exists
+		TickChannel(const TickType &type, const std::string &name, std::chrono::steady_clock::duration interval)
+			: type(type), name(name), count(0), lastAccess(std::chrono::steady_clock::now()), interval(interval), timeScale(1.0)
+		{
+		}
+	};
 
-	std::chrono::steady_clock::duration tick(const TickType &type);       // scaled by the channel's timeScale
-	std::chrono::steady_clock::duration rawTick(const TickType &type);    // unscaled, real elapsed time
-	const TickChannel &getChannel(const TickType &type) const;
-	void setInterval(const TickType &type, std::chrono::steady_clock::duration interval);
-	void setTimeScale(const TickType &type, double timeScale);
+	class Clock
+	{
+	public:
+		Clock(); // registers the Update and Physics channels
 
-	// Dedicated accessors for the two universal, always-present channels
-	std::chrono::steady_clock::duration tickUpdate();
-	std::chrono::steady_clock::duration tickPhysics();
-	std::chrono::steady_clock::duration rawTickUpdate();
-	std::chrono::steady_clock::duration rawTickPhysics();
-	const TickChannel &getUpdateChannel() const;
-	const TickChannel &getPhysicsChannel() const;
+		bool registerChannel(const TickType &type, const std::string &name, std::chrono::steady_clock::duration interval); // false if a channel for this type already exists
 
-private:
-	std::unordered_map<TickType, TickChannel> m_channels;
-};
+		std::chrono::steady_clock::duration tick(const TickType &type);       // scaled by the channel's timeScale
+		std::chrono::steady_clock::duration rawTick(const TickType &type);    // unscaled, real elapsed time
+		const TickChannel &getChannel(const TickType &type) const;
+		void setInterval(const TickType &type, std::chrono::steady_clock::duration interval);
+		void setTimeScale(const TickType &type, double timeScale);
 
-#endif
+		// Dedicated accessors for the two universal, always-present channels
+		std::chrono::steady_clock::duration tickUpdate();
+		std::chrono::steady_clock::duration tickPhysics();
+		std::chrono::steady_clock::duration rawTickUpdate();
+		std::chrono::steady_clock::duration rawTickPhysics();
+		const TickChannel &getUpdateChannel() const;
+		const TickChannel &getPhysicsChannel() const;
+
+	private:
+		std::unordered_map<TickType, TickChannel> m_channels;
+	};
+}
+
+#endif // CGE_CLOCK_H

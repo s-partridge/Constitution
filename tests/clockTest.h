@@ -31,19 +31,19 @@ public:
 
 	void constructionRegistersUpdateAndPhysics()
 	{
-		Clock clock;
+		cge::Clock clock;
 
-		const TickChannel &update = clock.getUpdateChannel();
-		const TickChannel &physics = clock.getPhysicsChannel();
+		const cge::TickChannel &update = clock.getUpdateChannel();
+		const cge::TickChannel &physics = clock.getPhysicsChannel();
 
-		ASSERT_TRUE(update.type == TickTypes::Update);
-		ASSERT_TRUE(physics.type == TickTypes::Physics);
+		ASSERT_TRUE(update.type == cge::TickTypes::Update);
+		ASSERT_TRUE(physics.type == cge::TickTypes::Physics);
 	}
 
 	void registerChannelSucceedsForNewType()
 	{
-		Clock clock;
-		TickType custom;
+		cge::Clock clock;
+		cge::TickType custom;
 
 		bool result = clock.registerChannel(custom, "Custom", std::chrono::milliseconds(10));
 
@@ -52,8 +52,8 @@ public:
 
 	void registerChannelFailsForDuplicateType()
 	{
-		Clock clock;
-		TickType custom;
+		cge::Clock clock;
+		cge::TickType custom;
 
 		clock.registerChannel(custom, "Custom", std::chrono::milliseconds(10));
 		bool result = clock.registerChannel(custom, "Custom", std::chrono::milliseconds(10));
@@ -63,21 +63,21 @@ public:
 
 	void registerChannelFailsForUpdateAfterConstruction()
 	{
-		Clock clock;
+		cge::Clock clock;
 
-		bool result = clock.registerChannel(TickTypes::Update, "Update", std::chrono::milliseconds(16));
+		bool result = clock.registerChannel(cge::TickTypes::Update, "Update", std::chrono::milliseconds(16));
 
 		ASSERT_FALSE(result);
 	}
 
 	void registeredChannelHasExpectedInitialState()
 	{
-		Clock clock;
-		TickType custom;
+		cge::Clock clock;
+		cge::TickType custom;
 		std::chrono::steady_clock::duration interval = std::chrono::milliseconds(25);
 
 		clock.registerChannel(custom, "Custom", interval);
-		const TickChannel &channel = clock.getChannel(custom);
+		const cge::TickChannel &channel = clock.getChannel(custom);
 
 		ASSERT_TRUE(channel.type == custom);
 		ASSERT_EQUAL(channel.name, "Custom");
@@ -88,8 +88,8 @@ public:
 
 	void tickIncrementsCount()
 	{
-		Clock clock;
-		TickType custom;
+		cge::Clock clock;
+		cge::TickType custom;
 		clock.registerChannel(custom, "Custom", std::chrono::milliseconds(0));
 
 		clock.tick(custom);
@@ -100,8 +100,8 @@ public:
 
 	void rawTickIncrementsCount()
 	{
-		Clock clock;
-		TickType custom;
+		cge::Clock clock;
+		cge::TickType custom;
 		clock.registerChannel(custom, "Custom", std::chrono::milliseconds(0));
 
 		clock.rawTick(custom);
@@ -113,8 +113,8 @@ public:
 
 	void setIntervalUpdatesChannel()
 	{
-		Clock clock;
-		TickType custom;
+		cge::Clock clock;
+		cge::TickType custom;
 		clock.registerChannel(custom, "Custom", std::chrono::milliseconds(10));
 
 		clock.setInterval(custom, std::chrono::milliseconds(50));
@@ -124,8 +124,8 @@ public:
 
 	void setTimeScaleUpdatesChannel()
 	{
-		Clock clock;
-		TickType custom;
+		cge::Clock clock;
+		cge::TickType custom;
 		clock.registerChannel(custom, "Custom", std::chrono::milliseconds(10));
 
 		clock.setTimeScale(custom, 2.0);
@@ -137,8 +137,8 @@ public:
 	// doubles the reported delta. Generous threshold to absorb scheduler jitter.
 	void timeScaleAppliesToTick()
 	{
-		Clock clock;
-		TickType custom;
+		cge::Clock clock;
+		cge::TickType custom;
 		clock.registerChannel(custom, "Custom", std::chrono::milliseconds(0));
 		clock.setTimeScale(custom, 2.0);
 
@@ -152,22 +152,22 @@ public:
 
 	void dedicatedUpdateAccessorsMatchGeneric()
 	{
-		Clock clock;
+		cge::Clock clock;
 
 		clock.tickUpdate();
 
 		ASSERT_EQUAL(clock.getUpdateChannel().count, static_cast<size_t>(1));
-		ASSERT_TRUE(clock.getChannel(TickTypes::Update).type == TickTypes::Update);
+		ASSERT_TRUE(clock.getChannel(cge::TickTypes::Update).type == cge::TickTypes::Update);
 	}
 
 	void dedicatedPhysicsAccessorsMatchGeneric()
 	{
-		Clock clock;
+		cge::Clock clock;
 
 		clock.rawTickPhysics();
 
 		ASSERT_EQUAL(clock.getPhysicsChannel().count, static_cast<size_t>(1));
-		ASSERT_TRUE(clock.getChannel(TickTypes::Physics).type == TickTypes::Physics);
+		ASSERT_TRUE(clock.getChannel(cge::TickTypes::Physics).type == cge::TickTypes::Physics);
 	}
 };
 
