@@ -24,6 +24,12 @@
     <ClCompile Include="clock.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="dispatcher.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="listener.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="event.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -44,7 +50,13 @@
     <ClInclude Include="component.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="dispatcher.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="system.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="listener.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
