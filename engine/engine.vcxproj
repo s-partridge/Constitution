@@ -145,12 +145,14 @@
   <ItemGroup>
     <ClCompile Include="clock.cpp" />
     <ClCompile Include="engine.cpp" />
+    <ClCompile Include="event.cpp" />
     <ClCompile Include="scaffold.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="clock.h" />
     <ClInclude Include="component.h" />
     <ClInclude Include="engine.h" />
+    <ClInclude Include="event.h" />
     <ClInclude Include="scaffold.h" />
     <ClInclude Include="system.h" />
   </ItemGroup>
