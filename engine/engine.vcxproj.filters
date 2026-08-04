@@ -50,6 +50,9 @@
     <ClInclude Include="component.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="broadcaster.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="dispatcher.h">
       <Filter>Header Files</Filter>
     </ClInclude>
