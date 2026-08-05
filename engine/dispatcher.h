@@ -50,6 +50,10 @@ namespace cge::event
 		void dispatchEventsUnsafe(std::deque<EventPair> &events);
 		void dispatchCommandsUnsafe(std::deque<EventPair> &commands);
 
+		// Subclass owns enqueue policy (locking, immediate dispatch, wake, etc.).
+		virtual bool onPushEvent(const EventChannelBase &channel, std::unique_ptr<EventBase> event) = 0;
+		virtual bool onPushCommand(const EventChannelBase &channel, std::unique_ptr<EventBase> event) = 0;
+
 	private:
 		friend class BroadcasterBase;
 		friend class CommanderBase;
@@ -71,8 +75,9 @@ namespace cge::event
 		EventChannel<RegistrationRequest> *m_registrationChannel;
 		EventChannel<RegistrationRequest> *m_unregistrationChannel;
 
-		bool pushEvent(const EventChannelBase& channel, const EventBase& event);
-		bool pushCommand(const EventChannelBase& channel, const EventBase& event);
+		// Thin entry points: cross-cutting hook site, then subclass policy.
+		bool pushEvent(const EventChannelBase &channel, std::unique_ptr<EventBase> event);
+		bool pushCommand(const EventChannelBase &channel, std::unique_ptr<EventBase> event);
 
 		RegistrationResult requestRegisterListener(ListenerBase *listener, const EventChannelBase &channel);
 		RegistrationResult requestUnregisterListener(ListenerBase *listener, const EventChannelBase &channel);

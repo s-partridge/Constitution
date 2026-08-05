@@ -9,30 +9,33 @@ namespace cge::event
 	class BroadcasterBase
 	{
 	public:
-		BroadcasterBase(Dispatcher *dispatcher) : m_dispatcher(dispatcher) {}
+		BroadcasterBase(DispatcherBase *dispatcher) : m_dispatcher(dispatcher) {}
 		virtual ~BroadcasterBase() = default;
 
 		template<typename PayloadType>
 		void broadcast(const EventChannel<PayloadType> &channel, const PayloadType payload)
 		{
-			m_dispatcher->pushEvent(channel, Event<PayloadType>(payload));
+			std::unique_ptr<EventBase> event = std::make_unique<Event<PayloadType>>(payload);
+			m_dispatcher->pushEvent(channel, std::move(event));
 		}
 	private:
-		Dispatcher *m_dispatcher;
+		DispatcherBase *m_dispatcher;
 	};
 
 	class CommanderBase
 	{
 	public:
-		CommanderBase(Dispatcher *dispatcher) : m_dispatcher(dispatcher) {}
+		CommanderBase(DispatcherBase *dispatcher) : m_dispatcher(dispatcher) {}
 		virtual ~CommanderBase() = default;
+
 		template<typename PayloadType>
 		void command(const EventChannel<PayloadType> &channel, const PayloadType payload)
 		{
-			m_dispatcher->pushCommand(channel, Event<PayloadType>(payload));
+			std::unique_ptr<EventBase> event = std::make_unique<Event<PayloadType>>(payload);
+			m_dispatcher->pushCommand(channel, std::move(event));
 		}
 	private:
-		Dispatcher *m_dispatcher;
+		DispatcherBase *m_dispatcher;
 	};
 }
 
