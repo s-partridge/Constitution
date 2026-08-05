@@ -28,7 +28,8 @@ namespace cge::event
 	{
 		while(!events.empty())
 		{
-			EventPair &event = events.front();
+			// Move out before pop_front — a reference to front() is invalidated by pop.
+			EventPair event = std::move(events.front());
 			events.pop_front();
 
 			ChannelId channelId = event.first;
@@ -47,7 +48,7 @@ namespace cge::event
 	{
 		while(!commands.empty())
 		{
-			EventPair &command = commands.front();
+			EventPair command = std::move(commands.front());
 			commands.pop_front();
 
 			if(command.first == m_registrationChannel->id())
