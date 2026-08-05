@@ -12,11 +12,13 @@ namespace cge::event
 		BroadcasterBase(DispatcherBase *dispatcher) : m_dispatcher(dispatcher) {}
 		virtual ~BroadcasterBase() = default;
 
+		// Returns false when the dispatcher refused the push (inactive); the event
+		// is discarded in that case, not queued for later.
 		template<typename PayloadType>
-		void broadcast(const EventChannel<PayloadType> &channel, const PayloadType &payload)
+		bool broadcast(const EventChannel<PayloadType> &channel, const PayloadType &payload)
 		{
 			std::unique_ptr<EventBase> event = std::make_unique<Event<PayloadType>>(payload);
-			m_dispatcher->pushEvent(channel, std::move(event));
+			return m_dispatcher->pushEvent(channel, std::move(event));
 		}
 	private:
 		DispatcherBase *m_dispatcher;
@@ -28,11 +30,13 @@ namespace cge::event
 		CommanderBase(DispatcherBase *dispatcher) : m_dispatcher(dispatcher) {}
 		virtual ~CommanderBase() = default;
 
+		// Returns false when the dispatcher refused the push (inactive); the
+		// command is discarded in that case, not queued for later.
 		template<typename PayloadType>
-		void command(const EventChannel<PayloadType> &channel, const PayloadType &payload)
+		bool command(const EventChannel<PayloadType> &channel, const PayloadType &payload)
 		{
 			std::unique_ptr<EventBase> event = std::make_unique<Event<PayloadType>>(payload);
-			m_dispatcher->pushCommand(channel, std::move(event));
+			return m_dispatcher->pushCommand(channel, std::move(event));
 		}
 	private:
 		DispatcherBase *m_dispatcher;

@@ -85,6 +85,19 @@ namespace cge::event
 		template<typename PayloadType>
 		RegistrationResult requestUnregister(const EventChannel<PayloadType>& channel)
 		{
+			ChannelId id = channel.id();
+			{
+				std::lock_guard<std::mutex> lock(m_pendingMutex);
+				HandlerPairIter it = std::find_if(
+					m_pendingHandlers.begin(), m_pendingHandlers.end(),
+					[&id](const HandlerPair &pair) {
+						return pair.first == id;
+					});
+				if(it != m_pendingHandlers.end())
+				{
+					m_pendingHandlers.erase(it);
+				}
+			}
 			return m_dispatcher->requestUnregisterListener(this, channel);
 		}
 

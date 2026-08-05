@@ -296,9 +296,7 @@ public:
 
 	void isolation()
 	{
-		// Only registration channels mean anything to dispatchCommands; other
-		// command payloads are drained and discarded.
-		subtest("UnknownCommandsConsumed", [&]() {
+		subtest("NonCommandChannelRejected", [&]() {
 			AsyncEventHarness harness;
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("cmd-only");
 			CountingListener listener(&harness.dispatcher);
@@ -307,10 +305,10 @@ public:
 			harness.dispatcher.dispatchCommands();
 
 			cge::event::CommanderBase commander(&harness.dispatcher);
-			commander.command(channel, 99);
+			ASSERT_FALSE(commander.command(channel, 99));
+
 			harness.dispatcher.dispatchCommands();
 			harness.dispatcher.dispatchEvents();
-
 			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
 		});
 
@@ -897,6 +895,31 @@ public:
 
 		addTest("Delivery", flags, [this]() { delivery(); });
 		addTest("PayloadTypes", flags, [this]() { payloadTypes(); });
+		addTest("PushResult", flags, [this]() { pushResult(); });
+	}
+
+	// broadcast reports whether the dispatcher accepted the push. A refused push
+	// is discarded, so the caller's return value is the only signal it gets.
+	void pushResult()
+	{
+		cge::event::EventChannelRegistry registry;
+		cge::event::AsyncDispatcher dispatcher("bc-result", &registry);
+		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("bc-result-ch");
+		cge::event::BroadcasterBase broadcaster(&dispatcher);
+
+		subtest("FailsBeforeSetUp", [&]() {
+			ASSERT_FALSE(broadcaster.broadcast(channel, 1));
+		});
+
+		subtest("SucceedsWhileActive", [&]() {
+			dispatcher.setUp();
+			ASSERT_TRUE(broadcaster.broadcast(channel, 2));
+		});
+
+		subtest("FailsAfterTearDown", [&]() {
+			dispatcher.tearDown();
+			ASSERT_FALSE(broadcaster.broadcast(channel, 3));
+		});
 	}
 
 	// One listener accumulating across the cases; each asserts against the
@@ -1081,6 +1104,33 @@ public:
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
 		addTest("Command", flags, [this]() { command(); });
+		addTest("PushResult", flags, [this]() { pushResult(); });
+	}
+
+	// command reports whether the dispatcher accepted the push, same as broadcast.
+	void pushResult()
+	{
+		cge::event::EventChannelRegistry registry;
+		cge::event::AsyncDispatcher dispatcher("cmd-result", &registry);
+		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("cmd-result-ch");
+		cge::event::CommanderBase commander(&dispatcher);
+
+		subtest("FailsBeforeSetUp", [&]() {
+			ASSERT_FALSE(commander.command(channel, 1));
+		});
+
+		// TODO: no valid command exists to push. The dispatcher validates commands,
+		// and the only ones it accepts are registration/unregistration, which come
+		// from ListenerBase and never through CommanderBase. Fill this in when a
+		// command vocabulary exists that a caller can legitimately send.
+		subtest("SucceedsWhileActive", partest::TEST_FLAGS_SKIP, [&]() {
+		});
+
+		subtest("FailsAfterTearDown", [&]() {
+			dispatcher.setUp();
+			dispatcher.tearDown();
+			ASSERT_FALSE(commander.command(channel, 3));
+		});
 	}
 
 	void command()
@@ -1318,7 +1368,8 @@ public:
 			harness.dispatcher.dispatchEvents();
 
 			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(listener.received[0], 1);
+			if(listener.received.size() == 1)
+				ASSERT_EQUAL(listener.received[0], 1);
 		});
 
 	}
