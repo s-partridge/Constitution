@@ -25,7 +25,7 @@ namespace cge::event
 		using HandlerPair = std::pair<ChannelId, HandlerFunction>;
 		using HandlerPairIter = std::vector<HandlerPair>::iterator;
 
-		ListenerBase(Dispatcher *dispatcher) : m_dispatcher(dispatcher) {}
+		ListenerBase(DispatcherBase *dispatcher) : m_dispatcher(dispatcher) {}
 		virtual ~ListenerBase() = default;
 
 		template <typename PayloadType, std::invocable<const PayloadType &> CallbackType>
@@ -90,13 +90,13 @@ namespace cge::event
 		void onEvent(ChannelId channelId, const EventBase &event);
 
 	private:
-		friend class Dispatcher;
+		friend class DispatcherBase;
 
 		std::vector<HandlerPair> m_handlers;
 		std::vector<HandlerPair> m_pendingHandlers;
 		std::mutex m_pendingMutex;
 
-		Dispatcher *m_dispatcher;
+		DispatcherBase *m_dispatcher;
 
 		void finalizeRegistration(ChannelId channelId, RegistrationResult result);
 		void finalizeUnregistration(ChannelId channelId, RegistrationResult result);
