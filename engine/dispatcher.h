@@ -59,6 +59,9 @@ namespace cge::event
 		unsigned m_eventReentryCount;
 		unsigned m_commandReentryCount;
 
+		// true while the dispatcher is set up and may accept / process work.
+		SystemStatus m_active;
+
 	private:
 		friend class BroadcasterBase;
 		friend class CommanderBase;

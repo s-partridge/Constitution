@@ -2,18 +2,23 @@
 
 namespace cge::event
 {
-	DispatcherBase::DispatcherBase(std::string name, EventChannelRegistry *registry) : SystemBase(name), m_channelRegistry(registry), m_eventReentryCount(0), m_commandReentryCount(0)
+	DispatcherBase::DispatcherBase(std::string name, EventChannelRegistry *registry)
+		: SystemBase(name)
+		, m_channelRegistry(registry)
+		, m_eventReentryCount(0)
+		, m_commandReentryCount(0)
+		, m_active(false)
 	{
 		m_registrationChannel = &m_channelRegistry->getChannel<RegistrationRequest>("DispatcherCommand_RegistrationChannel");
 		m_unregistrationChannel = &m_channelRegistry->getChannel<RegistrationRequest>("DispatcherCommand_UnregistrationChannel");
 	}
 	void DispatcherBase::onSetUp()
 	{
-		// Initialization code for the dispatcher system
+		m_active = true;
 	}
 	void DispatcherBase::onTearDown()
 	{
-		// Cleanup code for the dispatcher system
+		m_active = false;
 	}
 
 	void DispatcherBase::dispatchEventsUnsafe(std::deque<EventPair> &events)

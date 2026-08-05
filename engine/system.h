@@ -7,6 +7,9 @@
 
 namespace cge
 {
+	// Placeholder until a richer status enum/type is needed.
+	using SystemStatus = bool;
+
 	class SystemBase
 	{
 	public:
