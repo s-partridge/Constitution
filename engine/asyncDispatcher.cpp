@@ -2,10 +2,16 @@
 
 namespace cge::event
 {
+	void AsyncDispatcher::onSetUp()
+	{
+		// Hold both queue mutexes so no push can check m_active and enqueue mid-startup
+		std::lock_guard<std::mutex> eventLock(m_eventQueueMutex);
+		std::lock_guard<std::mutex> commandLock(m_commandQueueMutex);
+		m_active = true;
+	}
 	void AsyncDispatcher::onTearDown()
 	{
-		// Hold both queue mutexes so no push can check m_active and enqueue mid-shutdown.
-		// Only place both locks are taken together; pushes take one each — no deadlock cycle.
+		// Hold both queue mutexes so no push can check m_active and enqueue mid-shutdown
 		std::lock_guard<std::mutex> eventLock(m_eventQueueMutex);
 		std::lock_guard<std::mutex> commandLock(m_commandQueueMutex);
 		m_active = false;
@@ -13,9 +19,6 @@ namespace cge::event
 
 	void AsyncDispatcher::dispatchEvents()
 	{
-		if(!m_active)
-			return;
-
 		m_eventReentryCount = 0;
 		while(true)
 		{
@@ -34,9 +37,6 @@ namespace cge::event
 
 	void AsyncDispatcher::dispatchCommands()
 	{
-		if(!m_active)
-			return;
-
 		m_commandReentryCount = 0;
 		while(true)
 		{

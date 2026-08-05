@@ -14,6 +14,7 @@ namespace cge::event
 		AsyncDispatcher(const std::string &name, EventChannelRegistry *registry) : DispatcherBase(name, registry) {}
 		~AsyncDispatcher() = default;
 
+		void onSetUp() override;
 		void onTearDown() override;
 
 		void dispatchEvents() override;
