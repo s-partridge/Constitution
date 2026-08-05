@@ -143,6 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="asyncDispatcher.cpp" />
     <ClCompile Include="clock.cpp" />
     <ClCompile Include="dispatcher.cpp" />
     <ClCompile Include="engine.cpp" />
@@ -151,6 +152,7 @@
     <ClCompile Include="scaffold.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="asyncDispatcher.h" />
     <ClInclude Include="broadcaster.h" />
     <ClInclude Include="clock.h" />
     <ClInclude Include="component.h" />

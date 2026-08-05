@@ -2,7 +2,7 @@
 
 namespace cge::event
 {
-	DispatcherBase::DispatcherBase(std::string name, EventChannelRegistry *registry) : SystemBase(name), m_channelRegistry(registry)
+	DispatcherBase::DispatcherBase(std::string name, EventChannelRegistry *registry) : SystemBase(name), m_channelRegistry(registry), m_eventReentryCount(0), m_commandReentryCount(0)
 	{
 		m_registrationChannel = &m_channelRegistry->getChannel<RegistrationRequest>("DispatcherCommand_RegistrationChannel");
 		m_unregistrationChannel = &m_channelRegistry->getChannel<RegistrationRequest>("DispatcherCommand_UnregistrationChannel");
@@ -62,9 +62,9 @@ namespace cge::event
 		return onPushEvent(channel, std::move(event));
 	}
 
-	bool DispatcherBase::pushCommand(const EventChannelBase &channel, std::unique_ptr<EventBase> event)
+	bool DispatcherBase::pushCommand(const EventChannelBase &channel, std::unique_ptr<EventBase> command)
 	{
-		return onPushCommand(channel, std::move(event));
+		return onPushCommand(channel, std::move(command));
 	}
 
 	RegistrationResult DispatcherBase::requestRegisterListener(ListenerBase *listener, const EventChannelBase &channel)

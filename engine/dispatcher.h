@@ -2,9 +2,6 @@
 #define CGE_DISPATCHER_H
 
 #include <unordered_map>
-#include <thread>
-#include <mutex>
-#include <semaphore>
 #include <memory>
 #include <queue>
 #include <list>
@@ -58,6 +55,9 @@ namespace cge::event
 		// Callers that need a handoff use a temp container and std::swap directly.
 		std::deque<EventPair> m_events;
 		std::deque<EventPair> m_commands;
+
+		unsigned m_eventReentryCount;
+		unsigned m_commandReentryCount;
 
 	private:
 		friend class BroadcasterBase;
