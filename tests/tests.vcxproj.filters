@@ -26,5 +26,11 @@
     <ClInclude Include="engineTest.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="clockTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="eventSystemTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

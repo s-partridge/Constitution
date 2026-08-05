@@ -4,7 +4,6 @@ namespace cge::event
 {
 	void ListenerBase::onEvent(ChannelId channelId, const EventBase &event)
 	{
-		HandlerFunction *fn;
 		HandlerPairIter it = std::find_if(
 			m_handlers.begin(), m_handlers.end(),
 			[&channelId](const HandlerPair &pair) {
@@ -12,7 +11,7 @@ namespace cge::event
 			});
 		if(it != m_handlers.end())
 		{
-			 it->second(event);
+			it->second(event);
 		}
 	}
 
@@ -41,7 +40,7 @@ namespace cge::event
 		{
 		case RegistrationResult::Success:
 			if(found)
-				m_handlers.emplace_back(std::move(handler));
+				m_handlers.emplace_back(channelId, std::move(handler));
 			break;
 		case RegistrationResult::Duplicate:
 			// Handle duplicate registration if needed

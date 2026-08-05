@@ -154,6 +154,7 @@
   <ItemGroup>
     <ClInclude Include="clockTest.h" />
     <ClInclude Include="engineTest.h" />
+    <ClInclude Include="eventSystemTest.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
