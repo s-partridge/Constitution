@@ -55,13 +55,13 @@ namespace cge::event
 			{
 				RegistrationRequest &request = static_cast<Event<RegistrationRequest> *>(command.second.get())->payload;
 
-				registerListener(request.listener, request.channel);
+				registerListener(request.listener, request.channelId);
 			}
 			else if(command.first == m_unregistrationChannel->id())
 			{
 				RegistrationRequest &request = static_cast<Event<RegistrationRequest> *>(command.second.get())->payload;
 
-				unregisterListener(request.listener, request.channel);
+				unregisterListener(request.listener, request.channelId);
 			}
 		}
 	}
@@ -79,7 +79,7 @@ namespace cge::event
 	RegistrationResult DispatcherBase::requestRegisterListener(ListenerBase *listener, const EventChannelBase &channel)
 	{
 		std::unique_ptr<EventBase> event =
-			std::make_unique<Event<RegistrationRequest>>(RegistrationRequest(listener, channel));
+			std::make_unique<Event<RegistrationRequest>>(RegistrationRequest(listener, channel.id()));
 		bool success = pushCommand(*m_registrationChannel, std::move(event));
 		return success ? RegistrationResult::Pending : RegistrationResult::Failure;
 	}
@@ -87,14 +87,13 @@ namespace cge::event
 	RegistrationResult DispatcherBase::requestUnregisterListener(ListenerBase *listener, const EventChannelBase &channel)
 	{
 		std::unique_ptr<EventBase> event =
-			std::make_unique<Event<RegistrationRequest>>(RegistrationRequest(listener, channel));
+			std::make_unique<Event<RegistrationRequest>>(RegistrationRequest(listener, channel.id()));
 		bool success = pushCommand(*m_unregistrationChannel, std::move(event));
 		return success ? RegistrationResult::Pending : RegistrationResult::Failure;
 	}
 
-	void DispatcherBase::registerListener(ListenerBase *listener, const EventChannelBase &channel)
+	void DispatcherBase::registerListener(ListenerBase *listener, ChannelId channelId)
 	{
-		ChannelId channelId = channel.id();
 		// check whether the listener is already registered for this channel
 		bool contains = std::find(m_listeners[channelId].begin(), m_listeners[channelId].end(), listener) != m_listeners[channelId].end();
 
@@ -109,9 +108,9 @@ namespace cge::event
 		}
 	}
 
-	void DispatcherBase::unregisterListener(ListenerBase *listener, const EventChannelBase &channel)
+	void DispatcherBase::unregisterListener(ListenerBase *listener, ChannelId channelId)
 	{
-		auto channelIt = m_listeners.find(channel.id());
+		auto channelIt = m_listeners.find(channelId);
 		if(channelIt != m_listeners.end())
 		{
 			auto listenerIt = std::find(channelIt->second.begin(), channelIt->second.end(), listener);
@@ -120,16 +119,16 @@ namespace cge::event
 				// Swap and pop_back to remove the listener efficiently
 				*listenerIt = channelIt->second.back();
 				channelIt->second.pop_back();
-				listener->finalizeUnregistration(channel.id(), RegistrationResult::Success);
+				listener->finalizeUnregistration(channelId, RegistrationResult::Success);
 			}
 			else
 			{
-				listener->finalizeUnregistration(channel.id(), RegistrationResult::NotFound);
+				listener->finalizeUnregistration(channelId, RegistrationResult::NotFound);
 			}
 		}
 		else
 		{
-			listener->finalizeUnregistration(channel.id(), RegistrationResult::NotFound);
+			listener->finalizeUnregistration(channelId, RegistrationResult::NotFound);
 		}
 	}
 }

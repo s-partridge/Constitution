@@ -71,8 +71,8 @@ namespace cge::event
 		struct RegistrationRequest
 		{
 			ListenerBase *listener;
-			const EventChannelBase &channel;
-			RegistrationRequest(ListenerBase *listenerBase, const EventChannelBase &channel) : listener(listenerBase), channel(channel) {}
+			ChannelId channelId;
+			RegistrationRequest(ListenerBase *listenerBase, ChannelId channelId) : listener(listenerBase), channelId(channelId) {}
 		};
 
 		std::unordered_map<ChannelId, ListenerList> m_listeners;
@@ -88,8 +88,8 @@ namespace cge::event
 
 		RegistrationResult requestRegisterListener(ListenerBase *listener, const EventChannelBase &channel);
 		RegistrationResult requestUnregisterListener(ListenerBase *listener, const EventChannelBase &channel);
-		void registerListener(ListenerBase *listener, const EventChannelBase &channel);
-		void unregisterListener(ListenerBase *listener, const EventChannelBase &channel);
+		void registerListener(ListenerBase *listener, ChannelId channelId);
+		void unregisterListener(ListenerBase *listener, ChannelId channelId);
 	};
 }
 
