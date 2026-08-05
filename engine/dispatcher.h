@@ -54,6 +54,11 @@ namespace cge::event
 		virtual bool onPushEvent(const EventChannelBase &channel, std::unique_ptr<EventBase> event) = 0;
 		virtual bool onPushCommand(const EventChannelBase &channel, std::unique_ptr<EventBase> event) = 0;
 
+		// Queues are subclass-accessible for lock/steal/swap under their own policy.
+		// Callers that need a handoff use a temp container and std::swap directly.
+		std::deque<EventPair> m_events;
+		std::deque<EventPair> m_commands;
+
 	private:
 		friend class BroadcasterBase;
 		friend class CommanderBase;
@@ -67,8 +72,6 @@ namespace cge::event
 		};
 
 		std::unordered_map<ChannelId, ListenerList> m_listeners;
-		std::deque<EventPair> m_events;
-		std::deque<EventPair> m_commands;
 
 		EventChannelRegistry *m_channelRegistry;
 

@@ -4,7 +4,6 @@
 #include <functional>
 #include <mutex>
 
-#include "listener.h"
 #include "dispatcher.h"
 #include "event.h"
 
@@ -31,7 +30,7 @@ namespace cge::event
 		template <typename PayloadType, std::invocable<const PayloadType &> CallbackType>
 		RegistrationResult requestRegister(const EventChannel<PayloadType> &channel, CallbackType callback)
 		{
-			ChannelTag id = channel.id();
+			ChannelId id = channel.id();
 			{
 				std::lock_guard<std::mutex> lock(m_pendingMutex);
 				// Check pending handlers to see if this channel is already waiting for registration
@@ -59,7 +58,7 @@ namespace cge::event
 		template <typename PayloadType, typename SourceType, std::invocable<SourceType*, const PayloadType&> CallbackType>
 		RegistrationResult requestRegister(const EventChannel<PayloadType> &channel, SourceType *self, CallbackType callback)
 		{
-			ChannelTag id = channel.id();
+			ChannelId id = channel.id();
 			{
 				std::lock_guard<std::mutex> lock(m_pendingMutex);
 				// Check pending handlers to see if this channel is already waiting for registration

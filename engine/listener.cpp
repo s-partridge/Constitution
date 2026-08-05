@@ -65,7 +65,7 @@ namespace cge::event
 				[&channelId](const HandlerPair &pair) {
 					return pair.first == channelId;
 				});
-			if(it != m_pendingHandlers.end())
+			if(it != m_handlers.end())
 				m_handlers.erase(it, m_handlers.end());
 			break;
 		case RegistrationResult::NotFound:
