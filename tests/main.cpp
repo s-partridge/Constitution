@@ -12,6 +12,7 @@ int main(int argc, const char **argv)
 	partest::addTestClass(partest::make_unique<ClockTest>());
 	partest::addTestClass(partest::make_unique<EventChannelRegistryTest>());
 	partest::addTestClass(partest::make_unique<AsyncDispatcherTest>());
+	partest::addTestClass(partest::make_unique<EventSystemLoadTest>());
 	partest::addTestClass(partest::make_unique<BroadcasterBaseTest>());
 	partest::addTestClass(partest::make_unique<CommanderBaseTest>());
 	partest::addTestClass(partest::make_unique<ListenerBaseTest>());

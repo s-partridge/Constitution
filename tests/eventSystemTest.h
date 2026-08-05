@@ -1,7 +1,10 @@
 #ifndef EVENT_SYSTEM_TEST_H
 #define EVENT_SYSTEM_TEST_H
 
+#include <algorithm>
 #include <atomic>
+#include <mutex>
+#include <semaphore>
 #include <string>
 #include <thread>
 #include <type_traits>
@@ -143,6 +146,17 @@ public:
 		addTest("UnknownCommandsAreConsumedWithoutListenerDelivery", flags, [this]() { unknownCommandsAreConsumedWithoutListenerDelivery(); });
 	}
 
+	// Shared worker count for light concurrent smoke (not frame-scale load).
+	static unsigned smokeProducerCount()
+	{
+		unsigned hc = std::thread::hardware_concurrency();
+		if(hc < 2)
+			return 2;
+		if(hc > 4)
+			return 4;
+		return hc;
+	}
+
 	void dispatchOnEmptyQueuesIsNoOp()
 	{
 		AsyncEventHarness harness;
@@ -256,11 +270,11 @@ public:
 		harness.dispatcher.dispatchCommands();
 
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		const int producers = 4;
+		const unsigned producers = smokeProducerCount();
 		const int perProducer = 50;
 
 		std::vector<std::thread> threads;
-		for(int p = 0; p < producers; ++p)
+		for(unsigned p = 0; p < producers; ++p)
 		{
 			threads.emplace_back([&broadcaster, &channel, perProducer]() {
 				for(int i = 0; i < perProducer; ++i)
@@ -272,7 +286,7 @@ public:
 
 		harness.dispatcher.dispatchEvents();
 
-		ASSERT_EQUAL(total.load(), producers * perProducer);
+		ASSERT_EQUAL(total.load(), static_cast<int>(producers) * perProducer);
 	}
 
 	// Commander/user commands are drained by dispatchCommands but are not fanned out
@@ -292,6 +306,382 @@ public:
 		harness.dispatcher.dispatchEvents();
 
 		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+	}
+};
+
+// ---------------------------------------------------------------------------
+// Game-shaped load: multi-frame worker traffic + payload integrity
+//
+// Mirrors Partest's dispatcher tests: keep a reference copy of every payload
+// sent, collect everything received, then compare as a multiset (sort + walk).
+// Cross-worker total order is not required.
+//
+// Workers are persistent. Frame-gated mode uses semaphores so production only
+// happens between main-thread drains (no per-frame thread create/join).
+// ---------------------------------------------------------------------------
+class EventSystemLoadTest : public partest::TestBase
+{
+public:
+	EventSystemLoadTest()
+		: TestBase("EventSystemLoadTest", "Multi-frame loads with payload preservation checks.")
+	{
+		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
+
+		addTest("FrameGatedWorkersManyFrames", flags, [this]() { frameGatedWorkersManyFrames(); });
+		addTest("ContinuousWorkersManyFrames", flags, [this]() { continuousWorkersManyFrames(); });
+		addTest("FrameGatedCascadeManyFrames", flags, [this]() { frameGatedCascadeManyFrames(); });
+		addTest("ContinuousCascadeManyFrames", flags, [this]() { continuousCascadeManyFrames(); });
+		addTest("FrameGatedMixedEventAndCommandManyFrames", flags, [this]() { frameGatedMixedEventAndCommandManyFrames(); });
+		addTest("HandlerRegistersAnotherChannelDuringFlush", flags, [this]() { handlerRegistersAnotherChannelDuringFlush(); });
+	}
+
+	static unsigned loadWorkerCount()
+	{
+		unsigned hc = std::thread::hardware_concurrency();
+		if(hc < 2)
+			return 2;
+		if(hc > 8)
+			return 8;
+		return hc;
+	}
+
+	static const unsigned kPushesPerWorkerPerFrame = 512;
+	static const unsigned kFrameCount = 32;
+
+	// Thread-safe reference / receive log (same role as Partest's m_logs + reporter logs).
+	struct PayloadLog
+	{
+		std::mutex mutex;
+		std::vector<int> values;
+
+		void record(int value)
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			values.push_back(value);
+		}
+
+		std::vector<int> snapshot()
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			return values;
+		}
+	};
+
+	// Unique payload: frame, worker, and sequence are all recoverable if a test fails.
+	static int makePayload(unsigned frame, unsigned worker, unsigned seq)
+	{
+		// Generous packing for the volumes used here (frames * workers * seq fits in 32-bit).
+		return static_cast<int>((frame << 20) | (worker << 12) | seq);
+	}
+
+	// Sort copies and require identical multisets (order of arrival ignored).
+	void assertPayloadsPreserved(const std::vector<int> &sent, const std::vector<int> &received)
+	{
+		ASSERT_EQUAL(received.size(), sent.size());
+
+		std::vector<int> expected = sent;
+		std::vector<int> actual = received;
+		std::sort(expected.begin(), expected.end());
+		std::sort(actual.begin(), actual.end());
+
+		unsigned mismatches = 0;
+		for(size_t i = 0; i < expected.size(); ++i)
+		{
+			if(expected[i] != actual[i])
+				++mismatches;
+		}
+		ASSERT_EQUAL(mismatches, 0u);
+	}
+
+	// --- Frame-gated: persistent workers, semaphore between produce and drain -----------
+
+	void frameGatedWorkersManyFrames()
+	{
+		AsyncEventHarness harness;
+		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("load-gated");
+		PayloadLog sent;
+		PayloadLog received;
+
+		cge::event::ListenerBase listener(&harness.dispatcher);
+		listener.requestRegister(channel, [&received](const int &v) { received.record(v); });
+		harness.dispatcher.dispatchCommands();
+
+		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
+		const unsigned workers = loadWorkerCount();
+
+		runPersistentFrameGated(workers, kFrameCount, kPushesPerWorkerPerFrame,
+			[&](unsigned frame, unsigned worker, unsigned seq) {
+				const int payload = makePayload(frame, worker, seq);
+				sent.record(payload);
+				broadcaster.broadcast(channel, payload);
+			},
+			[&]() {
+				harness.dispatcher.dispatchEvents();
+			});
+
+		assertPayloadsPreserved(sent.snapshot(), received.snapshot());
+	}
+
+	void frameGatedCascadeManyFrames()
+	{
+		AsyncEventHarness harness;
+		const cge::event::EventChannel<int> &primary = harness.registry.getChannel<int>("load-gated-casc-a");
+		const cge::event::EventChannel<int> &secondary = harness.registry.getChannel<int>("load-gated-casc-b");
+		PayloadLog sent;
+		PayloadLog receivedPrimary;
+		PayloadLog receivedSecondary;
+
+		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
+		cge::event::ListenerBase primaryListener(&harness.dispatcher);
+		cge::event::ListenerBase secondaryListener(&harness.dispatcher);
+
+		primaryListener.requestRegister(primary, [&](const int &v) {
+			receivedPrimary.record(v);
+			// Cascade preserves the same payload identity on the secondary channel.
+			broadcaster.broadcast(secondary, v);
+		});
+		secondaryListener.requestRegister(secondary, [&](const int &v) {
+			receivedSecondary.record(v);
+		});
+		harness.dispatcher.dispatchCommands();
+
+		const unsigned workers = loadWorkerCount();
+		const unsigned perWorker = kPushesPerWorkerPerFrame / 2;
+
+		runPersistentFrameGated(workers, kFrameCount, perWorker,
+			[&](unsigned frame, unsigned worker, unsigned seq) {
+				const int payload = makePayload(frame, worker, seq);
+				sent.record(payload);
+				broadcaster.broadcast(primary, payload);
+			},
+			[&]() {
+				harness.dispatcher.dispatchEvents();
+			});
+
+		std::vector<int> expected = sent.snapshot();
+		assertPayloadsPreserved(expected, receivedPrimary.snapshot());
+		assertPayloadsPreserved(expected, receivedSecondary.snapshot());
+	}
+
+	void frameGatedMixedEventAndCommandManyFrames()
+	{
+		AsyncEventHarness harness;
+		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("load-gated-mixed");
+		PayloadLog sent;
+		PayloadLog received;
+
+		cge::event::ListenerBase listener(&harness.dispatcher);
+		listener.requestRegister(channel, [&received](const int &v) { received.record(v); });
+		harness.dispatcher.dispatchCommands();
+
+		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
+		cge::event::CommanderBase commander(&harness.dispatcher);
+		const unsigned workers = loadWorkerCount();
+		const unsigned commandPushes = 64;
+
+		runPersistentFrameGated(workers, kFrameCount, kPushesPerWorkerPerFrame,
+			[&](unsigned frame, unsigned worker, unsigned seq) {
+				const int payload = makePayload(frame, worker, seq);
+				sent.record(payload);
+				broadcaster.broadcast(channel, payload);
+				// Command noise must not steal or corrupt event payloads.
+				if(seq < commandPushes)
+					commander.command(channel, -1);
+			},
+			[&]() {
+				harness.dispatcher.dispatchCommands();
+				harness.dispatcher.dispatchEvents();
+			});
+
+		assertPayloadsPreserved(sent.snapshot(), received.snapshot());
+	}
+
+	// --- Continuous: persistent workers fire the whole run; main steps many frames -----
+
+	void continuousWorkersManyFrames()
+	{
+		AsyncEventHarness harness;
+		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("load-cont");
+		PayloadLog sent;
+		PayloadLog received;
+
+		cge::event::ListenerBase listener(&harness.dispatcher);
+		listener.requestRegister(channel, [&received](const int &v) { received.record(v); });
+		harness.dispatcher.dispatchCommands();
+
+		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
+		const unsigned workers = loadWorkerCount();
+		const unsigned pushesPerWorker = kPushesPerWorkerPerFrame * kFrameCount;
+
+		std::vector<std::thread> threads;
+		threads.reserve(workers);
+		for(unsigned w = 0; w < workers; ++w)
+		{
+			threads.emplace_back([&broadcaster, &channel, &sent, w, pushesPerWorker]() {
+				for(unsigned i = 0; i < pushesPerWorker; ++i)
+				{
+					// frame slot folded into high bits via i / perFrame for uniqueness.
+					const unsigned frame = i / kPushesPerWorkerPerFrame;
+					const unsigned seq = i % kPushesPerWorkerPerFrame;
+					const int payload = makePayload(frame, w, seq);
+					sent.record(payload);
+					broadcaster.broadcast(channel, payload);
+				}
+			});
+		}
+
+		for(unsigned frame = 0; frame < kFrameCount; ++frame)
+			harness.dispatcher.dispatchEvents();
+
+		for(std::thread &t : threads)
+			t.join();
+
+		for(unsigned extra = 0; extra < 8; ++extra)
+			harness.dispatcher.dispatchEvents();
+
+		assertPayloadsPreserved(sent.snapshot(), received.snapshot());
+	}
+
+	void continuousCascadeManyFrames()
+	{
+		AsyncEventHarness harness;
+		const cge::event::EventChannel<int> &primary = harness.registry.getChannel<int>("load-cont-casc-a");
+		const cge::event::EventChannel<int> &secondary = harness.registry.getChannel<int>("load-cont-casc-b");
+		PayloadLog sent;
+		PayloadLog receivedPrimary;
+		PayloadLog receivedSecondary;
+
+		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
+		cge::event::ListenerBase primaryListener(&harness.dispatcher);
+		cge::event::ListenerBase secondaryListener(&harness.dispatcher);
+
+		primaryListener.requestRegister(primary, [&](const int &v) {
+			receivedPrimary.record(v);
+			broadcaster.broadcast(secondary, v);
+		});
+		secondaryListener.requestRegister(secondary, [&](const int &v) {
+			receivedSecondary.record(v);
+		});
+		harness.dispatcher.dispatchCommands();
+
+		const unsigned workers = loadWorkerCount();
+		const unsigned pushesPerWorker = (kPushesPerWorkerPerFrame / 2) * kFrameCount;
+		const unsigned perFrame = kPushesPerWorkerPerFrame / 2;
+
+		std::vector<std::thread> threads;
+		for(unsigned w = 0; w < workers; ++w)
+		{
+			threads.emplace_back([&broadcaster, &primary, &sent, w, pushesPerWorker, perFrame]() {
+				for(unsigned i = 0; i < pushesPerWorker; ++i)
+				{
+					const unsigned frame = i / perFrame;
+					const unsigned seq = i % perFrame;
+					const int payload = makePayload(frame, w, seq);
+					sent.record(payload);
+					broadcaster.broadcast(primary, payload);
+				}
+			});
+		}
+
+		for(unsigned frame = 0; frame < kFrameCount; ++frame)
+			harness.dispatcher.dispatchEvents();
+
+		for(std::thread &t : threads)
+			t.join();
+
+		for(unsigned extra = 0; extra < 8; ++extra)
+			harness.dispatcher.dispatchEvents();
+
+		std::vector<int> expected = sent.snapshot();
+		assertPayloadsPreserved(expected, receivedPrimary.snapshot());
+		assertPayloadsPreserved(expected, receivedSecondary.snapshot());
+	}
+
+	void handlerRegistersAnotherChannelDuringFlush()
+	{
+		AsyncEventHarness harness;
+		const cge::event::EventChannel<int> &kick = harness.registry.getChannel<int>("load-reg-kick");
+		const cge::event::EventChannel<int> &late = harness.registry.getChannel<int>("load-reg-late");
+		std::atomic<int> lateHits(0);
+		std::atomic<bool> requested(false);
+
+		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
+		cge::event::ListenerBase kickListener(&harness.dispatcher);
+		cge::event::ListenerBase lateListener(&harness.dispatcher);
+
+		kickListener.requestRegister(kick, [&](const int &) {
+			if(!requested.exchange(true))
+			{
+				lateListener.requestRegister(late, [&lateHits](const int &) {
+					lateHits.fetch_add(1);
+				});
+			}
+		});
+		harness.dispatcher.dispatchCommands();
+
+		broadcaster.broadcast(kick, 1);
+		harness.dispatcher.dispatchEvents();
+		ASSERT_EQUAL(lateHits.load(), 0);
+
+		harness.dispatcher.dispatchCommands();
+		broadcaster.broadcast(late, 99);
+		harness.dispatcher.dispatchEvents();
+
+		ASSERT_EQUAL(lateHits.load(), 1);
+	}
+
+private:
+	// Persistent workers. Each frame: main releases all workers, waits for all to finish
+	// producing, then runs onFrameComplete (dispatch). Same gate idea as a job fence.
+	template<typename ProduceFn, typename FrameCompleteFn>
+	static void runPersistentFrameGated(
+		unsigned workers,
+		unsigned frameCount,
+		unsigned pushesPerWorkerPerFrame,
+		ProduceFn produce,
+		FrameCompleteFn onFrameComplete)
+	{
+		std::counting_semaphore<> beginFrame(0);
+		std::counting_semaphore<> endFrame(0);
+		std::atomic<unsigned> currentFrame(0);
+		std::atomic<bool> stop(false);
+
+		std::vector<std::thread> threads;
+		threads.reserve(workers);
+		for(unsigned w = 0; w < workers; ++w)
+		{
+			threads.emplace_back([&, w]() {
+				while(true)
+				{
+					beginFrame.acquire();
+					if(stop.load(std::memory_order_acquire))
+						break;
+
+					const unsigned frame = currentFrame.load(std::memory_order_acquire);
+					for(unsigned seq = 0; seq < pushesPerWorkerPerFrame; ++seq)
+						produce(frame, w, seq);
+
+					endFrame.release();
+				}
+			});
+		}
+
+		for(unsigned frame = 0; frame < frameCount; ++frame)
+		{
+			currentFrame.store(frame, std::memory_order_release);
+			for(unsigned w = 0; w < workers; ++w)
+				beginFrame.release();
+			for(unsigned w = 0; w < workers; ++w)
+				endFrame.acquire();
+
+			onFrameComplete();
+		}
+
+		stop.store(true, std::memory_order_release);
+		for(unsigned w = 0; w < workers; ++w)
+			beginFrame.release();
+		for(std::thread &t : threads)
+			t.join();
 	}
 };
 
