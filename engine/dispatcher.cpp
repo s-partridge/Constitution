@@ -1,4 +1,7 @@
 #include "dispatcher.h"
+#include "listener.h"
+
+#include <algorithm>
 
 namespace cge::event
 {

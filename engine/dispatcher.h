@@ -7,11 +7,12 @@
 #include <list>
 
 #include "system.h"
-#include "listener.h"
 #include "event.h"
 
 namespace cge::event
 {
+	class ListenerBase;
+
 	enum class RegistrationResult
 	{
 		Success,	// Registration/Unregistration was successful
@@ -78,8 +79,8 @@ namespace cge::event
 
 		EventChannelRegistry *m_channelRegistry;
 
-		EventChannel<RegistrationRequest> *m_registrationChannel;
-		EventChannel<RegistrationRequest> *m_unregistrationChannel;
+		const EventChannel<RegistrationRequest> *m_registrationChannel;
+		const EventChannel<RegistrationRequest> *m_unregistrationChannel;
 
 		// Thin entry points: cross-cutting hook site, then subclass policy.
 		bool pushEvent(const EventChannelBase &channel, std::unique_ptr<EventBase> event);

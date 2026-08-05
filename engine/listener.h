@@ -3,6 +3,8 @@
 
 #include <functional>
 #include <mutex>
+#include <algorithm>
+#include <vector>
 
 #include "dispatcher.h"
 #include "event.h"

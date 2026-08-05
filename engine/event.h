@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <string>
 #include <typeinfo>
+#include <stdexcept>
 
 namespace cge::event
 {
