@@ -13,7 +13,7 @@ namespace cge::event
 		virtual ~BroadcasterBase() = default;
 
 		template<typename PayloadType>
-		void broadcast(const EventChannel<PayloadType> &channel, const PayloadType payload)
+		void broadcast(const EventChannel<PayloadType> &channel, const PayloadType &payload)
 		{
 			std::unique_ptr<EventBase> event = std::make_unique<Event<PayloadType>>(payload);
 			m_dispatcher->pushEvent(channel, std::move(event));
@@ -29,7 +29,7 @@ namespace cge::event
 		virtual ~CommanderBase() = default;
 
 		template<typename PayloadType>
-		void command(const EventChannel<PayloadType> &channel, const PayloadType payload)
+		void command(const EventChannel<PayloadType> &channel, const PayloadType &payload)
 		{
 			std::unique_ptr<EventBase> event = std::make_unique<Event<PayloadType>>(payload);
 			m_dispatcher->pushCommand(channel, std::move(event));
