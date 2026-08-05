@@ -27,6 +27,9 @@ namespace cge::event
 		Event(const PayloadType &payload) : payload(payload) {}
 	};
 
+	// New channel identities are issued only via EventChannelRegistry::getChannel.
+	// Copy is allowed (same id). Move is disabled so ownership of "new" channels
+	// cannot be shuffled past the registry without an explicit copy.
 	class EventChannelBase
 	{
 		ChannelId m_id;
@@ -40,6 +43,12 @@ namespace cge::event
 	public:
 
 		virtual ~EventChannelBase() = default;
+
+		EventChannelBase(const EventChannelBase &) = default;
+		EventChannelBase &operator=(const EventChannelBase &) = default;
+		EventChannelBase(EventChannelBase &&) = delete;
+		EventChannelBase &operator=(EventChannelBase &&) = delete;
+
 		ChannelId id() const { return m_id; }
 	};
 
@@ -48,6 +57,12 @@ namespace cge::event
 	{
 	public:
 		virtual ~EventChannel() = default;
+
+		EventChannel(const EventChannel &) = default;
+		EventChannel &operator=(const EventChannel &) = default;
+		EventChannel(EventChannel &&) = delete;
+		EventChannel &operator=(EventChannel &&) = delete;
+
 	protected:
 		EventChannel() = default;
 		friend class EventChannelRegistry;
@@ -68,9 +83,10 @@ namespace cge::event
 		EventChannelRegistry(EventChannelRegistry &&other) noexcept : m_channels(std::move(other.m_channels)) {}
 		EventChannelRegistry &operator=(EventChannelRegistry &&other) noexcept;
 
-		// Raise if the channel already exists with unmatched payload type
+		// Raise if the channel already exists with unmatched payload type.
+		// Returns a const handle; the registry owns the channel object.
 		template<typename PayloadType>
-		EventChannel<PayloadType>& getChannel(const ChannelTag &name)
+		const EventChannel<PayloadType> &getChannel(const ChannelTag &name)
 		{
 			ChannelMapIter it = m_channels.find(name);
 			if(it != m_channels.end())
@@ -81,7 +97,7 @@ namespace cge::event
 				{
 					throw std::runtime_error("Type error: attempted to re-register channel with a different payload type");
 				}
-				return *static_cast<EventChannel<PayloadType> *>(existingChannel);
+				return *static_cast<const EventChannel<PayloadType> *>(existingChannel);
 			}
 			EventChannel<PayloadType> *newChannel = new EventChannel<PayloadType>();
 			m_channels[name] = newChannel;
