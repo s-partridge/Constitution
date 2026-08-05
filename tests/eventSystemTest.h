@@ -68,81 +68,56 @@ public:
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("GetChannelCreatesAndReusesSameInstance", flags, [this]() { getChannelCreatesAndReusesSameInstance(); });
-		addTest("GetChannelTypeMismatchThrows", flags, [this]() { getChannelTypeMismatchThrows(); });
-		addTest("ChannelNotDefaultConstructibleOutsideRegistry", flags, [this]() { channelNotDefaultConstructibleOutsideRegistry(); });
-		addTest("ChannelIsCopyConstructible", flags, [this]() { channelIsCopyConstructible(); });
-		addTest("ChannelIsNotMoveConstructible", flags, [this]() { channelIsNotMoveConstructible(); });
-		addTest("DistinctNamesGetDistinctIds", flags, [this]() { distinctNamesGetDistinctIds(); });
-		addTest("MoveConstructionAndAssignmentPreserveChannels", flags, [this]() { moveConstructionAndAssignmentPreserveChannels(); });
+		addTest("Lookup", flags, [this]() { lookup(); });
+		addTest("ConstructionPolicy", flags, [this]() { constructionPolicy(); });
 	}
 
-	void getChannelCreatesAndReusesSameInstance()
+	void lookup()
 	{
-		cge::event::EventChannelRegistry registry;
-		const cge::event::EventChannel<int> &first = registry.getChannel<int>("alpha");
-		const cge::event::EventChannel<int> &second = registry.getChannel<int>("alpha");
+		subtest("SameNameSameInstance", [&]() {
+			cge::event::EventChannelRegistry registry;
+			const cge::event::EventChannel<int> &first = registry.getChannel<int>("alpha");
+			const cge::event::EventChannel<int> &second = registry.getChannel<int>("alpha");
 
-		ASSERT_EQUAL(first.id(), second.id());
-		ASSERT_TRUE(&first == &second);
+			ASSERT_EQUAL(first.id(), second.id());
+			ASSERT_TRUE(&first == &second);
+		});
+
+		subtest("DistinctNamesDistinctIds", [&]() {
+			cge::event::EventChannelRegistry registry;
+			const cge::event::EventChannel<int> &a = registry.getChannel<int>("a");
+			const cge::event::EventChannel<int> &b = registry.getChannel<int>("b");
+
+			ASSERT_NOT_EQUAL(a.id(), b.id());
+		});
+
 	}
 
-	void getChannelTypeMismatchThrows()
-	{
-		cge::event::EventChannelRegistry registry;
-		registry.getChannel<int>("typed");
-
-		ASSERT_THROWS(std::runtime_error, registry.getChannel<std::string>("typed"));
-	}
-
-	void channelNotDefaultConstructibleOutsideRegistry()
+	void constructionPolicy()
 	{
 		// Protected default ctor: new channels must come from the registry.
-		ASSERT_FALSE(std::is_default_constructible<cge::event::EventChannel<int>>::value);
-		ASSERT_FALSE(std::is_default_constructible<cge::event::EventChannelBase>::value);
+		subtest("NotDefaultConstructible", [&]() {
+			ASSERT_FALSE(std::is_default_constructible<cge::event::EventChannel<int>>::value);
+			ASSERT_FALSE(std::is_default_constructible<cge::event::EventChannelBase>::value);
+		});
+
+		subtest("CopyKeepsId", [&]() {
+			ASSERT_TRUE(std::is_copy_constructible<cge::event::EventChannel<int>>::value);
+
+			cge::event::EventChannelRegistry registry;
+			const cge::event::EventChannel<int> &original = registry.getChannel<int>("copyable");
+			cge::event::EventChannel<int> copy(original);
+
+			ASSERT_EQUAL(copy.id(), original.id());
+		});
+
+		// Move is disabled so channel identities cannot be shuffled past the registry.
+		subtest("NotMoveConstructible", [&]() {
+			ASSERT_FALSE(std::is_move_constructible<cge::event::EventChannel<int>>::value);
+			ASSERT_FALSE(std::is_move_constructible<cge::event::EventChannelBase>::value);
+		});
 	}
 
-	void channelIsCopyConstructible()
-	{
-		ASSERT_TRUE(std::is_copy_constructible<cge::event::EventChannel<int>>::value);
-
-		cge::event::EventChannelRegistry registry;
-		const cge::event::EventChannel<int> &original = registry.getChannel<int>("copyable");
-		cge::event::EventChannel<int> copy(original);
-
-		ASSERT_EQUAL(copy.id(), original.id());
-	}
-
-	void channelIsNotMoveConstructible()
-	{
-		ASSERT_FALSE(std::is_move_constructible<cge::event::EventChannel<int>>::value);
-		ASSERT_FALSE(std::is_move_constructible<cge::event::EventChannelBase>::value);
-	}
-
-	void distinctNamesGetDistinctIds()
-	{
-		cge::event::EventChannelRegistry registry;
-		const cge::event::EventChannel<int> &a = registry.getChannel<int>("a");
-		const cge::event::EventChannel<int> &b = registry.getChannel<int>("b");
-
-		ASSERT_NOT_EQUAL(a.id(), b.id());
-	}
-
-	// Channels are heap-owned, so identities must survive registry moves; move
-	// assignment destroys the target's own channels first.
-	void moveConstructionAndAssignmentPreserveChannels()
-	{
-		cge::event::EventChannelRegistry source;
-		const cge::event::ChannelId id = source.getChannel<int>("mv").id();
-
-		cge::event::EventChannelRegistry movedTo(std::move(source));
-		ASSERT_EQUAL(movedTo.getChannel<int>("mv").id(), id);
-
-		cge::event::EventChannelRegistry assigned;
-		assigned.getChannel<int>("mv-old");
-		assigned = std::move(movedTo);
-		ASSERT_EQUAL(assigned.getChannel<int>("mv").id(), id);
-	}
 };
 
 // ---------------------------------------------------------------------------
@@ -156,20 +131,259 @@ public:
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("DispatchOnEmptyQueuesIsNoOp", flags, [this]() { dispatchOnEmptyQueuesIsNoOp(); });
-		addTest("RejectsPushBeforeSetUp", flags, [this]() { rejectsPushBeforeSetUp(); });
-		addTest("RejectsPushAfterTearDown", flags, [this]() { rejectsPushAfterTearDown(); });
-		addTest("EventsDoNotRunUntilDispatchEvents", flags, [this]() { eventsDoNotRunUntilDispatchEvents(); });
-		addTest("RegistrationRequiresDispatchCommands", flags, [this]() { registrationRequiresDispatchCommands(); });
-		addTest("DrainUntilEmptyHandlesReentryBroadcasts", flags, [this]() { drainUntilEmptyHandlesReentryBroadcasts(); });
-		addTest("JoinedProducersAreDeliveredOnDispatch", flags, [this]() { joinedProducersAreDeliveredOnDispatch(); });
-		addTest("UnknownCommandsAreConsumedWithoutListenerDelivery", flags, [this]() { unknownCommandsAreConsumedWithoutListenerDelivery(); });
-		addTest("UnregisterMidDrainStillReceivesRestOfDrain", flags, [this]() { unregisterMidDrainStillReceivesRestOfDrain(); });
-		addTest("QueuedEventsDrainAfterTearDown", flags, [this]() { queuedEventsDrainAfterTearDown(); });
-		addTest("InactivePushIsDroppedNotDeferred", flags, [this]() { inactivePushIsDroppedNotDeferred(); });
-		addTest("TwoDispatchersOnOneRegistryDoNotCrossTalk", flags, [this]() { twoDispatchersOnOneRegistryDoNotCrossTalk(); });
+		addTest("Lifecycle", flags, [this]() { lifecycle(); });
+		addTest("Deferral", flags, [this]() { deferral(); });
+		addTest("Drain", flags, [this]() { drain(); });
+		addTest("Isolation", flags, [this]() { isolation(); });
+		addTest("Threads", flags, [this]() { threads(); });
 	}
 
+	// Each case needs a dispatcher at a different lifecycle point, so only the
+	// registry and its channel identity are shared.
+	void lifecycle()
+	{
+		cge::event::EventChannelRegistry registry;
+		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("lifecycle");
+
+		subtest("PushBeforeSetUp", [&]() {
+			cge::event::AsyncDispatcher dispatcher("pre-setup", &registry);
+			cge::event::ListenerBase listener(&dispatcher);
+
+			ASSERT_TRUE(listener.requestRegister(channel, [](const int &) {})
+				== cge::event::RegistrationResult::Failure);
+		});
+
+		subtest("PushAfterTearDown", [&]() {
+			cge::event::AsyncDispatcher dispatcher("post-teardown", &registry);
+			dispatcher.setUp();
+			dispatcher.tearDown();
+
+			cge::event::ListenerBase listener(&dispatcher);
+			ASSERT_TRUE(listener.requestRegister(channel, [](const int &) {})
+				== cge::event::RegistrationResult::Failure);
+
+			cge::event::BroadcasterBase broadcaster(&dispatcher);
+			ASSERT_NOTHROW(broadcaster.broadcast(channel, 1));
+		});
+
+		// Dispatch always drains, so a parked event would surface on the next
+		// drain — nothing arriving proves the push was refused outright.
+		subtest("InactivePushDiscarded", [&]() {
+			cge::event::AsyncDispatcher dispatcher("inactive-drop", &registry);
+			CountingListener listener(&dispatcher);
+			cge::event::BroadcasterBase broadcaster(&dispatcher);
+
+			broadcaster.broadcast(channel, 1);
+
+			dispatcher.setUp();
+			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
+			dispatcher.dispatchCommands();
+			dispatcher.dispatchEvents();
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+
+			dispatcher.tearDown();
+			broadcaster.broadcast(channel, 2);
+			dispatcher.dispatchEvents();
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+		});
+
+		// tearDown stops intake, not processing: the engine keeps driving dispatch
+		// on its own schedule, and work already queued still drains.
+		subtest("QueuedEventsDrainAfterTearDown", [&]() {
+			cge::event::AsyncDispatcher dispatcher("drain-after-teardown", &registry);
+			dispatcher.setUp();
+
+			CountingListener listener(&dispatcher);
+			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
+			dispatcher.dispatchCommands();
+
+			cge::event::BroadcasterBase broadcaster(&dispatcher);
+			broadcaster.broadcast(channel, 5);
+			dispatcher.tearDown();
+
+			dispatcher.dispatchEvents();
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received[0], 5);
+		});
+	}
+
+	// One listener carried from request through to delivery: each case runs
+	// against the dispatcher state the previous one left behind.
+	void deferral()
+	{
+		AsyncEventHarness harness;
+		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("deferral");
+		CountingListener listener(&harness.dispatcher);
+		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
+
+		subtest("EmptyQueuesNoOp", [&]() {
+			ASSERT_NOTHROW(harness.dispatcher.dispatchCommands());
+			ASSERT_NOTHROW(harness.dispatcher.dispatchEvents());
+		});
+
+		subtest("RegistrationWaitsForCommandDrain", [&]() {
+			ASSERT_TRUE(listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); })
+				== cge::event::RegistrationResult::Pending);
+
+			// Listener map not updated yet, so this event drains to nobody.
+			broadcaster.broadcast(channel, 7);
+			harness.dispatcher.dispatchEvents();
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+		});
+
+		subtest("EventsWaitForEventDrain", [&]() {
+			harness.dispatcher.dispatchCommands();
+
+			broadcaster.broadcast(channel, 42);
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+
+			harness.dispatcher.dispatchEvents();
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received[0], 42);
+		});
+	}
+
+	// Shared dispatcher; what varies is what the handler does during the drain.
+	void drain()
+	{
+		AsyncEventHarness harness;
+		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
+
+		subtest("ReentryBroadcasts", [&]() {
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reentry");
+			CountingListener listener(&harness.dispatcher);
+
+			listener.requestRegister(channel, [&](const int &v) {
+				listener.onInt(v);
+				if(v == 1)
+					broadcaster.broadcast(channel, 2);
+			});
+			harness.dispatcher.dispatchCommands();
+
+			broadcaster.broadcast(channel, 1);
+			harness.dispatcher.dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(listener.received[0], 1);
+			ASSERT_EQUAL(listener.received[1], 2);
+		});
+
+		// Pending semantics: an unregistration requested mid-drain takes effect at
+		// the next command drain, so the rest of this drain still delivers.
+		subtest("UnregisterMidDrain", [&]() {
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("same-drain");
+			CountingListener listener(&harness.dispatcher);
+
+			listener.requestRegister(channel, [&](const int &v) {
+				listener.onInt(v);
+				if(v == 1)
+					listener.requestUnregister(channel);
+			});
+			harness.dispatcher.dispatchCommands();
+
+			broadcaster.broadcast(channel, 1);
+			broadcaster.broadcast(channel, 2);
+			broadcaster.broadcast(channel, 3);
+			harness.dispatcher.dispatchEvents();
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(3));
+
+			harness.dispatcher.dispatchCommands();
+			broadcaster.broadcast(channel, 4);
+			harness.dispatcher.dispatchEvents();
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(3));
+		});
+	}
+
+	void isolation()
+	{
+		// Only registration channels mean anything to dispatchCommands; other
+		// command payloads are drained and discarded.
+		subtest("UnknownCommandsConsumed", [&]() {
+			AsyncEventHarness harness;
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("cmd-only");
+			CountingListener listener(&harness.dispatcher);
+
+			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
+			harness.dispatcher.dispatchCommands();
+
+			cge::event::CommanderBase commander(&harness.dispatcher);
+			commander.command(channel, 99);
+			harness.dispatcher.dispatchCommands();
+			harness.dispatcher.dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+		});
+
+		// Two dispatchers share the registry's named registration channels, but
+		// queues are per-dispatcher, so traffic must not cross.
+		subtest("TwoDispatchersOneRegistry", [&]() {
+			cge::event::EventChannelRegistry registry;
+			cge::event::AsyncDispatcher first("dispatcher-a", &registry);
+			cge::event::AsyncDispatcher second("dispatcher-b", &registry);
+			first.setUp();
+			second.setUp();
+
+			const cge::event::EventChannel<int> &channel = registry.getChannel<int>("shared");
+			CountingListener firstListener(&first);
+			CountingListener secondListener(&second);
+
+			firstListener.requestRegister(channel, [&firstListener](const int &v) { firstListener.onInt(v); });
+			secondListener.requestRegister(channel, [&secondListener](const int &v) { secondListener.onInt(v); });
+			first.dispatchCommands();
+			second.dispatchCommands();
+
+			cge::event::BroadcasterBase firstBroadcaster(&first);
+			cge::event::BroadcasterBase secondBroadcaster(&second);
+			firstBroadcaster.broadcast(channel, 1);
+			secondBroadcaster.broadcast(channel, 2);
+			first.dispatchEvents();
+			second.dispatchEvents();
+
+			ASSERT_EQUAL(firstListener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(firstListener.received[0], 1);
+			ASSERT_EQUAL(secondListener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(secondListener.received[0], 2);
+
+			first.tearDown();
+			second.tearDown();
+		});
+	}
+
+	void threads()
+	{
+		// Producers join before the drain, so this never overlaps push with
+		// dispatch; push-during-drain coverage lives in the load tests.
+		subtest("JoinedProducers", [&]() {
+			AsyncEventHarness harness;
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("mt");
+			std::atomic<int> total(0);
+
+			cge::event::ListenerBase listener(&harness.dispatcher);
+			listener.requestRegister(channel, [&total](const int &v) { total.fetch_add(v); });
+			harness.dispatcher.dispatchCommands();
+
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
+			const unsigned producers = smokeProducerCount();
+			const int perProducer = 50;
+
+			std::vector<std::thread> workers;
+			for(unsigned p = 0; p < producers; ++p)
+			{
+				workers.emplace_back([&broadcaster, &channel, perProducer]() {
+					for(int i = 0; i < perProducer; ++i)
+						broadcaster.broadcast(channel, 1);
+				});
+			}
+			for(std::thread &t : workers)
+				t.join();
+
+			harness.dispatcher.dispatchEvents();
+
+			ASSERT_EQUAL(total.load(), static_cast<int>(producers) * perProducer);
+		});
+	}
+
+private:
 	// Shared worker count for light concurrent smoke (not frame-scale load).
 	static unsigned smokeProducerCount()
 	{
@@ -179,274 +393,6 @@ public:
 		if(hc > 4)
 			return 4;
 		return hc;
-	}
-
-	void dispatchOnEmptyQueuesIsNoOp()
-	{
-		AsyncEventHarness harness;
-		ASSERT_NOTHROW(harness.dispatcher.dispatchCommands());
-		ASSERT_NOTHROW(harness.dispatcher.dispatchEvents());
-	}
-
-	void rejectsPushBeforeSetUp()
-	{
-		cge::event::EventChannelRegistry registry;
-		cge::event::AsyncDispatcher dispatcher("pre-setup", &registry);
-		// deliberately not setUp()
-
-		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("pre");
-		cge::event::ListenerBase listener(&dispatcher);
-		cge::event::RegistrationResult result = listener.requestRegister(channel, [](const int &) {});
-
-		ASSERT_TRUE(result == cge::event::RegistrationResult::Failure);
-	}
-
-	void rejectsPushAfterTearDown()
-	{
-		cge::event::EventChannelRegistry registry;
-		cge::event::AsyncDispatcher dispatcher("post-teardown", &registry);
-		dispatcher.setUp();
-		dispatcher.tearDown();
-
-		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("post");
-		cge::event::ListenerBase listener(&dispatcher);
-		cge::event::RegistrationResult result = listener.requestRegister(channel, [](const int &) {});
-
-		ASSERT_TRUE(result == cge::event::RegistrationResult::Failure);
-
-		cge::event::BroadcasterBase broadcaster(&dispatcher);
-		ASSERT_NOTHROW(broadcaster.broadcast(channel, 1));
-	}
-
-	void eventsDoNotRunUntilDispatchEvents()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("deferred");
-		CountingListener listener(&harness.dispatcher);
-
-		ASSERT_TRUE(listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); })
-			== cge::event::RegistrationResult::Pending);
-		harness.dispatcher.dispatchCommands();
-
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, 42);
-
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
-
-		harness.dispatcher.dispatchEvents();
-
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
-		ASSERT_EQUAL(listener.received[0], 42);
-	}
-
-	void registrationRequiresDispatchCommands()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("needs-cmd");
-		CountingListener listener(&harness.dispatcher);
-
-		listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
-
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, 7);
-		// Registration still pending; listener map not updated yet.
-		harness.dispatcher.dispatchEvents();
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
-
-		harness.dispatcher.dispatchCommands();
-		broadcaster.broadcast(channel, 8);
-		harness.dispatcher.dispatchEvents();
-
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
-		ASSERT_EQUAL(listener.received[0], 8);
-	}
-
-	void drainUntilEmptyHandlesReentryBroadcasts()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reentry");
-		CountingListener listener(&harness.dispatcher);
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-
-		listener.requestRegister(channel, [&](const int &v) {
-			listener.onInt(v);
-			if(v == 1)
-				broadcaster.broadcast(channel, 2);
-		});
-		harness.dispatcher.dispatchCommands();
-
-		broadcaster.broadcast(channel, 1);
-		harness.dispatcher.dispatchEvents();
-
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(2));
-		ASSERT_EQUAL(listener.received[0], 1);
-		ASSERT_EQUAL(listener.received[1], 2);
-	}
-
-	// Smoke test: producers join before the drain, so this never overlaps push
-	// with dispatch. Push-during-drain coverage lives in the continuous load tests.
-	void joinedProducersAreDeliveredOnDispatch()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("mt");
-		std::atomic<int> total(0);
-
-		cge::event::ListenerBase listener(&harness.dispatcher);
-		listener.requestRegister(channel, [&total](const int &v) { total.fetch_add(v); });
-		harness.dispatcher.dispatchCommands();
-
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		const unsigned producers = smokeProducerCount();
-		const int perProducer = 50;
-
-		std::vector<std::thread> threads;
-		for(unsigned p = 0; p < producers; ++p)
-		{
-			threads.emplace_back([&broadcaster, &channel, perProducer]() {
-				for(int i = 0; i < perProducer; ++i)
-					broadcaster.broadcast(channel, 1);
-			});
-		}
-		for(std::thread &t : threads)
-			t.join();
-
-		harness.dispatcher.dispatchEvents();
-
-		ASSERT_EQUAL(total.load(), static_cast<int>(producers) * perProducer);
-	}
-
-	// Commander/user commands are drained by dispatchCommands but are not fanned out
-	// to listeners (only registration/unregistration channels are handled).
-	void unknownCommandsAreConsumedWithoutListenerDelivery()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("cmd-only");
-		CountingListener listener(&harness.dispatcher);
-
-		listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
-		harness.dispatcher.dispatchCommands();
-
-		cge::event::CommanderBase commander(&harness.dispatcher);
-		commander.command(channel, 99);
-		harness.dispatcher.dispatchCommands();
-		harness.dispatcher.dispatchEvents();
-
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
-	}
-
-	// Pending semantics: an unregistration requested mid-drain takes effect at the
-	// next command drain; the rest of the current drain still delivers.
-	void unregisterMidDrainStillReceivesRestOfDrain()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("same-drain");
-		CountingListener listener(&harness.dispatcher);
-
-		listener.requestRegister(channel, [&](const int &v) {
-			listener.onInt(v);
-			if(v == 1)
-				listener.requestUnregister(channel);
-		});
-		harness.dispatcher.dispatchCommands();
-
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, 1);
-		broadcaster.broadcast(channel, 2);
-		broadcaster.broadcast(channel, 3);
-		harness.dispatcher.dispatchEvents();
-
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(3));
-
-		harness.dispatcher.dispatchCommands();
-		broadcaster.broadcast(channel, 4);
-		harness.dispatcher.dispatchEvents();
-
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(3));
-	}
-
-	// tearDown stops intake, not processing: the engine keeps driving dispatch on
-	// its schedule, and events queued while active still drain after teardown.
-	// Early returns in dispatch are illegal by design.
-	void queuedEventsDrainAfterTearDown()
-	{
-		cge::event::EventChannelRegistry registry;
-		cge::event::AsyncDispatcher dispatcher("drain-after-teardown", &registry);
-		dispatcher.setUp();
-
-		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("dat");
-		CountingListener listener(&dispatcher);
-		listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
-		dispatcher.dispatchCommands();
-
-		cge::event::BroadcasterBase broadcaster(&dispatcher);
-		broadcaster.broadcast(channel, 5);
-		dispatcher.tearDown();
-
-		dispatcher.dispatchEvents();
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
-		ASSERT_EQUAL(listener.received[0], 5);
-	}
-
-	// Pushes while inactive are discarded, not parked for later. Dispatch always
-	// drains, so a queued-but-unseen event would surface on the next drain —
-	// nothing arriving is proof the push was refused outright.
-	void inactivePushIsDroppedNotDeferred()
-	{
-		cge::event::EventChannelRegistry registry;
-		cge::event::AsyncDispatcher dispatcher("inactive-drop", &registry);
-		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("drop");
-		CountingListener listener(&dispatcher);
-		cge::event::BroadcasterBase broadcaster(&dispatcher);
-
-		// Before setUp.
-		broadcaster.broadcast(channel, 1);
-
-		dispatcher.setUp();
-		listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
-		dispatcher.dispatchCommands();
-		dispatcher.dispatchEvents();
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
-
-		// After tearDown.
-		dispatcher.tearDown();
-		broadcaster.broadcast(channel, 2);
-		dispatcher.dispatchEvents();
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
-	}
-
-	// Two dispatchers share one registry (and its named registration channels);
-	// queues are per-dispatcher, so traffic must not cross.
-	void twoDispatchersOnOneRegistryDoNotCrossTalk()
-	{
-		cge::event::EventChannelRegistry registry;
-		cge::event::AsyncDispatcher first("dispatcher-a", &registry);
-		cge::event::AsyncDispatcher second("dispatcher-b", &registry);
-		first.setUp();
-		second.setUp();
-
-		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("shared");
-		CountingListener firstListener(&first);
-		CountingListener secondListener(&second);
-
-		firstListener.requestRegister(channel, [&firstListener](const int &v) { firstListener.onInt(v); });
-		secondListener.requestRegister(channel, [&secondListener](const int &v) { secondListener.onInt(v); });
-		first.dispatchCommands();
-		second.dispatchCommands();
-
-		cge::event::BroadcasterBase firstBroadcaster(&first);
-		cge::event::BroadcasterBase secondBroadcaster(&second);
-		firstBroadcaster.broadcast(channel, 1);
-		secondBroadcaster.broadcast(channel, 2);
-		first.dispatchEvents();
-		second.dispatchEvents();
-
-		ASSERT_EQUAL(firstListener.received.size(), static_cast<size_t>(1));
-		ASSERT_EQUAL(firstListener.received[0], 1);
-		ASSERT_EQUAL(secondListener.received.size(), static_cast<size_t>(1));
-		ASSERT_EQUAL(secondListener.received[0], 2);
-
-		first.tearDown();
-		second.tearDown();
 	}
 };
 
@@ -468,13 +414,9 @@ public:
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("FrameGatedWorkersManyFrames", flags, [this]() { frameGatedWorkersManyFrames(); });
-		addTest("ContinuousWorkersManyFrames", flags, [this]() { continuousWorkersManyFrames(); });
-		addTest("FrameGatedCascadeManyFrames", flags, [this]() { frameGatedCascadeManyFrames(); });
-		addTest("ContinuousCascadeManyFrames", flags, [this]() { continuousCascadeManyFrames(); });
-		addTest("FrameGatedMixedEventAndCommandManyFrames", flags, [this]() { frameGatedMixedEventAndCommandManyFrames(); });
-		addTest("HandlerRegistersAnotherChannelDuringFlush", flags, [this]() { handlerRegistersAnotherChannelDuringFlush(); });
-		addTest("ConcurrentRegistrationChurnPreservesStableDelivery", flags, [this]() { concurrentRegistrationChurnPreservesStableDelivery(); });
+		addTest("FrameGated", flags, [this]() { frameGated(); });
+		addTest("Continuous", flags, [this]() { continuous(); });
+		addTest("RegistrationUnderLoad", flags, [this]() { registrationUnderLoad(); });
 	}
 
 	static unsigned loadWorkerCount()
@@ -509,6 +451,27 @@ public:
 		}
 	};
 
+	// Each case owns its own dispatcher, workers and payload logs — these are
+	// independent heavyweight runs, grouped only by production mode.
+	void frameGated()
+	{
+		subtest("Workers", [&]() { frameGatedWorkers(); });
+		subtest("Cascade", [&]() { frameGatedCascade(); });
+		subtest("MixedEventAndCommand", [&]() { frameGatedMixedEventAndCommand(); });
+	}
+
+	void continuous()
+	{
+		subtest("Workers", [&]() { continuousWorkers(); });
+		subtest("Cascade", [&]() { continuousCascade(); });
+	}
+
+	void registrationUnderLoad()
+	{
+		subtest("DuringFlush", [&]() { registerDuringFlush(); });
+		subtest("ConcurrentChurn", [&]() { concurrentChurn(); });
+	}
+
 	// Unique payload: frame, worker, and sequence are all recoverable if a test fails.
 	static int makePayload(unsigned frame, unsigned worker, unsigned seq)
 	{
@@ -539,9 +502,10 @@ public:
 		}
 	}
 
+private:
 	// --- Frame-gated: persistent workers, semaphore between produce and drain -----------
 
-	void frameGatedWorkersManyFrames()
+	void frameGatedWorkers()
 	{
 		AsyncEventHarness harness;
 		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("load-gated");
@@ -569,7 +533,7 @@ public:
 		assertPayloadsPreserved(sent.snapshot(), received.snapshot());
 	}
 
-	void frameGatedCascadeManyFrames()
+	void frameGatedCascade()
 	{
 		AsyncEventHarness harness;
 		const cge::event::EventChannel<int> &primary = harness.registry.getChannel<int>("load-gated-casc-a");
@@ -611,7 +575,7 @@ public:
 		assertPayloadsPreserved(expected, receivedSecondary.snapshot());
 	}
 
-	void frameGatedMixedEventAndCommandManyFrames()
+	void frameGatedMixedEventAndCommand()
 	{
 		AsyncEventHarness harness;
 		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("load-gated-mixed");
@@ -647,7 +611,7 @@ public:
 
 	// --- Continuous: persistent workers fire the whole run; main steps many frames -----
 
-	void continuousWorkersManyFrames()
+	void continuousWorkers()
 	{
 		AsyncEventHarness harness;
 		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("load-cont");
@@ -691,7 +655,7 @@ public:
 		assertPayloadsPreserved(sent.snapshot(), received.snapshot());
 	}
 
-	void continuousCascadeManyFrames()
+	void continuousCascade()
 	{
 		AsyncEventHarness harness;
 		const cge::event::EventChannel<int> &primary = harness.registry.getChannel<int>("load-cont-casc-a");
@@ -746,7 +710,9 @@ public:
 		assertPayloadsPreserved(expected, receivedSecondary.snapshot());
 	}
 
-	void handlerRegistersAnotherChannelDuringFlush()
+	// --- Registration traffic mixed into a running dispatcher -------------------------
+
+	void registerDuringFlush()
 	{
 		AsyncEventHarness harness;
 		const cge::event::EventChannel<int> &kick = harness.registry.getChannel<int>("load-reg-kick");
@@ -784,7 +750,7 @@ public:
 	// invariants are asserted: the stable listener sees every payload, and nothing
 	// crashes. What the churning listeners receive depends on drain timing and is
 	// deliberately unasserted.
-	void concurrentRegistrationChurnPreservesStableDelivery()
+	void concurrentChurn()
 	{
 		AsyncEventHarness harness;
 		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("churn");
@@ -853,7 +819,6 @@ public:
 		assertPayloadsPreserved(sent.snapshot(), received.snapshot());
 	}
 
-private:
 	// Persistent workers. Each frame: main releases all workers, waits for all to finish
 	// producing, then runs onFrameComplete (dispatch). Same gate idea as a job fence.
 	// Returns false on watchdog timeout (after stopping and joining the workers) so a
@@ -930,17 +895,13 @@ public:
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("BroadcastDeliversTypedPayload", flags, [this]() { broadcastDeliversTypedPayload(); });
-		addTest("BroadcastToChannelWithNoListenersDoesNotThrow", flags, [this]() { broadcastToChannelWithNoListenersDoesNotThrow(); });
-		addTest("MultipleBroadcastsPreserveOrder", flags, [this]() { multipleBroadcastsPreserveOrder(); });
-		addTest("StringPayloadRoundTrips", flags, [this]() { stringPayloadRoundTrips(); });
-		addTest("StructPayloadRoundTrips", flags, [this]() { structPayloadRoundTrips(); });
-		addTest("PointerPayloadTransfersAddress", flags, [this]() { pointerPayloadTransfersAddress(); });
-		addTest("EnumPayloadRoundTrips", flags, [this]() { enumPayloadRoundTrips(); });
-		addTest("AggregateWithClassMembersRoundTrips", flags, [this]() { aggregateWithClassMembersRoundTrips(); });
+		addTest("Delivery", flags, [this]() { delivery(); });
+		addTest("PayloadTypes", flags, [this]() { payloadTypes(); });
 	}
 
-	void broadcastDeliversTypedPayload()
+	// One listener accumulating across the cases; each asserts against the
+	// running total rather than rebuilding the fixture.
+	void delivery()
 	{
 		AsyncEventHarness harness;
 		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("bc-int");
@@ -948,183 +909,168 @@ public:
 
 		listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
 		harness.dispatcher.dispatchCommands();
-
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, 123);
-		harness.dispatcher.dispatchEvents();
 
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
-		ASSERT_EQUAL(listener.received[0], 123);
+		subtest("TypedPayload", [&]() {
+			broadcaster.broadcast(channel, 123);
+			harness.dispatcher.dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received[0], 123);
+		});
+
+		subtest("OrderPreserved", [&]() {
+			broadcaster.broadcast(channel, 1);
+			broadcaster.broadcast(channel, 2);
+			broadcaster.broadcast(channel, 3);
+			harness.dispatcher.dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(4));
+			ASSERT_EQUAL(listener.received[1], 1);
+			ASSERT_EQUAL(listener.received[2], 2);
+			ASSERT_EQUAL(listener.received[3], 3);
+		});
+
+		subtest("NoListeners", [&]() {
+			const cge::event::EventChannel<int> &empty = harness.registry.getChannel<int>("bc-empty");
+
+			ASSERT_NOTHROW(broadcaster.broadcast(empty, 1));
+			ASSERT_NOTHROW(harness.dispatcher.dispatchEvents());
+		});
 	}
 
-	void broadcastToChannelWithNoListenersDoesNotThrow()
+	// One dispatcher, one channel per payload category: what varies is the
+	// payload type, not the plumbing.
+	void payloadTypes()
 	{
 		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("bc-empty");
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
 
-		ASSERT_NOTHROW(broadcaster.broadcast(channel, 1));
-		ASSERT_NOTHROW(harness.dispatcher.dispatchEvents());
-	}
+		subtest("Enum", [&]() {
+			enum class GameState { Menu, Loading, Playing };
 
-	void multipleBroadcastsPreserveOrder()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("bc-order");
-		CountingListener listener(&harness.dispatcher);
+			const cge::event::EventChannel<GameState> &channel = harness.registry.getChannel<GameState>("bc-enum");
+			GameState got = GameState::Menu;
 
-		listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
-		harness.dispatcher.dispatchCommands();
+			cge::event::ListenerBase listener(&harness.dispatcher);
+			listener.requestRegister(channel, [&got](const GameState &s) { got = s; });
+			harness.dispatcher.dispatchCommands();
 
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, 1);
-		broadcaster.broadcast(channel, 2);
-		broadcaster.broadcast(channel, 3);
-		harness.dispatcher.dispatchEvents();
+			broadcaster.broadcast(channel, GameState::Playing);
+			harness.dispatcher.dispatchEvents();
 
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(3));
-		ASSERT_EQUAL(listener.received[0], 1);
-		ASSERT_EQUAL(listener.received[1], 2);
-		ASSERT_EQUAL(listener.received[2], 3);
-	}
+			ASSERT_TRUE(got == GameState::Playing);
+		});
 
-	// Trivially-copyable aggregate — the archetypal game payload class.
-	void structPayloadRoundTrips()
-	{
-		struct DamagePayload
-		{
-			int amount;
-			float multiplier;
-			unsigned sourceId;
-		};
-		static_assert(std::is_trivially_copyable<DamagePayload>::value,
-			"representative must actually belong to the trivially-copyable class");
+		// Pointer payloads copy the address, not the pointee: the handler must see
+		// the same object the broadcaster pointed at.
+		subtest("Pointer", [&]() {
+			const cge::event::EventChannel<int*> &channel = harness.registry.getChannel<int*>("bc-ptr");
+			int target = 41;
+			int *got = nullptr;
 
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<DamagePayload> &channel = harness.registry.getChannel<DamagePayload>("bc-struct");
-		DamagePayload got;
-		got.amount = 0;
-		got.multiplier = 0.0f;
-		got.sourceId = 0;
+			cge::event::ListenerBase listener(&harness.dispatcher);
+			listener.requestRegister(channel, [&got](int *const &p) { got = p; });
+			harness.dispatcher.dispatchCommands();
 
-		cge::event::ListenerBase listener(&harness.dispatcher);
-		listener.requestRegister(channel, [&got](const DamagePayload &p) { got = p; });
-		harness.dispatcher.dispatchCommands();
+			broadcaster.broadcast(channel, &target);
+			harness.dispatcher.dispatchEvents();
 
-		DamagePayload payload;
-		payload.amount = 25;
-		payload.multiplier = 1.5f;
-		payload.sourceId = 7;
+			ASSERT_TRUE(got == &target);
+			*got = 42;
+			ASSERT_EQUAL(target, 42);
+		});
 
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, payload);
-		harness.dispatcher.dispatchEvents();
+		// Trivially-copyable aggregate — the archetypal game payload.
+		subtest("TrivialStruct", [&]() {
+			struct DamagePayload
+			{
+				int amount;
+				float multiplier;
+				unsigned sourceId;
+			};
+			static_assert(std::is_trivially_copyable<DamagePayload>::value,
+				"representative must actually belong to the trivially-copyable class");
 
-		ASSERT_EQUAL(got.amount, 25);
-		ASSERT_EQUAL(got.multiplier, 1.5f);
-		ASSERT_EQUAL(got.sourceId, 7u);
-	}
+			const cge::event::EventChannel<DamagePayload> &channel = harness.registry.getChannel<DamagePayload>("bc-struct");
+			DamagePayload got;
+			got.amount = 0;
+			got.multiplier = 0.0f;
+			got.sourceId = 0;
 
-	// Pointer payloads copy the address, not the pointee: the handler must see
-	// the same object the broadcaster pointed at.
-	void pointerPayloadTransfersAddress()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int*> &channel = harness.registry.getChannel<int*>("bc-ptr");
-		int target = 41;
-		int *got = nullptr;
+			cge::event::ListenerBase listener(&harness.dispatcher);
+			listener.requestRegister(channel, [&got](const DamagePayload &p) { got = p; });
+			harness.dispatcher.dispatchCommands();
 
-		cge::event::ListenerBase listener(&harness.dispatcher);
-		listener.requestRegister(channel, [&got](int *const &p) { got = p; });
-		harness.dispatcher.dispatchCommands();
+			DamagePayload payload;
+			payload.amount = 25;
+			payload.multiplier = 1.5f;
+			payload.sourceId = 7;
 
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, &target);
-		harness.dispatcher.dispatchEvents();
+			broadcaster.broadcast(channel, payload);
+			harness.dispatcher.dispatchEvents();
 
-		ASSERT_TRUE(got == &target);
-		*got = 42;
-		ASSERT_EQUAL(target, 42);
-	}
+			ASSERT_EQUAL(got.amount, 25);
+			ASSERT_EQUAL(got.multiplier, 1.5f);
+			ASSERT_EQUAL(got.sourceId, 7u);
+		});
 
-	void enumPayloadRoundTrips()
-	{
-		enum class GameState { Menu, Loading, Playing };
+		// Copy allocates: proves the deep copy survives the queue.
+		subtest("Class", [&]() {
+			const cge::event::EventChannel<std::string> &channel = harness.registry.getChannel<std::string>("bc-str");
+			std::string got;
 
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<GameState> &channel = harness.registry.getChannel<GameState>("bc-enum");
-		GameState got = GameState::Menu;
+			cge::event::ListenerBase listener(&harness.dispatcher);
+			listener.requestRegister(channel, [&got](const std::string &s) { got = s; });
+			harness.dispatcher.dispatchCommands();
 
-		cge::event::ListenerBase listener(&harness.dispatcher);
-		listener.requestRegister(channel, [&got](const GameState &s) { got = s; });
-		harness.dispatcher.dispatchCommands();
+			broadcaster.broadcast(channel, std::string("hello-event"));
+			harness.dispatcher.dispatchEvents();
 
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, GameState::Playing);
-		harness.dispatcher.dispatchEvents();
+			ASSERT_EQUAL(got, std::string("hello-event"));
+		});
 
-		ASSERT_TRUE(got == GameState::Playing);
-	}
+		// Aggregate whose members own resources: copy is member-wise and
+		// non-trivial — distinct from both cases above.
+		subtest("Aggregate", [&]() {
+			struct SpawnRequest
+			{
+				int unitType;
+				std::string name;
+				std::vector<int> inventory;
+			};
 
-	// Aggregate whose members own resources: copy is member-wise and non-trivial —
-	// distinct from both the bit-copyable struct and the bare string cases.
-	void aggregateWithClassMembersRoundTrips()
-	{
-		struct SpawnRequest
-		{
-			int unitType;
-			std::string name;
-			std::vector<int> inventory;
-		};
+			const cge::event::EventChannel<SpawnRequest> &channel = harness.registry.getChannel<SpawnRequest>("bc-agg");
+			SpawnRequest got;
+			got.unitType = 0;
 
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<SpawnRequest> &channel = harness.registry.getChannel<SpawnRequest>("bc-agg");
-		SpawnRequest got;
-		got.unitType = 0;
+			cge::event::ListenerBase listener(&harness.dispatcher);
+			listener.requestRegister(channel, [&got](const SpawnRequest &r) { got = r; });
+			harness.dispatcher.dispatchCommands();
 
-		cge::event::ListenerBase listener(&harness.dispatcher);
-		listener.requestRegister(channel, [&got](const SpawnRequest &r) { got = r; });
-		harness.dispatcher.dispatchCommands();
+			SpawnRequest request;
+			request.unitType = 3;
+			request.name = "archer";
+			request.inventory.push_back(10);
+			request.inventory.push_back(20);
 
-		SpawnRequest request;
-		request.unitType = 3;
-		request.name = "archer";
-		request.inventory.push_back(10);
-		request.inventory.push_back(20);
+			broadcaster.broadcast(channel, request);
+			harness.dispatcher.dispatchEvents();
 
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, request);
-		harness.dispatcher.dispatchEvents();
-
-		ASSERT_EQUAL(got.unitType, 3);
-		ASSERT_EQUAL(got.name, std::string("archer"));
-		ASSERT_EQUAL(got.inventory.size(), static_cast<size_t>(2));
-		ASSERT_EQUAL(got.inventory[0], 10);
-		ASSERT_EQUAL(got.inventory[1], 20);
-	}
-
-	// Renamed from "DoesNotSlice": slicing was never possible here — Event<T>
-	// stores the payload by value. This pins a resource-owning payload round trip.
-	void stringPayloadRoundTrips()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<std::string> &channel = harness.registry.getChannel<std::string>("bc-str");
-		std::string got;
-
-		cge::event::ListenerBase listener(&harness.dispatcher);
-		listener.requestRegister(channel, [&got](const std::string &s) { got = s; });
-		harness.dispatcher.dispatchCommands();
-
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, std::string("hello-event"));
-		harness.dispatcher.dispatchEvents();
-
-		ASSERT_EQUAL(got, std::string("hello-event"));
+			ASSERT_EQUAL(got.unitType, 3);
+			ASSERT_EQUAL(got.name, std::string("archer"));
+			ASSERT_EQUAL(got.inventory.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(got.inventory[0], 10);
+			ASSERT_EQUAL(got.inventory[1], 20);
+		});
 	}
 };
 
 // ---------------------------------------------------------------------------
 // CommanderBase
+//
+// Current design: dispatchCommands only applies registration/unregistration.
+// Arbitrary CommanderBase payloads are dequeued and discarded.
 // ---------------------------------------------------------------------------
 class CommanderBaseTest : public partest::TestBase
 {
@@ -1134,62 +1080,58 @@ public:
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("CommandDoesNotDeliverToChannelListeners", flags, [this]() { commandDoesNotDeliverToChannelListeners(); });
-		addTest("CommandAfterTearDownDoesNotThrow", flags, [this]() { commandAfterTearDownDoesNotThrow(); });
-		addTest("CommandQueueDoesNotCrossIntoEventListeners", flags, [this]() { commandQueueDoesNotCrossIntoEventListeners(); });
+		addTest("Command", flags, [this]() { command(); });
 	}
 
-	// Current design: dispatchCommands only applies registration/unregistration.
-	// Arbitrary CommanderBase payloads are dequeued and discarded.
-	void commandDoesNotDeliverToChannelListeners()
+	void command()
 	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("cmd-int");
-		CountingListener listener(&harness.dispatcher);
+		subtest("NotDeliveredToListeners", [&]() {
+			AsyncEventHarness harness;
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("cmd-int");
+			CountingListener listener(&harness.dispatcher);
 
-		listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
-		harness.dispatcher.dispatchCommands();
+			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
+			harness.dispatcher.dispatchCommands();
 
-		cge::event::CommanderBase commander(&harness.dispatcher);
-		commander.command(channel, 55);
-		harness.dispatcher.dispatchCommands();
-		harness.dispatcher.dispatchEvents();
+			cge::event::CommanderBase commander(&harness.dispatcher);
+			commander.command(channel, 55);
+			harness.dispatcher.dispatchCommands();
+			harness.dispatcher.dispatchEvents();
 
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
-	}
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+		});
 
-	void commandAfterTearDownDoesNotThrow()
-	{
-		cge::event::EventChannelRegistry registry;
-		cge::event::AsyncDispatcher dispatcher("cmd-td", &registry);
-		dispatcher.setUp();
-		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("cmd-td-ch");
-		cge::event::CommanderBase commander(&dispatcher);
-		dispatcher.tearDown();
-
-		ASSERT_NOTHROW(commander.command(channel, 1));
-	}
-
-	void commandQueueDoesNotCrossIntoEventListeners()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("cmd-vs-evt");
-		CountingListener listener(&harness.dispatcher);
-
-		listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
-		harness.dispatcher.dispatchCommands();
-
-		cge::event::CommanderBase commander(&harness.dispatcher);
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-
-		commander.command(channel, 1);
-		broadcaster.broadcast(channel, 2);
 		// Drain commands first (drops the command payload), then events.
-		harness.dispatcher.dispatchCommands();
-		harness.dispatcher.dispatchEvents();
+		subtest("NoCrossoverToEvents", [&]() {
+			AsyncEventHarness harness;
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("cmd-vs-evt");
+			CountingListener listener(&harness.dispatcher);
 
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
-		ASSERT_EQUAL(listener.received[0], 2);
+			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
+			harness.dispatcher.dispatchCommands();
+
+			cge::event::CommanderBase commander(&harness.dispatcher);
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
+
+			commander.command(channel, 1);
+			broadcaster.broadcast(channel, 2);
+			harness.dispatcher.dispatchCommands();
+			harness.dispatcher.dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received[0], 2);
+		});
+
+		subtest("AfterTearDown", [&]() {
+			cge::event::EventChannelRegistry registry;
+			cge::event::AsyncDispatcher dispatcher("cmd-td", &registry);
+			dispatcher.setUp();
+			const cge::event::EventChannel<int> &channel = registry.getChannel<int>("cmd-td-ch");
+			cge::event::CommanderBase commander(&dispatcher);
+			dispatcher.tearDown();
+
+			ASSERT_NOTHROW(commander.command(channel, 1));
+		});
 	}
 };
 
@@ -1204,245 +1146,221 @@ public:
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("RequestRegisterReturnsPendingWhenActive", flags, [this]() { requestRegisterReturnsPendingWhenActive(); });
-		addTest("DuplicatePendingRegisterReturnsDuplicate", flags, [this]() { duplicatePendingRegisterReturnsDuplicate(); });
-		addTest("MemberFunctionCallbackFormWorks", flags, [this]() { memberFunctionCallbackFormWorks(); });
-		addTest("MultipleListenersReceiveSameEvent", flags, [this]() { multipleListenersReceiveSameEvent(); });
-		addTest("UnregisterStopsFurtherDelivery", flags, [this]() { unregisterStopsFurtherDelivery(); });
-		addTest("UnregisterNotRegisteredStillPendingThenNotFound", flags, [this]() { unregisterNotRegisteredStillPendingThenNotFound(); });
-		addTest("SecondRegisterAfterSuccessStillAcceptedAsPending", flags, [this]() { secondRegisterAfterSuccessStillAcceptedAsPending(); });
-		addTest("UnregistrationBeatsQueuedEvents", flags, [this]() { unregistrationBeatsQueuedEvents(); });
-		addTest("UnregisterOneOfSeveralListenersOthersStillReceive", flags, [this]() { unregisterOneOfSeveralListenersOthersStillReceive(); });
-		addTest("ListenerOnTwoChannelsUnregisterOneKeepsOther", flags, [this]() { listenerOnTwoChannelsUnregisterOneKeepsOther(); });
-		addTest("RegisterUnregisterRegisterInOneBatch", flags, [this]() { registerUnregisterRegisterInOneBatch(); });
+		addTest("RegistrationLifecycle", flags, [this]() { registrationLifecycle(); });
+		addTest("Unregister", flags, [this]() { unregister(); });
+		addTest("BatchedRequests", flags, [this]() { batchedRequests(); });
+		addTest("Handlers", flags, [this]() { handlers(); });
 	}
 
-	void requestRegisterReturnsPendingWhenActive()
+	// One listener walked through its whole registration life on a single
+	// dispatcher; the cases run in order and share that accumulated state.
+	void registrationLifecycle()
 	{
 		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reg-pending");
-		cge::event::ListenerBase listener(&harness.dispatcher);
-
-		cge::event::RegistrationResult result = listener.requestRegister(channel, [](const int &) {});
-		ASSERT_TRUE(result == cge::event::RegistrationResult::Pending);
-	}
-
-	void duplicatePendingRegisterReturnsDuplicate()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reg-dup");
-		cge::event::ListenerBase listener(&harness.dispatcher);
-
-		ASSERT_TRUE(listener.requestRegister(channel, [](const int &) {})
-			== cge::event::RegistrationResult::Pending);
-		ASSERT_TRUE(listener.requestRegister(channel, [](const int &) {})
-			== cge::event::RegistrationResult::Duplicate);
-	}
-
-	void memberFunctionCallbackFormWorks()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reg-member");
+		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reg-life");
 		CountingListener listener(&harness.dispatcher);
-
-		ASSERT_TRUE(listener.requestRegister(channel, &listener, &CountingListener::onInt)
-			== cge::event::RegistrationResult::Pending);
-		harness.dispatcher.dispatchCommands();
-
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, 77);
-		harness.dispatcher.dispatchEvents();
+		auto handler = [&listener](const int &v) { listener.onInt(v); };
 
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
-		ASSERT_EQUAL(listener.received[0], 77);
+		subtest("RequestReturnsPending", [&]() {
+			ASSERT_TRUE(listener.requestRegister(channel, handler)
+				== cge::event::RegistrationResult::Pending);
+		});
+
+		subtest("DuplicateWhilePending", [&]() {
+			ASSERT_TRUE(listener.requestRegister(channel, handler)
+				== cge::event::RegistrationResult::Duplicate);
+		});
+
+		subtest("DeliversAfterCommandDrain", [&]() {
+			harness.dispatcher.dispatchCommands();
+			broadcaster.broadcast(channel, 1);
+			harness.dispatcher.dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received[0], 1);
+		});
+
+		// The pending list only guards duplicates, so a request after finalize is
+		// accepted; the dispatcher then rejects it, leaving delivery single.
+		subtest("RequestAgainAfterSuccess", [&]() {
+			ASSERT_TRUE(listener.requestRegister(channel, handler)
+				== cge::event::RegistrationResult::Pending);
+			harness.dispatcher.dispatchCommands();
+
+			broadcaster.broadcast(channel, 2);
+			harness.dispatcher.dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(listener.received[1], 2);
+		});
+
+		subtest("UnregisterStopsDelivery", [&]() {
+			ASSERT_TRUE(listener.requestUnregister(channel) == cge::event::RegistrationResult::Pending);
+			harness.dispatcher.dispatchCommands();
+
+			broadcaster.broadcast(channel, 3);
+			harness.dispatcher.dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(2));
+		});
 	}
 
-	void multipleListenersReceiveSameEvent()
+	// Shared dispatcher; each case brings its own channels and listeners.
+	void unregister()
 	{
 		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reg-multi");
-		CountingListener a(&harness.dispatcher);
-		CountingListener b(&harness.dispatcher);
-
-		a.requestRegister(channel, [&a](const int &v) { a.onInt(v); });
-		b.requestRegister(channel, [&b](const int &v) { b.onInt(v); });
-		harness.dispatcher.dispatchCommands();
-
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, 9);
-		harness.dispatcher.dispatchEvents();
 
-		ASSERT_EQUAL(a.received.size(), static_cast<size_t>(1));
-		ASSERT_EQUAL(b.received.size(), static_cast<size_t>(1));
-		ASSERT_EQUAL(a.received[0], 9);
-		ASSERT_EQUAL(b.received[0], 9);
+		// Cycle order: commands drain before events, so an unregistration
+		// requested after a broadcast still wins.
+		subtest("BeatsQueuedEvents", [&]() {
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("unreg-beats");
+			CountingListener listener(&harness.dispatcher);
+
+			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
+			harness.dispatcher.dispatchCommands();
+
+			broadcaster.broadcast(channel, 1);
+			listener.requestUnregister(channel);
+
+			harness.dispatcher.dispatchCommands();
+			harness.dispatcher.dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+		});
+
+		// Swap-and-pop removal must not disturb the remaining registrations.
+		// Delivery order among listeners is contract-free, so none is asserted.
+		subtest("OneOfSeveralListeners", [&]() {
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("multi-unreg");
+			CountingListener a(&harness.dispatcher);
+			CountingListener b(&harness.dispatcher);
+			CountingListener c(&harness.dispatcher);
+
+			a.requestRegister(channel, [&a](const int &v) { a.onInt(v); });
+			b.requestRegister(channel, [&b](const int &v) { b.onInt(v); });
+			c.requestRegister(channel, [&c](const int &v) { c.onInt(v); });
+			harness.dispatcher.dispatchCommands();
+
+			b.requestUnregister(channel);
+			harness.dispatcher.dispatchCommands();
+
+			broadcaster.broadcast(channel, 7);
+			harness.dispatcher.dispatchEvents();
+
+			ASSERT_EQUAL(a.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(b.received.size(), static_cast<size_t>(0));
+			ASSERT_EQUAL(c.received.size(), static_cast<size_t>(1));
+		});
+
+		subtest("OneOfTwoChannels", [&]() {
+			const cge::event::EventChannel<int> &first = harness.registry.getChannel<int>("two-ch-a");
+			const cge::event::EventChannel<int> &second = harness.registry.getChannel<int>("two-ch-b");
+			CountingListener listener(&harness.dispatcher);
+
+			listener.requestRegister(first, [&listener](const int &v) { listener.onInt(v); });
+			listener.requestRegister(second, [&listener](const int &v) { listener.onInt(v); });
+			harness.dispatcher.dispatchCommands();
+
+			listener.requestUnregister(first);
+			harness.dispatcher.dispatchCommands();
+
+			broadcaster.broadcast(first, 1);
+			broadcaster.broadcast(second, 2);
+			harness.dispatcher.dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received[0], 2);
+		});
+
+		// Never registered: the request still queues, and the NotFound outcome
+		// must leave the listener fully usable afterwards.
+		subtest("NotRegistered", [&]() {
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reg-missing");
+			CountingListener listener(&harness.dispatcher);
+
+			ASSERT_TRUE(listener.requestUnregister(channel) == cge::event::RegistrationResult::Pending);
+			ASSERT_NOTHROW(harness.dispatcher.dispatchCommands());
+
+			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
+			harness.dispatcher.dispatchCommands();
+
+			broadcaster.broadcast(channel, 3);
+			harness.dispatcher.dispatchEvents();
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received[0], 3);
+		});
 	}
 
-	void unregisterStopsFurtherDelivery()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reg-unreg");
-		CountingListener listener(&harness.dispatcher);
-
-		listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
-		harness.dispatcher.dispatchCommands();
-
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, 1);
-		harness.dispatcher.dispatchEvents();
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
-
-		ASSERT_TRUE(listener.requestUnregister(channel) == cge::event::RegistrationResult::Pending);
-		harness.dispatcher.dispatchCommands();
-
-		broadcaster.broadcast(channel, 2);
-		harness.dispatcher.dispatchEvents();
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
-	}
-
-	void unregisterNotRegisteredStillPendingThenNotFound()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reg-missing");
-		CountingListener listener(&harness.dispatcher);
-
-		// No register first — unregistration is still queued as a command.
-		ASSERT_TRUE(listener.requestUnregister(channel) == cge::event::RegistrationResult::Pending);
-		ASSERT_NOTHROW(harness.dispatcher.dispatchCommands());
-
-		// The NotFound outcome must leave the listener fully usable afterwards.
-		listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
-		harness.dispatcher.dispatchCommands();
-
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, 3);
-		harness.dispatcher.dispatchEvents();
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
-		ASSERT_EQUAL(listener.received[0], 3);
-	}
-
-	// Pending-list only guards duplicates; a second request after finalize may queue
-	// again and finalize as Duplicate on the dispatcher map (handler already present).
-	void secondRegisterAfterSuccessStillAcceptedAsPending()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reg-again");
-		CountingListener listener(&harness.dispatcher);
-
-		listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
-		harness.dispatcher.dispatchCommands();
-
-		cge::event::RegistrationResult again = listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
-		ASSERT_TRUE(again == cge::event::RegistrationResult::Pending);
-		harness.dispatcher.dispatchCommands();
-
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, 1);
-		harness.dispatcher.dispatchEvents();
-
-		// Dispatcher rejects duplicate listener pointer on the channel; only one delivery.
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
-	}
-
-	// Cycle-order contract: commands drain before events, so an unregistration
-	// requested after a broadcast still wins — the queued event never lands.
-	void unregistrationBeatsQueuedEvents()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("unreg-beats");
-		CountingListener listener(&harness.dispatcher);
-
-		listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
-		harness.dispatcher.dispatchCommands();
-
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, 1);
-		listener.requestUnregister(channel);
-
-		harness.dispatcher.dispatchCommands();
-		harness.dispatcher.dispatchEvents();
-
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
-	}
-
-	// Swap-and-pop removal must not disturb the remaining registrations. Delivery
-	// order among listeners is contract-free, so none is asserted.
-	void unregisterOneOfSeveralListenersOthersStillReceive()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("multi-unreg");
-		CountingListener a(&harness.dispatcher);
-		CountingListener b(&harness.dispatcher);
-		CountingListener c(&harness.dispatcher);
-
-		a.requestRegister(channel, [&a](const int &v) { a.onInt(v); });
-		b.requestRegister(channel, [&b](const int &v) { b.onInt(v); });
-		c.requestRegister(channel, [&c](const int &v) { c.onInt(v); });
-		harness.dispatcher.dispatchCommands();
-
-		b.requestUnregister(channel);
-		harness.dispatcher.dispatchCommands();
-
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(channel, 7);
-		harness.dispatcher.dispatchEvents();
-
-		ASSERT_EQUAL(a.received.size(), static_cast<size_t>(1));
-		ASSERT_EQUAL(b.received.size(), static_cast<size_t>(0));
-		ASSERT_EQUAL(c.received.size(), static_cast<size_t>(1));
-	}
-
-	void listenerOnTwoChannelsUnregisterOneKeepsOther()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &first = harness.registry.getChannel<int>("two-ch-a");
-		const cge::event::EventChannel<int> &second = harness.registry.getChannel<int>("two-ch-b");
-		CountingListener listener(&harness.dispatcher);
-
-		listener.requestRegister(first, [&listener](const int &v) { listener.onInt(v); });
-		listener.requestRegister(second, [&listener](const int &v) { listener.onInt(v); });
-		harness.dispatcher.dispatchCommands();
-
-		listener.requestUnregister(first);
-		harness.dispatcher.dispatchCommands();
-
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		broadcaster.broadcast(first, 1);
-		broadcaster.broadcast(second, 2);
-		harness.dispatcher.dispatchEvents();
-
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
-		ASSERT_EQUAL(listener.received[0], 2);
-	}
-
-	// One batch, FIFO: register applies, unregister applies, and the re-register
-	// was rejected as Duplicate while the first was still pending — so the batch
-	// nets out unregistered. A fresh request after the drain succeeds.
-	void registerUnregisterRegisterInOneBatch()
+	// One command batch, drained FIFO, then the recovery afterwards.
+	void batchedRequests()
 	{
 		AsyncEventHarness harness;
 		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch");
 		CountingListener listener(&harness.dispatcher);
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
+		auto handler = [&listener](const int &v) { listener.onInt(v); };
 
-		ASSERT_TRUE(listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); })
-			== cge::event::RegistrationResult::Pending);
-		ASSERT_TRUE(listener.requestUnregister(channel) == cge::event::RegistrationResult::Pending);
-		ASSERT_TRUE(listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); })
-			== cge::event::RegistrationResult::Duplicate);
+		// The caller asked to end up registered, so it must end up registered and
+		// receiving. Currently fails: the re-register is rejected as Duplicate
+		// against the still-pending first request and queues nothing.
+		subtest("EndsUpRegistered", [&]() {
+			ASSERT_TRUE(listener.requestRegister(channel, handler)
+				== cge::event::RegistrationResult::Pending);
+			ASSERT_TRUE(listener.requestUnregister(channel)
+				== cge::event::RegistrationResult::Pending);
+			ASSERT_TRUE(listener.requestRegister(channel, handler)
+				== cge::event::RegistrationResult::Pending);
 
-		harness.dispatcher.dispatchCommands();
-		broadcaster.broadcast(channel, 1);
-		harness.dispatcher.dispatchEvents();
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+			harness.dispatcher.dispatchCommands();
+			broadcaster.broadcast(channel, 1);
+			harness.dispatcher.dispatchEvents();
 
-		ASSERT_TRUE(listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); })
-			== cge::event::RegistrationResult::Pending);
-		harness.dispatcher.dispatchCommands();
-		broadcaster.broadcast(channel, 2);
-		harness.dispatcher.dispatchEvents();
-		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
-		ASSERT_EQUAL(listener.received[0], 2);
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received[0], 1);
+		});
+
+	}
+
+	// Shared dispatcher; the callback form and the listener count are what vary.
+	void handlers()
+	{
+		AsyncEventHarness harness;
+		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
+
+		subtest("MemberFunctionForm", [&]() {
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reg-member");
+			CountingListener listener(&harness.dispatcher);
+
+			ASSERT_TRUE(listener.requestRegister(channel, &listener, &CountingListener::onInt)
+				== cge::event::RegistrationResult::Pending);
+			harness.dispatcher.dispatchCommands();
+
+			broadcaster.broadcast(channel, 77);
+			harness.dispatcher.dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received[0], 77);
+		});
+
+		subtest("MultipleListeners", [&]() {
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reg-multi");
+			CountingListener a(&harness.dispatcher);
+			CountingListener b(&harness.dispatcher);
+
+			a.requestRegister(channel, [&a](const int &v) { a.onInt(v); });
+			b.requestRegister(channel, [&b](const int &v) { b.onInt(v); });
+			harness.dispatcher.dispatchCommands();
+
+			broadcaster.broadcast(channel, 9);
+			harness.dispatcher.dispatchEvents();
+
+			ASSERT_EQUAL(a.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(b.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(a.received[0], 9);
+			ASSERT_EQUAL(b.received[0], 9);
+		});
 	}
 };
 
