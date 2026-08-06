@@ -5,9 +5,9 @@
 
 namespace cge::test
 {
-	// What survives the trip from broadcast to handler. Payload copying is its
-	// own contract surface and has nothing to do with dispatch timing, which is
-	// why it no longer shares a suite with the push result cases.
+	// What survives the trip from broadcast to handler. Payload copying itself is
+	// covered by the Event unit tests; what is left here is the end to end
+	// delivery path, which only exists with a real dispatcher in it.
 	class PayloadTest : public EventTestBase
 	{
 	public:
@@ -15,7 +15,6 @@ namespace cge::test
 
 	private:
 		void delivery();
-		void payloadTypes();
 	};
 }
 

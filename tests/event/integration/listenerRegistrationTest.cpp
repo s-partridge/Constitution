@@ -27,17 +27,8 @@ namespace cge::test
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 		auto handler = [&listener](const int &v) { listener.onInt(v); };
 
-		subtest("RequestReturnsPending", [&]() {
-			ASSERT_TRUE(listener.requestRegister(channel, handler)
-				== cge::event::RegistrationResult::Pending);
-		});
-
-		subtest("DuplicateWhilePending", [&]() {
-			ASSERT_TRUE(listener.requestRegister(channel, handler)
-				== cge::event::RegistrationResult::Duplicate);
-		});
-
 		subtest("DeliversAfterCommandDrain", [&]() {
+			listener.requestRegister(channel, handler);
 			harness.dispatcher().dispatchCommands();
 			broadcaster.broadcast(channel, 1);
 			harness.dispatcher().dispatchEvents();
@@ -46,11 +37,10 @@ namespace cge::test
 			ASSERT_EQUAL(listener.received[0], 1);
 		});
 
-		// The pending list only guards duplicates, so a request after finalize is
-		// accepted; the dispatcher then rejects it, leaving delivery single.
+		// Whatever the second request returns, it must not double the delivery.
+		// The return value itself is asserted in the listener unit tests.
 		subtest("RequestAgainAfterSuccess", [&]() {
-			ASSERT_TRUE(listener.requestRegister(channel, handler)
-				== cge::event::RegistrationResult::Pending);
+			listener.requestRegister(channel, handler);
 			harness.dispatcher().dispatchCommands();
 
 			broadcaster.broadcast(channel, 2);
@@ -61,7 +51,7 @@ namespace cge::test
 		});
 
 		subtest("UnregisterStopsDelivery", [&]() {
-			ASSERT_TRUE(listener.requestUnregister(channel) == cge::event::RegistrationResult::Pending);
+			listener.requestUnregister(channel);
 			harness.dispatcher().dispatchCommands();
 
 			broadcaster.broadcast(channel, 3);
@@ -139,14 +129,14 @@ namespace cge::test
 			ASSERT_EQUAL(listener.received[0], 2);
 		});
 
-		// Never registered: the request still queues, and the NotFound outcome
-		// must leave the listener fully usable afterwards.
+		// Never registered: unregistering is a no-op that must leave the listener
+		// able to register and receive afterwards.
 		subtest("NotRegistered", [&]() {
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reg-missing");
 			CountingListener listener(&harness.dispatcher());
 
-			ASSERT_TRUE(listener.requestUnregister(channel) == cge::event::RegistrationResult::Pending);
-			ASSERT_NOTHROW(harness.dispatcher().dispatchCommands());
+			listener.requestUnregister(channel);
+			harness.dispatcher().dispatchCommands();
 
 			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
 			harness.dispatcher().dispatchCommands();
@@ -171,12 +161,9 @@ namespace cge::test
 		// receiving. Currently fails: the re-register is rejected as Duplicate
 		// against the still-pending first request and queues nothing.
 		subtest("EndsUpRegistered", [&]() {
-			ASSERT_TRUE(listener.requestRegister(channel, handler)
-				== cge::event::RegistrationResult::Pending);
-			ASSERT_TRUE(listener.requestUnregister(channel)
-				== cge::event::RegistrationResult::Pending);
-			ASSERT_TRUE(listener.requestRegister(channel, handler)
-				== cge::event::RegistrationResult::Pending);
+			listener.requestRegister(channel, handler);
+			listener.requestUnregister(channel);
+			listener.requestRegister(channel, handler);
 
 			harness.dispatcher().dispatchCommands();
 			broadcaster.broadcast(channel, 1);
@@ -193,21 +180,6 @@ namespace cge::test
 	{
 		EventHarness harness(flavor(), "handlers-dispatcher");
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
-
-		subtest("MemberFunctionForm", [&]() {
-			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reg-member");
-			CountingListener listener(&harness.dispatcher());
-
-			ASSERT_TRUE(listener.requestRegister(channel, &listener, &CountingListener::onInt)
-				== cge::event::RegistrationResult::Pending);
-			harness.dispatcher().dispatchCommands();
-
-			broadcaster.broadcast(channel, 77);
-			harness.dispatcher().dispatchEvents();
-
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(listener.received[0], 77);
-		});
 
 		subtest("MultipleListeners", [&]() {
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reg-multi");

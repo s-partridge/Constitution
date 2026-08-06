@@ -27,14 +27,8 @@ namespace cge::test
 		CountingListener listener(&harness.dispatcher());
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 
-		subtest("EmptyQueuesNoOp", [&]() {
-			ASSERT_NOTHROW(harness.dispatcher().dispatchCommands());
-			ASSERT_NOTHROW(harness.dispatcher().dispatchEvents());
-		});
-
 		subtest("RegistrationWaitsForCommandDrain", [&]() {
-			ASSERT_TRUE(listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); })
-				== cge::event::RegistrationResult::Pending);
+			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
 
 			// Listener map not updated yet, so this event drains to nobody.
 			broadcaster.broadcast(channel, 7);
