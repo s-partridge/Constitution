@@ -151,6 +151,7 @@
     <ClCompile Include="engineTest.cpp" />
     <ClCompile Include="event\unit\broadcasterTest.cpp" />
     <ClCompile Include="event\unit\channelRegistryTest.cpp" />
+    <ClCompile Include="event\unit\listenerTest.cpp" />
     <ClCompile Include="event\integration\commanderTest.cpp" />
     <ClCompile Include="event\integration\dispatchCycleTest.cpp" />
     <ClCompile Include="event\integration\dispatcherLifecycleTest.cpp" />
@@ -167,6 +168,7 @@
     <ClInclude Include="engineTest.h" />
     <ClInclude Include="event\unit\broadcasterTest.h" />
     <ClInclude Include="event\unit\channelRegistryTest.h" />
+    <ClInclude Include="event\unit\listenerTest.h" />
     <ClInclude Include="event\unit\mockDispatcher.h" />
     <ClInclude Include="event\integration\commanderTest.h" />
     <ClInclude Include="event\integration\dispatchCycleTest.h" />
