@@ -92,7 +92,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)game;$(SolutionDir)extern\partest\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)game;$(SolutionDir)tests\event;$(SolutionDir)extern\partest\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -107,7 +107,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)game;$(SolutionDir)extern\partest\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)game;$(SolutionDir)tests\event;$(SolutionDir)extern\partest\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -120,7 +120,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)game;$(SolutionDir)extern\partest\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)game;$(SolutionDir)tests\event;$(SolutionDir)extern\partest\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,7 +135,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)game;$(SolutionDir)extern\partest\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)engine;$(SolutionDir)game;$(SolutionDir)tests\event;$(SolutionDir)extern\partest\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -149,31 +149,31 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="engineTest.cpp" />
-    <ClCompile Include="event\channelRegistryTest.cpp" />
-    <ClCompile Include="event\commanderTest.cpp" />
-    <ClCompile Include="event\dispatchCycleTest.cpp" />
-    <ClCompile Include="event\dispatcherLifecycleTest.cpp" />
-    <ClCompile Include="event\dispatcherTopologyTest.cpp" />
-    <ClCompile Include="event\eventConcurrencyTest.cpp" />
-    <ClCompile Include="event\eventLoadTest.cpp" />
+    <ClCompile Include="event\unit\channelRegistryTest.cpp" />
+    <ClCompile Include="event\integration\commanderTest.cpp" />
+    <ClCompile Include="event\integration\dispatchCycleTest.cpp" />
+    <ClCompile Include="event\integration\dispatcherLifecycleTest.cpp" />
+    <ClCompile Include="event\integration\dispatcherTopologyTest.cpp" />
+    <ClCompile Include="event\integration\eventConcurrencyTest.cpp" />
+    <ClCompile Include="event\integration\eventLoadTest.cpp" />
     <ClCompile Include="event\eventTestSupport.cpp" />
-    <ClCompile Include="event\listenerRegistrationTest.cpp" />
-    <ClCompile Include="event\payloadTest.cpp" />
+    <ClCompile Include="event\integration\listenerRegistrationTest.cpp" />
+    <ClCompile Include="event\integration\payloadTest.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="clockTest.h" />
     <ClInclude Include="engineTest.h" />
-    <ClInclude Include="event\channelRegistryTest.h" />
-    <ClInclude Include="event\commanderTest.h" />
-    <ClInclude Include="event\dispatchCycleTest.h" />
-    <ClInclude Include="event\dispatcherLifecycleTest.h" />
-    <ClInclude Include="event\dispatcherTopologyTest.h" />
-    <ClInclude Include="event\eventConcurrencyTest.h" />
-    <ClInclude Include="event\eventLoadTest.h" />
+    <ClInclude Include="event\unit\channelRegistryTest.h" />
+    <ClInclude Include="event\integration\commanderTest.h" />
+    <ClInclude Include="event\integration\dispatchCycleTest.h" />
+    <ClInclude Include="event\integration\dispatcherLifecycleTest.h" />
+    <ClInclude Include="event\integration\dispatcherTopologyTest.h" />
+    <ClInclude Include="event\integration\eventConcurrencyTest.h" />
+    <ClInclude Include="event\integration\eventLoadTest.h" />
     <ClInclude Include="event\eventTestSupport.h" />
-    <ClInclude Include="event\listenerRegistrationTest.h" />
-    <ClInclude Include="event\payloadTest.h" />
+    <ClInclude Include="event\integration\listenerRegistrationTest.h" />
+    <ClInclude Include="event\integration\payloadTest.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

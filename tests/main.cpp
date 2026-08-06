@@ -3,15 +3,15 @@
 #include <partest/bootstrap.h>
 #include "engineTest.h"
 #include "clockTest.h"
-#include "event/channelRegistryTest.h"
-#include "event/dispatchCycleTest.h"
-#include "event/dispatcherLifecycleTest.h"
-#include "event/listenerRegistrationTest.h"
-#include "event/commanderTest.h"
-#include "event/dispatcherTopologyTest.h"
-#include "event/eventConcurrencyTest.h"
-#include "event/eventLoadTest.h"
-#include "event/payloadTest.h"
+#include "event/unit/channelRegistryTest.h"
+#include "event/integration/dispatchCycleTest.h"
+#include "event/integration/dispatcherLifecycleTest.h"
+#include "event/integration/listenerRegistrationTest.h"
+#include "event/integration/commanderTest.h"
+#include "event/integration/dispatcherTopologyTest.h"
+#include "event/integration/eventConcurrencyTest.h"
+#include "event/integration/eventLoadTest.h"
+#include "event/integration/payloadTest.h"
 
 int main(int argc, const char **argv)
 {
