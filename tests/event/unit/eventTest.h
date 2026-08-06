@@ -17,11 +17,7 @@ namespace cge::test
 		void eventStoresPayload();
 		void eventCopiesPayloadAtConstruction();
 		void eventOutlivesItsPayloadSource();
-		void enumPayloadPreserved();
-		void pointerPayloadPreservesAddress();
-		void trivialStructPayloadPreserved();
-		void classPayloadPreserved();
-		void aggregatePayloadPreserved();
+		void payloadCategoriesPreserved();
 
 		void sameNameGivesSameChannel();
 		void distinctNamesGiveDistinctIds();

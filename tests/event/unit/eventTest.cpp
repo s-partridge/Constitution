@@ -38,11 +38,7 @@ namespace cge::test
 		addTest("EventStoresPayload", flags, [this]() { eventStoresPayload(); });
 		addTest("EventCopiesPayloadAtConstruction", flags, [this]() { eventCopiesPayloadAtConstruction(); });
 		addTest("EventOutlivesItsPayloadSource", flags, [this]() { eventOutlivesItsPayloadSource(); });
-		addTest("EnumPayloadPreserved", flags, [this]() { enumPayloadPreserved(); });
-		addTest("PointerPayloadPreservesAddress", flags, [this]() { pointerPayloadPreservesAddress(); });
-		addTest("TrivialStructPayloadPreserved", flags, [this]() { trivialStructPayloadPreserved(); });
-		addTest("ClassPayloadPreserved", flags, [this]() { classPayloadPreserved(); });
-		addTest("AggregatePayloadPreserved", flags, [this]() { aggregatePayloadPreserved(); });
+		addTest("PayloadCategoriesPreserved", flags, [this]() { payloadCategoriesPreserved(); });
 
 		addTest("SameNameGivesSameChannel", flags, [this]() { sameNameGivesSameChannel(); });
 		addTest("DistinctNamesGiveDistinctIds", flags, [this]() { distinctNamesGiveDistinctIds(); });
@@ -84,69 +80,69 @@ namespace cge::test
 		ASSERT_EQUAL(event->payload, std::string("scoped"));
 	}
 
-	void EventUnitTest::enumPayloadPreserved()
+	// One behavior, five payload categories. Event<T> has to preserve each of
+	// them across construction whatever the copy costs.
+	void EventUnitTest::payloadCategoriesPreserved()
 	{
-		cge::event::Event<GameState> event(GameState::Playing);
+		subtest("Enum", [&]() {
+			cge::event::Event<GameState> event(GameState::Playing);
 
-		ASSERT_TRUE(event.payload == GameState::Playing);
-	}
+			ASSERT_TRUE(event.payload == GameState::Playing);
+		});
 
-	// A pointer payload copies the address, not the pointee.
-	void EventUnitTest::pointerPayloadPreservesAddress()
-	{
-		int target = 41;
-		cge::event::Event<int *> event(&target);
+		// A pointer payload copies the address, not the pointee.
+		subtest("Pointer", [&]() {
+			int target = 41;
+			cge::event::Event<int *> event(&target);
 
-		ASSERT_TRUE(event.payload == &target);
+			ASSERT_TRUE(event.payload == &target);
 
-		*event.payload = 42;
-		ASSERT_EQUAL(target, 42);
-	}
+			*event.payload = 42;
+			ASSERT_EQUAL(target, 42);
+		});
 
-	// The archetypal game payload.
-	void EventUnitTest::trivialStructPayloadPreserved()
-	{
-		static_assert(std::is_trivially_copyable<DamagePayload>::value,
-			"representative must actually belong to the trivially-copyable class");
+		// The archetypal game payload.
+		subtest("TrivialStruct", [&]() {
+			static_assert(std::is_trivially_copyable<DamagePayload>::value,
+				"representative must actually belong to the trivially-copyable class");
 
-		DamagePayload source;
-		source.amount = 25;
-		source.multiplier = 1.5f;
-		source.sourceId = 7;
+			DamagePayload source;
+			source.amount = 25;
+			source.multiplier = 1.5f;
+			source.sourceId = 7;
 
-		cge::event::Event<DamagePayload> event(source);
+			cge::event::Event<DamagePayload> event(source);
 
-		ASSERT_EQUAL(event.payload.amount, 25);
-		ASSERT_EQUAL(event.payload.multiplier, 1.5f);
-		ASSERT_EQUAL(event.payload.sourceId, 7u);
-	}
+			ASSERT_EQUAL(event.payload.amount, 25);
+			ASSERT_EQUAL(event.payload.multiplier, 1.5f);
+			ASSERT_EQUAL(event.payload.sourceId, 7u);
+		});
 
-	// Copy allocates, so this proves the deep copy rather than a shared buffer.
-	void EventUnitTest::classPayloadPreserved()
-	{
-		cge::event::Event<std::string> event(std::string("hello-event"));
+		// Copy allocates, so this proves a deep copy rather than a shared buffer.
+		subtest("Class", [&]() {
+			cge::event::Event<std::string> event(std::string("hello-event"));
 
-		ASSERT_EQUAL(event.payload, std::string("hello-event"));
-	}
+			ASSERT_EQUAL(event.payload, std::string("hello-event"));
+		});
 
-	// Members own resources, so the copy is member-wise and non-trivial.
-	void EventUnitTest::aggregatePayloadPreserved()
-	{
-		SpawnRequest source;
-		source.unitType = 3;
-		source.name = "archer";
-		source.inventory.push_back(10);
-		source.inventory.push_back(20);
+		// Members own resources, so the copy is member-wise and non-trivial.
+		subtest("Aggregate", [&]() {
+			SpawnRequest source;
+			source.unitType = 3;
+			source.name = "archer";
+			source.inventory.push_back(10);
+			source.inventory.push_back(20);
 
-		cge::event::Event<SpawnRequest> event(source);
-		source.name = "mutated";
-		source.inventory.clear();
+			cge::event::Event<SpawnRequest> event(source);
+			source.name = "mutated";
+			source.inventory.clear();
 
-		ASSERT_EQUAL(event.payload.unitType, 3);
-		ASSERT_EQUAL(event.payload.name, std::string("archer"));
-		ASSERT_EQUAL(event.payload.inventory.size(), static_cast<size_t>(2));
-		ASSERT_EQUAL(event.payload.inventory[0], 10);
-		ASSERT_EQUAL(event.payload.inventory[1], 20);
+			ASSERT_EQUAL(event.payload.unitType, 3);
+			ASSERT_EQUAL(event.payload.name, std::string("archer"));
+			ASSERT_EQUAL(event.payload.inventory.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(event.payload.inventory[0], 10);
+			ASSERT_EQUAL(event.payload.inventory[1], 20);
+		});
 	}
 
 	void EventUnitTest::sameNameGivesSameChannel()
