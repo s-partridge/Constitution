@@ -3,6 +3,7 @@
 #include <partest/bootstrap.h>
 #include "engineTest.h"
 #include "clockTest.h"
+#include "event/unit/asyncDispatcherTest.h"
 #include "event/unit/broadcasterTest.h"
 #include "event/unit/channelRegistryTest.h"
 #include "event/unit/listenerTest.h"
@@ -23,6 +24,7 @@ int main(int argc, const char **argv)
 	partest::addTestClass(partest::make_unique<cge::test::ChannelRegistryTest>());
 	partest::addTestClass(partest::make_unique<cge::test::BroadcasterUnitTest>());
 	partest::addTestClass(partest::make_unique<cge::test::ListenerUnitTest>());
+	partest::addTestClass(partest::make_unique<cge::test::AsyncDispatcherUnitTest>());
 	// Base contracts run once per dispatcher flavor.
 	for(const cge::test::DispatcherFlavor &flavor : cge::test::dispatcherFlavors())
 	{

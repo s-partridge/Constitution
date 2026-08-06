@@ -149,6 +149,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="engineTest.cpp" />
+    <ClCompile Include="event\unit\asyncDispatcherTest.cpp" />
     <ClCompile Include="event\unit\broadcasterTest.cpp" />
     <ClCompile Include="event\unit\channelRegistryTest.cpp" />
     <ClCompile Include="event\unit\listenerTest.cpp" />
@@ -166,6 +167,7 @@
   <ItemGroup>
     <ClInclude Include="clockTest.h" />
     <ClInclude Include="engineTest.h" />
+    <ClInclude Include="event\unit\asyncDispatcherTest.h" />
     <ClInclude Include="event\unit\broadcasterTest.h" />
     <ClInclude Include="event\unit\channelRegistryTest.h" />
     <ClInclude Include="event\unit\listenerTest.h" />
