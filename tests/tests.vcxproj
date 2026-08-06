@@ -153,6 +153,8 @@
     <ClCompile Include="event\commanderTest.cpp" />
     <ClCompile Include="event\dispatchCycleTest.cpp" />
     <ClCompile Include="event\dispatcherLifecycleTest.cpp" />
+    <ClCompile Include="event\dispatcherTopologyTest.cpp" />
+    <ClCompile Include="event\eventConcurrencyTest.cpp" />
     <ClCompile Include="event\eventTestSupport.cpp" />
     <ClCompile Include="event\listenerRegistrationTest.cpp" />
     <ClCompile Include="event\payloadTest.cpp" />
@@ -165,6 +167,8 @@
     <ClInclude Include="event\commanderTest.h" />
     <ClInclude Include="event\dispatchCycleTest.h" />
     <ClInclude Include="event\dispatcherLifecycleTest.h" />
+    <ClInclude Include="event\dispatcherTopologyTest.h" />
+    <ClInclude Include="event\eventConcurrencyTest.h" />
     <ClInclude Include="event\eventTestSupport.h" />
     <ClInclude Include="event\listenerRegistrationTest.h" />
     <ClInclude Include="event\payloadTest.h" />

@@ -58,105 +58,6 @@ namespace
 }
 
 // ---------------------------------------------------------------------------
-// AsyncDispatcher
-// ---------------------------------------------------------------------------
-class AsyncDispatcherTest : public partest::TestBase
-{
-public:
-	AsyncDispatcherTest()
-		: TestBase("AsyncDispatcherTest", "Async dispatcher push, drain, and lifecycle.")
-	{
-		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
-
-		addTest("Isolation", flags, [this]() { isolation(); });
-		addTest("Threads", flags, [this]() { threads(); });
-	}
-
-	void isolation()
-	{
-		// Two dispatchers share the registry's named registration channels, but
-		// queues are per-dispatcher, so traffic must not cross.
-		subtest("TwoDispatchersOneRegistry", [&]() {
-			cge::event::EventChannelRegistry registry;
-			cge::event::AsyncDispatcher first("dispatcher-a", &registry);
-			cge::event::AsyncDispatcher second("dispatcher-b", &registry);
-			first.setUp();
-			second.setUp();
-
-			const cge::event::EventChannel<int> &channel = registry.getChannel<int>("shared");
-			CountingListener firstListener(&first);
-			CountingListener secondListener(&second);
-
-			firstListener.requestRegister(channel, [&firstListener](const int &v) { firstListener.onInt(v); });
-			secondListener.requestRegister(channel, [&secondListener](const int &v) { secondListener.onInt(v); });
-			first.dispatchCommands();
-			second.dispatchCommands();
-
-			cge::event::BroadcasterBase firstBroadcaster(&first);
-			cge::event::BroadcasterBase secondBroadcaster(&second);
-			firstBroadcaster.broadcast(channel, 1);
-			secondBroadcaster.broadcast(channel, 2);
-			first.dispatchEvents();
-			second.dispatchEvents();
-
-			ASSERT_EQUAL(firstListener.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(firstListener.received[0], 1);
-			ASSERT_EQUAL(secondListener.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(secondListener.received[0], 2);
-
-			first.tearDown();
-			second.tearDown();
-		});
-	}
-
-	void threads()
-	{
-		// Producers join before the drain, so this never overlaps push with
-		// dispatch; push-during-drain coverage lives in the load tests.
-		subtest("JoinedProducers", [&]() {
-			AsyncEventHarness harness;
-			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("mt");
-			std::atomic<int> total(0);
-
-			cge::event::ListenerBase listener(&harness.dispatcher);
-			listener.requestRegister(channel, [&total](const int &v) { total.fetch_add(v); });
-			harness.dispatcher.dispatchCommands();
-
-			cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-			const unsigned producers = smokeProducerCount();
-			const int perProducer = 50;
-
-			std::vector<std::thread> workers;
-			for(unsigned p = 0; p < producers; ++p)
-			{
-				workers.emplace_back([&broadcaster, &channel, perProducer]() {
-					for(int i = 0; i < perProducer; ++i)
-						broadcaster.broadcast(channel, 1);
-				});
-			}
-			for(std::thread &t : workers)
-				t.join();
-
-			harness.dispatcher.dispatchEvents();
-
-			ASSERT_EQUAL(total.load(), static_cast<int>(producers) * perProducer);
-		});
-	}
-
-private:
-	// Shared worker count for light concurrent smoke (not frame-scale load).
-	static unsigned smokeProducerCount()
-	{
-		unsigned hc = std::thread::hardware_concurrency();
-		if(hc < 2)
-			return 2;
-		if(hc > 4)
-			return 4;
-		return hc;
-	}
-};
-
-// ---------------------------------------------------------------------------
 // Game-shaped load: multi-frame worker traffic + payload integrity
 //
 // Mirrors Partest's dispatcher tests: keep a reference copy of every payload
@@ -176,7 +77,6 @@ public:
 
 		addTest("FrameGated", flags, [this]() { frameGated(); });
 		addTest("Continuous", flags, [this]() { continuous(); });
-		addTest("RegistrationUnderLoad", flags, [this]() { registrationUnderLoad(); });
 	}
 
 	static unsigned loadWorkerCount()
@@ -224,11 +124,6 @@ public:
 	{
 		subtest("Workers", [&]() { continuousWorkers(); });
 		subtest("Cascade", [&]() { continuousCascade(); });
-	}
-
-	void registrationUnderLoad()
-	{
-		subtest("ConcurrentChurn", [&]() { concurrentChurn(); });
 	}
 
 	// Unique payload: frame, worker, and sequence are all recoverable if a test fails.
@@ -467,82 +362,6 @@ private:
 		std::vector<int> expected = sent.snapshot();
 		assertPayloadsPreserved(expected, receivedPrimary.snapshot());
 		assertPayloadsPreserved(expected, receivedSecondary.snapshot());
-	}
-
-	// --- Registration traffic mixed into a running dispatcher -------------------------
-
-	// Registration churn from worker threads while producers broadcast. This is
-	// the scenario the pending-handler mutex exists for. Only determinism-proof
-	// invariants are asserted: the stable listener sees every payload, and nothing
-	// crashes. What the churning listeners receive depends on drain timing and is
-	// deliberately unasserted.
-	void concurrentChurn()
-	{
-		AsyncEventHarness harness;
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("churn");
-		PayloadLog sent;
-		PayloadLog received;
-
-		cge::event::ListenerBase stable(&harness.dispatcher);
-		stable.requestRegister(channel, [&received](const int &v) { received.record(v); });
-		harness.dispatcher.dispatchCommands();
-
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher);
-		const unsigned producers = 2;
-		const unsigned churners = 2;
-		const unsigned perProducer = kPushesPerWorkerPerFrame * 8;
-		const unsigned churnCycles = 256;
-		std::atomic<unsigned> runningWorkers(producers + churners);
-
-		std::vector<std::unique_ptr<cge::event::ListenerBase>> churnListeners;
-		for(unsigned c = 0; c < churners; ++c)
-			churnListeners.push_back(std::make_unique<cge::event::ListenerBase>(&harness.dispatcher));
-
-		std::vector<std::thread> threads;
-		for(unsigned p = 0; p < producers; ++p)
-		{
-			threads.emplace_back([&, p]() {
-				for(unsigned i = 0; i < perProducer; ++i)
-				{
-					const int payload = makePayload(i / kPushesPerWorkerPerFrame, p, i % kPushesPerWorkerPerFrame);
-					sent.record(payload);
-					broadcaster.broadcast(channel, payload);
-				}
-				runningWorkers.fetch_sub(1);
-			});
-		}
-		for(unsigned c = 0; c < churners; ++c)
-		{
-			cge::event::ListenerBase *churner = churnListeners[c].get();
-			threads.emplace_back([&, churner]() {
-				for(unsigned i = 0; i < churnCycles; ++i)
-				{
-					// Results ignored: Duplicate/NotFound are legal under churn.
-					churner->requestRegister(channel, [](const int &) {});
-					std::this_thread::yield();
-					churner->requestUnregister(channel);
-					std::this_thread::yield();
-				}
-				runningWorkers.fetch_sub(1);
-			});
-		}
-
-		while(runningWorkers.load() > 0)
-		{
-			harness.dispatcher.dispatchCommands();
-			harness.dispatcher.dispatchEvents();
-		}
-		for(std::thread &t : threads)
-			t.join();
-
-		// Trailing drains: apply any residual commands, then flush remaining events.
-		for(unsigned extra = 0; extra < 4; ++extra)
-		{
-			harness.dispatcher.dispatchCommands();
-			harness.dispatcher.dispatchEvents();
-		}
-
-		assertPayloadsPreserved(sent.snapshot(), received.snapshot());
 	}
 
 	// Persistent workers. Each frame: main releases all workers, waits for all to finish
