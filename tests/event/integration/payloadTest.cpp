@@ -1,5 +1,8 @@
 #include "payloadTest.h"
 
+#include <string>
+#include <vector>
+
 #include <partest/assert.h>
 
 #include "broadcaster.h"
@@ -51,6 +54,48 @@ namespace cge::test
 
 			ASSERT_NOTHROW(broadcaster.broadcast(empty, 1));
 			ASSERT_NOTHROW(harness.dispatcher().dispatchEvents());
+		});
+
+		// The queue erases the payload type behind EventBase and the handler
+		// casts back out of it. Event<T> holding a payload correctly is a unit
+		// concern; what needs the real path is that the round trip through the
+		// erased pointer returns the same value. An int would not show a shallow
+		// copy or a lost buffer, so this uses a payload whose copy allocates.
+		subtest("OwningPayloadSurvivesTheQueue", [&]() {
+			struct SpawnRequest
+			{
+				int unitType;
+				std::string name;
+				std::vector<int> inventory;
+			};
+
+			const cge::event::EventChannel<SpawnRequest> &channel = harness.registry.getChannel<SpawnRequest>("bc-owning");
+			SpawnRequest got;
+			got.unitType = 0;
+
+			cge::event::ListenerBase owner(&harness.dispatcher());
+			owner.requestRegister(channel, [&got](const SpawnRequest &r) { got = r; });
+			harness.dispatcher().dispatchCommands();
+
+			SpawnRequest request;
+			request.unitType = 3;
+			request.name = "archer";
+			request.inventory.push_back(10);
+			request.inventory.push_back(20);
+
+			broadcaster.broadcast(channel, request);
+
+			// Source released before the drain, so anything shallow dangles.
+			request.name.clear();
+			request.inventory.clear();
+
+			harness.dispatcher().dispatchEvents();
+
+			ASSERT_EQUAL(got.unitType, 3);
+			ASSERT_EQUAL(got.name, std::string("archer"));
+			ASSERT_EQUAL(got.inventory.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(got.inventory[0], 10);
+			ASSERT_EQUAL(got.inventory[1], 20);
 		});
 	}
 }
