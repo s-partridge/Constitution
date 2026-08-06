@@ -5,6 +5,7 @@
 #include "clockTest.h"
 #include "eventSystemTest.h"
 #include "event/channelRegistryTest.h"
+#include "event/dispatcherLifecycleTest.h"
 #include "event/listenerRegistrationTest.h"
 
 int main(int argc, const char **argv)
@@ -20,6 +21,7 @@ int main(int argc, const char **argv)
 	// Base contracts run once per dispatcher flavor.
 	for(const cge::test::DispatcherFlavor &flavor : cge::test::dispatcherFlavors())
 	{
+		partest::addTestClass(partest::make_unique<cge::test::DispatcherLifecycleTest>(flavor));
 		partest::addTestClass(partest::make_unique<cge::test::ListenerRegistrationTest>(flavor));
 	}
 

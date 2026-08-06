@@ -150,6 +150,7 @@
   <ItemGroup>
     <ClCompile Include="engineTest.cpp" />
     <ClCompile Include="event\channelRegistryTest.cpp" />
+    <ClCompile Include="event\dispatcherLifecycleTest.cpp" />
     <ClCompile Include="event\eventTestSupport.cpp" />
     <ClCompile Include="event\listenerRegistrationTest.cpp" />
     <ClCompile Include="main.cpp" />
@@ -158,6 +159,7 @@
     <ClInclude Include="clockTest.h" />
     <ClInclude Include="engineTest.h" />
     <ClInclude Include="event\channelRegistryTest.h" />
+    <ClInclude Include="event\dispatcherLifecycleTest.h" />
     <ClInclude Include="event\eventTestSupport.h" />
     <ClInclude Include="event\listenerRegistrationTest.h" />
     <ClInclude Include="eventSystemTest.h" />
