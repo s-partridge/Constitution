@@ -1,0 +1,220 @@
+#ifndef CGE_EVENT_TEST_SUPPORT_H
+#define CGE_EVENT_TEST_SUPPORT_H
+
+#include <atomic>
+#include <chrono>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <semaphore>
+#include <string>
+#include <thread>
+#include <vector>
+
+#include <partest/testbase.h>
+
+#include "dispatcher.h"
+#include "event.h"
+#include "listener.h"
+
+namespace cge::test
+{
+	// Builds a dispatcher of one concrete flavor. The deterministic contract
+	// suites are written against DispatcherBase and run once per flavor, so a
+	// new dispatcher inherits the whole suite by adding a flavor here rather
+	// than by copying tests.
+	using DispatcherFactory = std::function<std::unique_ptr<cge::event::DispatcherBase>(const std::string &, cge::event::EventChannelRegistry *)>;
+
+	struct DispatcherFlavor
+	{
+		std::string name;
+		DispatcherFactory create;
+
+		DispatcherFlavor(const std::string &name, const DispatcherFactory &create)
+			: name(name)
+			, create(create)
+		{
+		}
+	};
+
+	// Every flavor the deterministic suites are expected to satisfy.
+	const std::vector<DispatcherFlavor> &dispatcherFlavors();
+
+	// A set-up dispatcher and the registry backing it. Registry is declared
+	// first so it outlives the dispatcher under reverse destruction order.
+	// Tests needing a dispatcher at some other lifecycle point build one from
+	// the flavor directly instead of using this.
+	class EventHarness
+	{
+	public:
+		EventHarness(const DispatcherFlavor &flavor, const std::string &name)
+			: registry()
+			, m_dispatcher(flavor.create(name, &registry))
+		{
+			m_dispatcher->setUp();
+		}
+
+		~EventHarness()
+		{
+			m_dispatcher->tearDown();
+		}
+
+		EventHarness(const EventHarness &) = delete;
+		EventHarness &operator=(const EventHarness &) = delete;
+
+		cge::event::DispatcherBase &dispatcher() { return *m_dispatcher; }
+
+		cge::event::EventChannelRegistry registry;
+
+	private:
+		std::unique_ptr<cge::event::DispatcherBase> m_dispatcher;
+	};
+
+	struct CountingListener : public cge::event::ListenerBase
+	{
+		std::vector<int> received;
+
+		explicit CountingListener(cge::event::DispatcherBase *dispatcher)
+			: ListenerBase(dispatcher)
+		{
+		}
+
+		void onInt(const int &value)
+		{
+			received.push_back(value);
+		}
+	};
+
+	// Thread-safe reference / receive log for the load suites.
+	class PayloadLog
+	{
+	public:
+		void record(int value)
+		{
+			std::lock_guard<std::mutex> lock(m_mutex);
+			m_values.push_back(value);
+		}
+
+		std::vector<int> snapshot()
+		{
+			std::lock_guard<std::mutex> lock(m_mutex);
+			return m_values;
+		}
+
+	private:
+		std::mutex m_mutex;
+		std::vector<int> m_values;
+	};
+
+	// Unique payload: frame, worker and sequence stay recoverable from the
+	// value, which is what lets the load suites check per-producer ordering
+	// as well as set equality.
+	int makePayload(unsigned frame, unsigned worker, unsigned seq);
+
+	unsigned frameFromPayload(int payload);
+	unsigned workerFromPayload(int payload);
+	unsigned seqFromPayload(int payload);
+
+	// Worker counts: light concurrent smoke versus frame-scale load.
+	unsigned smokeProducerCount();
+	unsigned loadWorkerCount();
+
+	// Persistent workers behind a frame gate. Each frame the caller releases
+	// every worker, waits for all of them to finish producing, then runs
+	// onFrameComplete. Same idea as a job fence.
+	//
+	// Returns false on watchdog timeout. Note that this only rescues a wedge on
+	// the calling thread: a worker wedged inside produce still blocks the join
+	// below, so a deadlocked push hangs the suite regardless.
+	template<typename ProduceFn, typename FrameCompleteFn>
+	bool runPersistentFrameGated(
+		unsigned workers,
+		unsigned frameCount,
+		unsigned pushesPerWorkerPerFrame,
+		ProduceFn produce,
+		FrameCompleteFn onFrameComplete)
+	{
+		std::counting_semaphore<> beginFrame(0);
+		std::counting_semaphore<> endFrame(0);
+		std::atomic<unsigned> currentFrame(0);
+		std::atomic<bool> stop(false);
+
+		std::vector<std::thread> threads;
+		threads.reserve(workers);
+		for(unsigned w = 0; w < workers; ++w)
+		{
+			threads.emplace_back([&, w]() {
+				while(true)
+				{
+					beginFrame.acquire();
+					if(stop.load(std::memory_order_acquire))
+						break;
+
+					const unsigned frame = currentFrame.load(std::memory_order_acquire);
+					for(unsigned seq = 0; seq < pushesPerWorkerPerFrame; ++seq)
+						produce(frame, w, seq);
+
+					endFrame.release();
+				}
+			});
+		}
+
+		bool completed = true;
+		for(unsigned frame = 0; frame < frameCount && completed; ++frame)
+		{
+			currentFrame.store(frame, std::memory_order_release);
+			for(unsigned w = 0; w < workers; ++w)
+				beginFrame.release();
+			for(unsigned w = 0; w < workers; ++w)
+			{
+				if(!endFrame.try_acquire_for(std::chrono::seconds(30)))
+				{
+					completed = false;
+					break;
+				}
+			}
+
+			if(completed)
+				onFrameComplete();
+		}
+
+		stop.store(true, std::memory_order_release);
+		for(unsigned w = 0; w < workers; ++w)
+			beginFrame.release();
+		for(std::thread &t : threads)
+			t.join();
+		return completed;
+	}
+
+	// Base for every event suite. Carries the flavor under test and the shared
+	// assertion helpers, which have to be members because the ASSERT macros
+	// expand to a protected TestBase call.
+	class EventTestBase : public partest::TestBase
+	{
+	public:
+		EventTestBase(const std::string &name, const std::string &description, const DispatcherFlavor &flavor)
+			: TestBase(name + "." + flavor.name, description)
+			, m_flavor(flavor)
+		{
+		}
+
+	protected:
+		const DispatcherFlavor &flavor() const { return m_flavor; }
+
+		// Sorted comparison: arrival order across producers is not a contract,
+		// so only set equality is required here. Asserts record and continue,
+		// so the scan stays in bounds whether or not the size check passed.
+		void assertPayloadsPreserved(const std::vector<int> &sent, const std::vector<int> &received);
+
+		// Per-producer ordering is a contract even though cross-producer
+		// ordering is not: events from one producer must arrive in the order
+		// that producer sent them. Checks each worker's subsequence in
+		// isolation, ignoring how they interleave.
+		void assertProducerOrderPreserved(const std::vector<int> &received);
+
+	private:
+		DispatcherFlavor m_flavor;
+	};
+}
+
+#endif // CGE_EVENT_TEST_SUPPORT_H

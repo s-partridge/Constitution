@@ -149,11 +149,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="engineTest.cpp" />
+    <ClCompile Include="event\eventTestSupport.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="clockTest.h" />
     <ClInclude Include="engineTest.h" />
+    <ClInclude Include="event\eventTestSupport.h" />
     <ClInclude Include="eventSystemTest.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
