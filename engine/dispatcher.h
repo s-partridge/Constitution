@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <memory>
 #include <queue>
-#include <list>
+#include <vector>
 
 #include "system.h"
 #include "event.h"
@@ -23,7 +23,7 @@ namespace cge::event
 	};
 
 	using ChannelId = size_t;
-	using ListenerList = std::list<ListenerBase *>;
+	using ListenerList = std::vector<ListenerBase *>;
 	using ListenerIter = ListenerList::iterator;
 	using ChannelMap = std::unordered_map<ChannelId, ListenerList>;
 	using ChannelMapIter = ChannelMap::iterator;
