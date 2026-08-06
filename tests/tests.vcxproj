@@ -151,6 +151,7 @@
     <ClCompile Include="engineTest.cpp" />
     <ClCompile Include="event\channelRegistryTest.cpp" />
     <ClCompile Include="event\eventTestSupport.cpp" />
+    <ClCompile Include="event\listenerRegistrationTest.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -158,6 +159,7 @@
     <ClInclude Include="engineTest.h" />
     <ClInclude Include="event\channelRegistryTest.h" />
     <ClInclude Include="event\eventTestSupport.h" />
+    <ClInclude Include="event\listenerRegistrationTest.h" />
     <ClInclude Include="eventSystemTest.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
