@@ -5,6 +5,7 @@
 #include "clockTest.h"
 #include "eventSystemTest.h"
 #include "event/channelRegistryTest.h"
+#include "event/dispatchCycleTest.h"
 #include "event/dispatcherLifecycleTest.h"
 #include "event/listenerRegistrationTest.h"
 
@@ -22,6 +23,7 @@ int main(int argc, const char **argv)
 	for(const cge::test::DispatcherFlavor &flavor : cge::test::dispatcherFlavors())
 	{
 		partest::addTestClass(partest::make_unique<cge::test::DispatcherLifecycleTest>(flavor));
+		partest::addTestClass(partest::make_unique<cge::test::DispatchCycleTest>(flavor));
 		partest::addTestClass(partest::make_unique<cge::test::ListenerRegistrationTest>(flavor));
 	}
 
