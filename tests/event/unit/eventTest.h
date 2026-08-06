@@ -19,6 +19,7 @@ namespace cge::test
 		void eventOutlivesItsPayloadSource();
 		void payloadCategoriesPreserved();
 
+		void mismatchedPayloadTypeIsRefused();
 		void sameNameGivesSameChannel();
 		void distinctNamesGiveDistinctIds();
 		void distinctRegistriesGiveDistinctChannels();

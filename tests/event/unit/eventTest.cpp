@@ -1,6 +1,7 @@
 #include "eventTest.h"
 
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -40,6 +41,7 @@ namespace cge::test
 		addTest("EventOutlivesItsPayloadSource", flags, [this]() { eventOutlivesItsPayloadSource(); });
 		addTest("PayloadCategoriesPreserved", flags, [this]() { payloadCategoriesPreserved(); });
 
+		addTest("MismatchedPayloadTypeIsRefused", flags, [this]() { mismatchedPayloadTypeIsRefused(); });
 		addTest("SameNameGivesSameChannel", flags, [this]() { sameNameGivesSameChannel(); });
 		addTest("DistinctNamesGiveDistinctIds", flags, [this]() { distinctNamesGiveDistinctIds(); });
 		addTest("DistinctRegistriesGiveDistinctChannels", flags, [this]() { distinctRegistriesGiveDistinctChannels(); });
@@ -143,6 +145,28 @@ namespace cge::test
 			ASSERT_EQUAL(event.payload.inventory[0], 10);
 			ASSERT_EQUAL(event.payload.inventory[1], 20);
 		});
+	}
+
+	// The single guard the whole system rests on. Delivery casts an EventBase
+	// straight to Event<T> with no runtime check, and the only thing making that
+	// sound is that a channel id is bound to one payload type for life. If a tag
+	// could be re-requested under a different type, the cast becomes undefined
+	// behavior on the first event through it.
+	//
+	// TODO: the refusal currently arrives as a throw, which is why this asserts
+	// one. The settled contract is a rejection reported to the caller, which
+	// needs getChannel to return something other than a reference. Rewrite the
+	// assertion when that lands; the behavior under test does not change.
+	void EventUnitTest::mismatchedPayloadTypeIsRefused()
+	{
+		cge::event::EventChannelRegistry registry;
+		registry.getChannel<int>("contested");
+
+		ASSERT_THROWS(std::runtime_error, registry.getChannel<float>("contested"));
+
+		// The original binding has to survive the rejected attempt.
+		const cge::event::EventChannel<int> &original = registry.getChannel<int>("contested");
+		ASSERT_TRUE(original.id() == registry.getChannel<int>("contested").id());
 	}
 
 	void EventUnitTest::sameNameGivesSameChannel()

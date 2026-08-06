@@ -15,6 +15,7 @@ namespace cge::test
 
 	private:
 		void delivery();
+		void payloadTypes();
 	};
 }
 
