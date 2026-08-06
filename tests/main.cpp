@@ -5,7 +5,7 @@
 #include "clockTest.h"
 #include "event/unit/asyncDispatcherTest.h"
 #include "event/unit/broadcasterTest.h"
-#include "event/unit/channelRegistryTest.h"
+#include "event/unit/eventTest.h"
 #include "event/unit/dispatcherTest.h"
 #include "event/unit/listenerTest.h"
 #include "event/integration/dispatchCycleTest.h"
@@ -22,7 +22,7 @@ int main(int argc, const char **argv)
 	partest::initializeSuite(argc, argv);
 	partest::addTestClass(partest::make_unique<EngineTest>());
 	partest::addTestClass(partest::make_unique<ClockTest>());
-	partest::addTestClass(partest::make_unique<cge::test::ChannelRegistryTest>());
+	partest::addTestClass(partest::make_unique<cge::test::EventUnitTest>());
 	partest::addTestClass(partest::make_unique<cge::test::BroadcasterUnitTest>());
 	partest::addTestClass(partest::make_unique<cge::test::ListenerUnitTest>());
 	partest::addTestClass(partest::make_unique<cge::test::DispatcherUnitTest>());
