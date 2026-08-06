@@ -4,13 +4,14 @@
 #include "engineTest.h"
 #include "clockTest.h"
 #include "eventSystemTest.h"
+#include "event/channelRegistryTest.h"
 
 int main(int argc, const char **argv)
 {
 	partest::initializeSuite(argc, argv);
 	partest::addTestClass(partest::make_unique<EngineTest>());
 	partest::addTestClass(partest::make_unique<ClockTest>());
-	partest::addTestClass(partest::make_unique<EventChannelRegistryTest>());
+	partest::addTestClass(partest::make_unique<cge::test::ChannelRegistryTest>());
 	partest::addTestClass(partest::make_unique<AsyncDispatcherTest>());
 	partest::addTestClass(partest::make_unique<EventSystemLoadTest>());
 	partest::addTestClass(partest::make_unique<BroadcasterBaseTest>());
