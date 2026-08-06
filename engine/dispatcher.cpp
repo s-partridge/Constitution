@@ -26,7 +26,6 @@ namespace cge::event
 	{
 		while(!events.empty())
 		{
-			// Move out before pop_front — a reference to front() is invalidated by pop.
 			EventPair event = std::move(events.front());
 			events.pop_front();
 

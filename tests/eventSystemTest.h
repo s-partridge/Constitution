@@ -104,7 +104,7 @@ public:
 		});
 
 		// Dispatch always drains, so a parked event would surface on the next
-		// drain — nothing arriving proves the push was refused outright.
+		// drain. Nothing arriving therefore proves the push was refused outright.
 		subtest("InactivePushDiscarded", [&]() {
 			cge::event::AsyncDispatcher dispatcher("inactive-drop", &registry);
 			CountingListener listener(&dispatcher);
@@ -386,7 +386,7 @@ public:
 		}
 	};
 
-	// Each case owns its own dispatcher, workers and payload logs — these are
+	// Each case owns its own dispatcher, workers and payload logs. These are
 	// independent heavyweight runs, grouped only by production mode.
 	void frameGated()
 	{
@@ -680,8 +680,8 @@ private:
 		ASSERT_EQUAL(lateHits.load(), 1);
 	}
 
-	// Registration churn from worker threads while producers broadcast — the
-	// scenario the pending-handler mutex exists for. Only determinism-proof
+	// Registration churn from worker threads while producers broadcast. This is
+	// the scenario the pending-handler mutex exists for. Only determinism-proof
 	// invariants are asserted: the stable listener sees every payload, and nothing
 	// crashes. What the churning listeners receive depends on drain timing and is
 	// deliberately unasserted.
@@ -941,7 +941,7 @@ public:
 			ASSERT_EQUAL(target, 42);
 		});
 
-		// Trivially-copyable aggregate — the archetypal game payload.
+		// Trivially-copyable aggregate: the archetypal game payload.
 		subtest("TrivialStruct", [&]() {
 			struct DamagePayload
 			{
@@ -991,7 +991,7 @@ public:
 		});
 
 		// Aggregate whose members own resources: copy is member-wise and
-		// non-trivial — distinct from both cases above.
+		// non-trivial, which distinguishes it from both cases above.
 		subtest("Aggregate", [&]() {
 			struct SpawnRequest
 			{
