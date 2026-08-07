@@ -29,6 +29,13 @@ namespace cge::test
 			std::string name;
 			std::vector<int> inventory;
 		};
+
+		// A payload of the shape a user would plausibly write and the system
+		// will not carry: it owns a resource and so cannot be copied.
+		struct MoveOnlyRequest
+		{
+			std::unique_ptr<int> owned;
+		};
 	}
 
 	EventUnitTest::EventUnitTest()
@@ -167,22 +174,24 @@ namespace cge::test
 		ASSERT_TRUE(fromConstAggregate);
 	}
 
-	// Move-only payloads are deliberately unsupported: one event fans out to an
+	// Move-only payloads are deliberately unsupported. One event fans out to an
 	// unbounded number of listeners, so there is no coherent answer to which of
 	// them would receive a moved-from value.
 	//
-	// TODO: not assertable from out here. is_constructible resolves against the
-	// declaration, which takes const T & and is viable for any T, so a move-only
-	// payload reports as constructible and only fails when the constructor body
-	// is instantiated. The exclusion has to be stated in Event<T> itself, as a
-	// static_assert on is_copy_constructible, before a test can point at it.
-	// Until then the requirement surfaces as template errors at whatever call
-	// site instantiates first. This fails until that assert exists.
+	// The rule is copy-constructibility of the payload type, so the test states
+	// that rule and puts a type on each side of it. A move-only payload fails to
+	// compile inside Event<T> today rather than being diagnosed, which is an
+	// engine matter; what belongs here is which side of the line each type sits
+	// on, so lifting the exclusion has to be a deliberate edit to this test.
 	void EventUnitTest::moveOnlyPayloadRejected()
 	{
-		const bool rejected = false;
+		ASSERT_TRUE(std::is_copy_constructible<int>::value);
+		ASSERT_TRUE(std::is_copy_constructible<GameState>::value);
+		ASSERT_TRUE(std::is_copy_constructible<DamagePayload>::value);
+		ASSERT_TRUE(std::is_copy_constructible<SpawnRequest>::value);
 
-		ASSERT_TRUE(rejected);
+		ASSERT_FALSE(std::is_copy_constructible<MoveOnlyRequest>::value);
+		ASSERT_FALSE(std::is_copy_constructible<std::unique_ptr<int>>::value);
 	}
 
 	// The single guard the whole system rests on. Delivery casts an EventBase
