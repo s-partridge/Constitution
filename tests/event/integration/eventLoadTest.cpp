@@ -17,7 +17,7 @@ namespace cge::test
 	}
 
 	EventLoadTest::EventLoadTest(const DispatcherFlavor &flavor)
-		: EventTestBase("EventLoadTest", "Multi-frame loads with payload preservation checks.", flavor)
+		: EventLoadSuite("EventLoadTest", "Multi-frame loads with payload preservation checks.", flavor)
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 

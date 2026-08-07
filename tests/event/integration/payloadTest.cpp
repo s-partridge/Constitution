@@ -10,7 +10,7 @@
 namespace cge::test
 {
 	PayloadTest::PayloadTest(const DispatcherFlavor &flavor)
-		: EventTestBase("PayloadTest", "Payload delivery and copy semantics.", flavor)
+		: DispatcherFlavorSuite("PayloadTest", "Payload delivery and copy semantics.", flavor)
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 

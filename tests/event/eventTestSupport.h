@@ -237,20 +237,40 @@ namespace cge::test
 		return completed;
 	}
 
-	// Base for every event suite. Carries the flavor under test and the shared
-	// assertion helpers, which have to be members because the ASSERT macros
-	// expand to a protected TestBase call.
-	class EventTestBase : public partest::TestBase
+	// Base for event suites that run once per dispatcher flavor. It carries the
+	// flavor and folds its name into the suite name, so one suite registered for
+	// two flavors reports as PayloadTest.Async and PayloadTest.Immediate.
+	//
+	// Not a test itself and never registered. The constructor is protected so it
+	// cannot be instantiated on its own and appear as a suite with no tests in
+	// it. The unit suites derive from partest::TestBase directly, since they
+	// need no dispatcher and so have no flavor to vary.
+	class DispatcherFlavorSuite : public partest::TestBase
 	{
-	public:
-		EventTestBase(const std::string &name, const std::string &description, const DispatcherFlavor &flavor)
+	protected:
+		DispatcherFlavorSuite(const std::string &name, const std::string &description, const DispatcherFlavor &flavor)
 			: TestBase(name + "." + flavor.name, description)
 			, m_flavor(flavor)
 		{
 		}
 
-	protected:
 		const DispatcherFlavor &flavor() const { return m_flavor; }
+
+	private:
+		DispatcherFlavor m_flavor;
+	};
+
+	// Adds the two payload checks the volume suites share. Both contain ASSERT_*
+	// macros, so they record into the derived suite's own frame and are subject
+	// to the same rule as any assertion: test thread only, after the workers
+	// have been joined.
+	class EventLoadSuite : public DispatcherFlavorSuite
+	{
+	protected:
+		EventLoadSuite(const std::string &name, const std::string &description, const DispatcherFlavor &flavor)
+			: DispatcherFlavorSuite(name, description, flavor)
+		{
+		}
 
 		// Sorted comparison: arrival order across producers is not a contract,
 		// so only set equality is required here. Asserts record and continue,
@@ -262,9 +282,6 @@ namespace cge::test
 		// that producer sent them. Checks each worker's subsequence in
 		// isolation, ignoring how they interleave.
 		void assertProducerOrderPreserved(const std::vector<int> &received);
-
-	private:
-		DispatcherFlavor m_flavor;
 	};
 }
 

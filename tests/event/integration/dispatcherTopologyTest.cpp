@@ -9,7 +9,7 @@
 namespace cge::test
 {
 	DispatcherTopologyTest::DispatcherTopologyTest(const DispatcherFlavor &flavor)
-		: EventTestBase("DispatcherTopologyTest", "Routing boundaries between dispatchers.", flavor)
+		: DispatcherFlavorSuite("DispatcherTopologyTest", "Routing boundaries between dispatchers.", flavor)
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 

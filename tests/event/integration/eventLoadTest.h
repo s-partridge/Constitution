@@ -13,7 +13,7 @@ namespace cge::test
 	// Slow relative to the rest of the suite. Frame-gated mode uses semaphores
 	// so production only happens between drains, with no per-frame thread
 	// create and join.
-	class EventLoadTest : public EventTestBase
+	class EventLoadTest : public EventLoadSuite
 	{
 	public:
 		explicit EventLoadTest(const DispatcherFlavor &flavor);

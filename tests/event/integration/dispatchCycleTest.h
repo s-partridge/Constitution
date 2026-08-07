@@ -8,7 +8,7 @@ namespace cge::test
 	// When queued work takes effect: deferral to the right drain, cycle order,
 	// and what a handler may do while a drain is in progress. The heart of the
 	// dispatcher contract, so this runs once per flavor.
-	class DispatchCycleTest : public EventTestBase
+	class DispatchCycleTest : public DispatcherFlavorSuite
 	{
 	public:
 		explicit DispatchCycleTest(const DispatcherFlavor &flavor);

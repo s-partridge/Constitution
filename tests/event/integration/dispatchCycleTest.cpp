@@ -9,7 +9,7 @@
 namespace cge::test
 {
 	DispatchCycleTest::DispatchCycleTest(const DispatcherFlavor &flavor)
-		: EventTestBase("DispatchCycleTest", "Deferral, cycle order, and mid-drain behavior.", flavor)
+		: DispatcherFlavorSuite("DispatchCycleTest", "Deferral, cycle order, and mid-drain behavior.", flavor)
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 

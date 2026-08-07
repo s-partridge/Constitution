@@ -19,7 +19,7 @@ namespace cge::test
 	}
 
 	EventConcurrencyTest::EventConcurrencyTest(const DispatcherFlavor &flavor)
-		: EventTestBase("EventConcurrencyTest", "Cross-thread pushes and registration churn.", flavor)
+		: EventLoadSuite("EventConcurrencyTest", "Cross-thread pushes and registration churn.", flavor)
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 

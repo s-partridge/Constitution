@@ -8,7 +8,7 @@ namespace cge::test
 	// Routing boundaries between dispatchers and registries. Expected to grow
 	// once more than one dispatcher flavor exists and mixed topologies become
 	// possible.
-	class DispatcherTopologyTest : public EventTestBase
+	class DispatcherTopologyTest : public DispatcherFlavorSuite
 	{
 	public:
 		explicit DispatcherTopologyTest(const DispatcherFlavor &flavor);

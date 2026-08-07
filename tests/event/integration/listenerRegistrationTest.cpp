@@ -7,7 +7,7 @@
 namespace cge::test
 {
 	ListenerRegistrationTest::ListenerRegistrationTest(const DispatcherFlavor &flavor)
-		: EventTestBase("ListenerRegistrationTest", "Listener registration, handlers, and unregister.", flavor)
+		: DispatcherFlavorSuite("ListenerRegistrationTest", "Listener registration, handlers, and unregister.", flavor)
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 

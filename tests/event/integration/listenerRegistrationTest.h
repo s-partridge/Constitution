@@ -7,7 +7,7 @@ namespace cge::test
 {
 	// Registration lifecycle, batched requests, unregistration and handler
 	// forms. Base contracts, so this runs once per dispatcher flavor.
-	class ListenerRegistrationTest : public EventTestBase
+	class ListenerRegistrationTest : public DispatcherFlavorSuite
 	{
 	public:
 		explicit ListenerRegistrationTest(const DispatcherFlavor &flavor);

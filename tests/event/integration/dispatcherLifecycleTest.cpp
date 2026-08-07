@@ -59,7 +59,7 @@ namespace cge::test
 	}
 
 	DispatcherLifecycleTest::DispatcherLifecycleTest(const DispatcherFlavor &flavor)
-		: EventTestBase("DispatcherLifecycleTest", "Dispatcher setup, teardown, and intake refusal.", flavor)
+		: DispatcherFlavorSuite("DispatcherLifecycleTest", "Dispatcher setup, teardown, and intake refusal.", flavor)
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 

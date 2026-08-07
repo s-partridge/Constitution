@@ -10,7 +10,7 @@
 namespace cge::test
 {
 	CommanderTest::CommanderTest(const DispatcherFlavor &flavor)
-		: EventTestBase("CommanderTest", "Command enqueue and channel validation.", flavor)
+		: DispatcherFlavorSuite("CommanderTest", "Command enqueue and channel validation.", flavor)
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 

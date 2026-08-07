@@ -74,7 +74,7 @@ namespace cge::test
 		return hc;
 	}
 
-	void EventTestBase::assertPayloadsPreserved(const std::vector<int> &sent, const std::vector<int> &received)
+	void EventLoadSuite::assertPayloadsPreserved(const std::vector<int> &sent, const std::vector<int> &received)
 	{
 		ASSERT_EQUAL(received.size(), sent.size());
 
@@ -95,7 +95,7 @@ namespace cge::test
 		}
 	}
 
-	void EventTestBase::assertProducerOrderPreserved(const std::vector<int> &received)
+	void EventLoadSuite::assertProducerOrderPreserved(const std::vector<int> &received)
 	{
 		// Last (frame, seq) seen per worker, packed back into a single value so
 		// the comparison is a plain ordering test.
