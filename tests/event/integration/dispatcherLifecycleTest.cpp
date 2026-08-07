@@ -8,6 +8,22 @@
 
 namespace cge::test
 {
+	namespace
+	{
+		// TODO: the enum has no value for "the dispatcher is not accepting work".
+		// Failure is documented as an unknown error, which is the one thing this
+		// is not: a system registering during construction has to tell "retry
+		// after setUp" apart from "something is broken". Assertions against this
+		// clear when Rejected or BadState is added to RegistrationResult.
+		//
+		// The value sits outside the current enumerator range so it cannot match
+		// by accident. Its numeric position is arbitrary and will not survive an
+		// enumerator being inserted rather than appended, which is part of what
+		// the TODO is here to catch.
+		const cge::event::RegistrationResult kRejectedPlaceholder =
+			static_cast<cge::event::RegistrationResult>(100);
+	}
+
 	DispatcherLifecycleTest::DispatcherLifecycleTest(const DispatcherFlavor &flavor)
 		: EventTestBase("DispatcherLifecycleTest", "Dispatcher setup, teardown, and intake refusal.", flavor)
 	{
@@ -25,12 +41,19 @@ namespace cge::test
 		cge::event::EventChannelRegistry registry;
 		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("lifecycle");
 
+		// The negative states the contract in readable form. On its own it would
+		// go green the moment the call started returning Success or Duplicate,
+		// which are equally wrong, so the placeholder comparison carries the
+		// actual requirement.
 		subtest("RegisterBeforeSetUp", [&]() {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("pre-setup", &registry);
 			cge::event::ListenerBase listener(dispatcher.get());
 
-			ASSERT_TRUE(listener.requestRegister(channel, [](const int &) {})
-				== cge::event::RegistrationResult::Failure);
+			const cge::event::RegistrationResult result =
+				listener.requestRegister(channel, [](const int &) {});
+
+			ASSERT_FALSE(result == cge::event::RegistrationResult::Failure);
+			ASSERT_TRUE(result == kRejectedPlaceholder);
 		});
 
 		subtest("RegisterAfterTearDown", [&]() {
@@ -39,11 +62,27 @@ namespace cge::test
 			dispatcher->tearDown();
 
 			cge::event::ListenerBase listener(dispatcher.get());
-			ASSERT_TRUE(listener.requestRegister(channel, [](const int &) {})
-				== cge::event::RegistrationResult::Failure);
+			const cge::event::RegistrationResult result =
+				listener.requestRegister(channel, [](const int &) {});
 
-			cge::event::BroadcasterBase broadcaster(dispatcher.get());
-			ASSERT_NOTHROW(broadcaster.broadcast(channel, 1));
+			ASSERT_FALSE(result == cge::event::RegistrationResult::Failure);
+			ASSERT_TRUE(result == kRejectedPlaceholder);
+		});
+
+		// Unregistration stays valid while inactive: a listener must always be
+		// able to leave, whatever state the dispatcher is in.
+		subtest("UnregisterAfterTearDownStaysValid", [&]() {
+			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("unreg-inactive", &registry);
+			dispatcher->setUp();
+
+			CountingListener listener(dispatcher.get());
+			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
+			dispatcher->dispatchCommands();
+			dispatcher->tearDown();
+
+			const cge::event::RegistrationResult result = listener.requestUnregister(channel);
+			ASSERT_FALSE(result == cge::event::RegistrationResult::Failure);
+			ASSERT_FALSE(result == kRejectedPlaceholder);
 		});
 
 		// Dispatch always drains, so a parked event would surface on the next
