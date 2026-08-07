@@ -77,6 +77,26 @@ namespace cge::test
 			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
 			ASSERT_EQUAL(listener.received[0], 55);
 		});
+
+		// Channel copies preserve the id, and the id is the whole of a channel's
+		// identity as far as routing is concerned. Registering through the
+		// registry's reference and broadcasting through a stack copy is the reason
+		// that preservation matters.
+		subtest("CopiedChannelRoutes", [&]() {
+			const cge::event::EventChannel<int> &original = harness.registry.getChannel<int>("bc-copied");
+			CountingListener listener(&harness.dispatcher());
+
+			listener.requestRegister(original, [&listener](const int &v) { listener.onInt(v); });
+			harness.dispatcher().dispatchCommands();
+
+			cge::event::EventChannel<int> copy(original);
+			broadcaster.broadcast(copy, 77);
+			harness.dispatcher().dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			if(listener.received.size() == 1)
+				ASSERT_EQUAL(listener.received[0], 77);
+		});
 	}
 
 	// The queue erases the payload type behind EventBase, and the handler casts

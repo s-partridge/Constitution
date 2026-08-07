@@ -26,6 +26,7 @@ namespace cge::test
 		void noDefaultConstruct();
 		void copyKeepsId();
 		void noMoveConstruct();
+		void registryMove();
 	};
 }
 

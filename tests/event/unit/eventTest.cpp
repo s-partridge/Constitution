@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <partest/assert.h>
@@ -47,6 +48,7 @@ namespace cge::test
 		addTest("NoDefaultConstruct", flags, [this]() { noDefaultConstruct(); });
 		addTest("CopyKeepsId", flags, [this]() { copyKeepsId(); });
 		addTest("NoMoveConstruct", flags, [this]() { noMoveConstruct(); });
+		addTest("RegistryMove", flags, [this]() { registryMove(); });
 	}
 
 	void EventUnitTest::storesPayload()
@@ -219,5 +221,46 @@ namespace cge::test
 	{
 		ASSERT_FALSE(std::is_move_constructible<cge::event::EventChannel<int>>::value);
 		ASSERT_FALSE(std::is_move_constructible<cge::event::EventChannelBase>::value);
+	}
+
+	// The registry owns its channels through raw pointers and deletes them in its
+	// destructor, so a move has to hand that ownership over whole: the new owner
+	// resolves the same tags to the same ids, and the husk left behind frees
+	// nothing when it goes.
+	void EventUnitTest::registryMove()
+	{
+		subtest("Construct", [&]() {
+			cge::event::EventChannelRegistry source;
+			const cge::event::ChannelId id = source.getChannel<int>("moved").id();
+
+			cge::event::EventChannelRegistry moved(std::move(source));
+
+			ASSERT_EQUAL(moved.getChannel<int>("moved").id(), id);
+		});
+
+		subtest("Assign", [&]() {
+			cge::event::EventChannelRegistry source;
+			const cge::event::ChannelId id = source.getChannel<int>("moved-assign").id();
+
+			cge::event::EventChannelRegistry target;
+			target.getChannel<int>("target-own");
+			target = std::move(source);
+
+			ASSERT_EQUAL(target.getChannel<int>("moved-assign").id(), id);
+		});
+
+		// Both registries are destroyed at the end of this subtest. The moved-from
+		// one must hold nothing, or the channels get deleted twice.
+		subtest("MovedFromOwnsNothing", [&]() {
+			cge::event::EventChannelRegistry source;
+			const cge::event::ChannelId id = source.getChannel<int>("before-move").id();
+
+			cge::event::EventChannelRegistry moved(std::move(source));
+
+			// The husk has no record of the tag, so asking for it again mints a new
+			// channel rather than handing back the one the new owner holds.
+			ASSERT_NOT_EQUAL(source.getChannel<int>("before-move").id(), id);
+			ASSERT_EQUAL(moved.getChannel<int>("before-move").id(), id);
+		});
 	}
 }
