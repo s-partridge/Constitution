@@ -128,24 +128,34 @@ namespace cge::test
 
 	// broadcast reports whether the dispatcher accepted the push. A refused push
 	// is discarded, so the caller's return value is the only signal it gets.
+	// Each case builds its own dispatcher at the lifecycle point it needs, so a
+	// failure in one does not change what the next one is testing.
 	void DispatcherLifecycleTest::broadcastPushResult()
 	{
 		cge::event::EventChannelRegistry registry;
-		std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("bc-result", &registry);
 		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("bc-result-ch");
-		cge::event::BroadcasterBase broadcaster(dispatcher.get());
 
 		subtest("FailsBeforeSetUp", [&]() {
+			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("bc-pre", &registry);
+			cge::event::BroadcasterBase broadcaster(dispatcher.get());
+
 			ASSERT_FALSE(broadcaster.broadcast(channel, 1));
 		});
 
 		subtest("SucceedsWhileActive", [&]() {
+			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("bc-active", &registry);
 			dispatcher->setUp();
+			cge::event::BroadcasterBase broadcaster(dispatcher.get());
+
 			ASSERT_TRUE(broadcaster.broadcast(channel, 2));
 		});
 
 		subtest("FailsAfterTearDown", [&]() {
+			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("bc-post", &registry);
+			dispatcher->setUp();
 			dispatcher->tearDown();
+			cge::event::BroadcasterBase broadcaster(dispatcher.get());
+
 			ASSERT_FALSE(broadcaster.broadcast(channel, 3));
 		});
 	}
@@ -154,24 +164,28 @@ namespace cge::test
 	void DispatcherLifecycleTest::commandPushResult()
 	{
 		cge::event::EventChannelRegistry registry;
-		std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("cmd-result", &registry);
 		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("cmd-result-ch");
-		cge::event::CommanderBase commander(dispatcher.get());
 
 		subtest("FailsBeforeSetUp", [&]() {
+			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("cmd-pre", &registry);
+			cge::event::CommanderBase commander(dispatcher.get());
+
 			ASSERT_FALSE(commander.command(channel, 1));
 		});
 
-		// TODO: no valid command exists to push. The dispatcher validates commands,
-		// and the only ones it accepts are registration/unregistration, which come
-		// from ListenerBase and never through CommanderBase. Fill this in when a
-		// command vocabulary exists that a caller can legitimately send.
+		// TODO: no valid command exists to push. Channels are validated at push
+		// time and the only ones accepted carry registration or unregistration,
+		// which come from ListenerBase and never through CommanderBase. Fill this
+		// in when a command vocabulary exists that a caller can legitimately send.
 		subtest("SucceedsWhileActive", partest::TEST_FLAGS_SKIP, [&]() {
 		});
 
 		subtest("FailsAfterTearDown", [&]() {
+			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("cmd-post", &registry);
 			dispatcher->setUp();
 			dispatcher->tearDown();
+			cge::event::CommanderBase commander(dispatcher.get());
+
 			ASSERT_FALSE(commander.command(channel, 3));
 		});
 	}

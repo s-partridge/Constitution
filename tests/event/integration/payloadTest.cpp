@@ -18,19 +18,20 @@ namespace cge::test
 		addTest("PayloadTypes", flags, [this]() { payloadTypes(); });
 	}
 
-	// One listener accumulating across the cases; each asserts against the
-	// running total rather than rebuilding the fixture.
+	// The dispatcher is shared, but each case brings its own channel and its own
+	// listener, so no case depends on what a previous one left in the log.
 	void PayloadTest::delivery()
 	{
 		EventHarness harness(flavor(), "payload-delivery-dispatcher");
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("bc-int");
-		CountingListener listener(&harness.dispatcher());
-
-		listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
-		harness.dispatcher().dispatchCommands();
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 
 		subtest("TypedPayload", [&]() {
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("bc-typed");
+			CountingListener listener(&harness.dispatcher());
+
+			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
+			harness.dispatcher().dispatchCommands();
+
 			broadcaster.broadcast(channel, 123);
 			harness.dispatcher().dispatchEvents();
 
@@ -39,24 +40,43 @@ namespace cge::test
 		});
 
 		subtest("OrderPreserved", [&]() {
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("bc-order");
+			CountingListener listener(&harness.dispatcher());
+
+			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
+			harness.dispatcher().dispatchCommands();
+
 			broadcaster.broadcast(channel, 1);
 			broadcaster.broadcast(channel, 2);
 			broadcaster.broadcast(channel, 3);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(4));
-			ASSERT_EQUAL(listener.received[1], 1);
-			ASSERT_EQUAL(listener.received[2], 2);
-			ASSERT_EQUAL(listener.received[3], 3);
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(3));
+			ASSERT_EQUAL(listener.received[0], 1);
+			ASSERT_EQUAL(listener.received[1], 2);
+			ASSERT_EQUAL(listener.received[2], 3);
 		});
 
+		// A channel nobody watches is not a refusal, so the push is accepted and
+		// the drain simply discards it. Nothing observes the event itself, so the
+		// proof that the drain handled it is that the next delivery still works.
 		subtest("NoListeners", [&]() {
 			const cge::event::EventChannel<int> &empty = harness.registry.getChannel<int>("bc-empty");
+			const cge::event::EventChannel<int> &watched = harness.registry.getChannel<int>("bc-after-empty");
+			CountingListener listener(&harness.dispatcher());
 
-			ASSERT_NOTHROW(broadcaster.broadcast(empty, 1));
-			ASSERT_NOTHROW(harness.dispatcher().dispatchEvents());
+			listener.requestRegister(watched, [&listener](const int &v) { listener.onInt(v); });
+			harness.dispatcher().dispatchCommands();
+
+			ASSERT_TRUE(broadcaster.broadcast(empty, 1));
+			harness.dispatcher().dispatchEvents();
+
+			broadcaster.broadcast(watched, 55);
+			harness.dispatcher().dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received[0], 55);
 		});
-
 	}
 
 	// The queue erases the payload type behind EventBase, and the handler casts
