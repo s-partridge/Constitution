@@ -24,7 +24,7 @@ namespace cge::test
 
 		void frameGatedWorkers();
 		void frameGatedCascade();
-		void frameGatedMixedEventAndCommand();
+		void frameGatedChurn();
 
 		void continuousWorkers();
 		void continuousCascade();

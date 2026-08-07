@@ -1,5 +1,6 @@
 #include "eventLoadTest.h"
 
+#include <memory>
 #include <thread>
 #include <vector>
 
@@ -30,7 +31,7 @@ namespace cge::test
 	{
 		subtest("Workers", [&]() { frameGatedWorkers(); });
 		subtest("Cascade", [&]() { frameGatedCascade(); });
-		subtest("MixedEventAndCommand", [&]() { frameGatedMixedEventAndCommand(); });
+		subtest("Churn", [&]() { frameGatedChurn(); });
 	}
 
 	void EventLoadTest::continuous()
@@ -68,7 +69,11 @@ namespace cge::test
 		if(!completed)
 			return;
 
+		// Set equality is all cross-producer order requires. Per-producer order is
+		// a contract on top of that, checked per worker so the interleaving
+		// between workers stays irrelevant.
 		assertPayloadsPreserved(sent.snapshot(), received.snapshot());
+		assertProducerOrderPreserved(received.snapshot());
 	}
 
 	void EventLoadTest::frameGatedCascade()
@@ -117,32 +122,59 @@ namespace cge::test
 		std::vector<int> expected = sent.snapshot();
 		assertPayloadsPreserved(expected, receivedPrimary.snapshot());
 		assertPayloadsPreserved(expected, receivedSecondary.snapshot());
+
+		// The cascade re-broadcasts on delivery, so the secondary channel inherits
+		// the primary's order. Per-producer order has to survive that hop.
+		assertProducerOrderPreserved(receivedPrimary.snapshot());
+		assertProducerOrderPreserved(receivedSecondary.snapshot());
 	}
 
-	void EventLoadTest::frameGatedMixedEventAndCommand()
+	// Events and commands in the same frame. Registration traffic is the only
+	// command traffic a caller can legitimately produce, since ordinary channels
+	// are refused at push, so this is what a mixed load actually looks like.
+	//
+	// Frame-gated and deterministic where concurrentChurn is free-running: every
+	// command queued during a frame is drained in that frame, and a listener that
+	// never churns must still receive every event regardless of what the
+	// registration traffic is doing around it.
+	void EventLoadTest::frameGatedChurn()
 	{
-		EventHarness harness(flavor(), "load-gated-mixed-dispatcher");
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("load-gated-mixed");
+		EventHarness harness(flavor(), "load-gated-churn-dispatcher");
+		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("load-gated-churn");
+		const cge::event::EventChannel<int> &churned = harness.registry.getChannel<int>("load-gated-churn-target");
 		PayloadLog sent;
 		PayloadLog received;
 
-		cge::event::ListenerBase listener(&harness.dispatcher());
-		listener.requestRegister(channel, [&received](const int &v) { received.record(v); });
+		cge::event::ListenerBase stable(&harness.dispatcher());
+		stable.requestRegister(channel, [&received](const int &v) { received.record(v); });
 		harness.dispatcher().dispatchCommands();
 
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
-		cge::event::CommanderBase commander(&harness.dispatcher());
 		const unsigned workers = loadWorkerCount();
-		const unsigned commandPushes = 64;
+
+		// One churn listener per worker. Listener-local state is not shared, so
+		// giving each worker its own keeps the churn free of races between them
+		// while still hammering the dispatcher's command path from all of them.
+		std::vector<std::unique_ptr<cge::event::ListenerBase>> churn;
+		churn.reserve(workers);
+		for(unsigned w = 0; w < workers; ++w)
+			churn.push_back(std::make_unique<cge::event::ListenerBase>(&harness.dispatcher()));
+
+		const unsigned churnPushes = 64;
 
 		const bool completed = runPersistentFrameGated(workers, kFrameCount, kPushesPerWorkerPerFrame,
 			[&](unsigned frame, unsigned worker, unsigned seq) {
 				const int payload = makePayload(frame, worker, seq);
 				sent.record(payload);
 				broadcaster.broadcast(channel, payload);
-				// Command noise must not steal or corrupt event payloads.
-				if(seq < commandPushes)
-					commander.command(channel, -1);
+
+				if(seq >= churnPushes)
+					return;
+
+				if(seq % 2 == 0)
+					churn[worker]->requestRegister(churned, [](const int &) {});
+				else
+					churn[worker]->requestUnregister(churned);
 			},
 			[&]() {
 				harness.dispatcher().dispatchCommands();
@@ -153,6 +185,7 @@ namespace cge::test
 			return;
 
 		assertPayloadsPreserved(sent.snapshot(), received.snapshot());
+		assertProducerOrderPreserved(received.snapshot());
 	}
 
 	// --- Continuous: persistent workers fire the whole run; main steps frames ---
