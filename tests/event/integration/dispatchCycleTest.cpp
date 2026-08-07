@@ -11,13 +11,22 @@ namespace cge::test
 	namespace
 	{
 		// The shape a game system actually takes: it hears one thing and emits
-		// another. ListenerBase and BroadcasterBase are unrelated types with no
-		// common ancestor, so a system is simply both of them.
-		struct RelayNode : public cge::event::ListenerBase, public cge::event::BroadcasterBase
+		// another. It owns a listener and a broadcaster rather than being both.
+		//
+		// Deriving from both compiles today, since the two share no ancestor, but
+		// it is not the intended design. Listener and broadcaster are headed for
+		// being components, and one component being both would mean two component
+		// identities and two lifetimes in one object. The owner is whatever ends
+		// up holding them - an actor, a system, something that does not exist
+		// yet - so the test stands in for that rather than for the shortcut.
+		struct RelayNode
 		{
+			cge::event::ListenerBase listener;
+			cge::event::BroadcasterBase broadcaster;
+
 			explicit RelayNode(cge::event::DispatcherBase *dispatcher)
-				: ListenerBase(dispatcher)
-				, BroadcasterBase(dispatcher)
+				: listener(dispatcher)
+				, broadcaster(dispatcher)
 			{
 			}
 		};
@@ -348,8 +357,8 @@ namespace cge::test
 
 	// Same chain, but each node is one object that both hears and emits, which
 	// is how a real system is built. Nothing here should differ from the version
-	// using separate listener and broadcaster objects; the case exists because
-	// the composition itself was untested.
+	// using free-standing listeners and broadcasters; the case exists because
+	// nothing covered a single object sitting on both sides of a drain.
 	void DispatchCycleTest::cascadeThroughSystems()
 	{
 		EventHarness harness(flavor(), "cascade-systems-dispatcher");
@@ -366,25 +375,27 @@ namespace cge::test
 		RelayNode achievements(&harness.dispatcher());
 		cge::event::ListenerBase display(&harness.dispatcher());
 
-		combat.requestRegister(damage, [&](const int &v) {
+		combat.listener.requestRegister(damage, [&](const int &v) {
 			hops.push_back(1);
-			combat.broadcast(death, v);
+			combat.broadcaster.broadcast(death, v);
 		});
-		scoring.requestRegister(death, [&](const int &v) {
+		scoring.listener.requestRegister(death, [&](const int &v) {
 			hops.push_back(2);
-			scoring.broadcast(score, v);
+			scoring.broadcaster.broadcast(score, v);
 		});
-		achievements.requestRegister(score, [&](const int &v) {
+		achievements.listener.requestRegister(score, [&](const int &v) {
 			hops.push_back(3);
-			achievements.broadcast(ui, v);
+			achievements.broadcaster.broadcast(ui, v);
 		});
+
+		// The last node only listens. Not every system needs to emit.
 		display.requestRegister(ui, [&](const int &v) {
 			hops.push_back(4);
 			delivered = v;
 		});
 		harness.dispatcher().dispatchCommands();
 
-		combat.broadcast(damage, 11);
+		combat.broadcaster.broadcast(damage, 11);
 		harness.dispatcher().dispatchEvents();
 
 		ASSERT_EQUAL(hops.size(), static_cast<size_t>(4));
