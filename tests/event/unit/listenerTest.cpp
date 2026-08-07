@@ -1,5 +1,7 @@
 #include "listenerTest.h"
 
+#include <string>
+
 #include <partest/assert.h>
 
 #include "listener.h"
@@ -49,6 +51,7 @@ namespace cge::test
 		addTest("InvokesHandler", flags, [this]() { invokesHandler(); });
 		addTest("PassesPayload", flags, [this]() { passesPayload(); });
 		addTest("SelectsByChannel", flags, [this]() { selectsByChannel(); });
+		addTest("SelectsAcrossTypes", flags, [this]() { selectsAcrossTypes(); });
 		addTest("IgnoresUnknownChannel", flags, [this]() { ignoresUnknownChannel(); });
 		addTest("MemberFunctionForm", flags, [this]() { memberFunctionForm(); });
 	}
@@ -264,6 +267,39 @@ namespace cge::test
 
 		ASSERT_EQUAL(firstCalls, 0);
 		ASSERT_EQUAL(secondCalls, 1);
+	}
+
+	// One listener on two channels carrying different payload types. Handler
+	// selection is already covered by SelectsByChannel, but both its channels
+	// carry int, so a mis-keyed lookup there shows up as a wrong count. Here the
+	// same mistake casts an Event<string> through a handler expecting an int,
+	// which is the failure the channel-to-type binding exists to prevent.
+	void ListenerUnitTest::selectsAcrossTypes()
+	{
+		cge::event::EventChannelRegistry registry;
+		MockDispatcher dispatcher(&registry);
+		dispatcher.setUp();
+		const cge::event::EventChannel<int> &numbers = registry.getChannel<int>("numbers");
+		const cge::event::EventChannel<std::string> &names = registry.getChannel<std::string>("names");
+		cge::event::ListenerBase listener(&dispatcher);
+		int seenNumber = 0;
+		std::string seenName;
+
+		listener.requestRegister(numbers, [&seenNumber](const int &v) { seenNumber = v; });
+		listener.requestRegister(names, [&seenName](const std::string &v) { seenName = v; });
+		dispatcher.dispatchCommands();
+
+		cge::event::Event<std::string> nameEvent(std::string("archer"));
+		listener.onEvent(names.id(), nameEvent);
+
+		ASSERT_EQUAL(seenName, std::string("archer"));
+		ASSERT_EQUAL(seenNumber, 0);
+
+		cge::event::Event<int> numberEvent(42);
+		listener.onEvent(numbers.id(), numberEvent);
+
+		ASSERT_EQUAL(seenNumber, 42);
+		ASSERT_EQUAL(seenName, std::string("archer"));
 	}
 
 	void ListenerUnitTest::ignoresUnknownChannel()

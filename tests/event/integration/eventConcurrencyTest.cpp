@@ -38,18 +38,16 @@ namespace cge::test
 	// Liveness, and nothing else. No payload is checked and no delivery is
 	// asserted; the only question is whether the run finishes at all.
 	//
-	// What it drives: requestRegister takes the listener's own mutex and then the
-	// dispatcher's queue lock. The command drain goes the other way, holding the
-	// queue while it calls finalizeRegistration, which takes the listener's
-	// mutex. Listener then queue, against queue then listener, on the same
-	// listener, from two threads at once. That inversion is the one deadlock this
-	// design can have, and nothing else in the suite drives both sides of it
-	// simultaneously - the frame-gated runs park their workers while the drain
-	// runs, so they never overlap at all.
+	// The contract: pushes and registration requests arrive from any thread at
+	// any time, dispatch runs on the processing thread, and the system keeps
+	// making progress while both are happening. Every other concurrency test
+	// assumes that and measures something else. This one asserts it directly, by
+	// putting registration traffic, event traffic and both drains in flight
+	// against the same listeners at once and requiring the run to end.
 	//
-	// stopOnFail because a failure here means the lock discipline is gone, and
-	// every check after it would be measuring a dispatcher whose invariant has
-	// already broken.
+	// stopOnFail because everything downstream assumes progress. If the system
+	// can stop making it, later results are measuring a dispatcher that has
+	// already violated the thing they depend on.
 	//
 	// Isolated because a wedge cannot be released. There is no timed join and no
 	// way to signal a thread that is not looking, so the run owns its harness,
@@ -81,8 +79,8 @@ namespace cge::test
 			std::vector<std::thread> threads;
 			threads.reserve(churners + producers);
 
-			// No yielding. The point is to keep both orders in flight at once,
-			// and a yield between them is exactly what would hide an inversion.
+			// No yielding, unlike ConcurrentChurn. Requests should be arriving
+			// while the drain is running, not politely between drains.
 			for(unsigned c = 0; c < churners; ++c)
 			{
 				cge::event::ListenerBase *churner = listeners[c].get();
@@ -104,8 +102,8 @@ namespace cge::test
 				});
 			}
 
-			// The other half of the pairing, on this thread: hold the queue and
-			// finalize registrations on the very listeners being churned.
+			// Both drains run against the listeners that are being churned, for
+			// as long as the churn lasts.
 			while(running.load() > 0)
 			{
 				harness.dispatcher().dispatchCommands();

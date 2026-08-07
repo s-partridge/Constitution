@@ -18,6 +18,8 @@ namespace cge::test
 		void copiesPayload();
 		void outlivesSource();
 		void payloadCategories();
+		void payloadsCopyable();
+		void moveOnlyPayloadRejected();
 
 		void typeConflict();
 		void sameName();

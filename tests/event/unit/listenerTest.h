@@ -29,6 +29,7 @@ namespace cge::test
 		void invokesHandler();
 		void passesPayload();
 		void selectsByChannel();
+		void selectsAcrossTypes();
 		void ignoresUnknownChannel();
 		void memberFunctionForm();
 	};

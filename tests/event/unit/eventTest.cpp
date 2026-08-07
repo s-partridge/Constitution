@@ -40,6 +40,8 @@ namespace cge::test
 		addTest("CopiesPayload", flags, [this]() { copiesPayload(); });
 		addTest("OutlivesSource", flags, [this]() { outlivesSource(); });
 		addTest("PayloadCategories", flags, [this]() { payloadCategories(); });
+		addTest("PayloadsCopyable", flags, [this]() { payloadsCopyable(); });
+		addTest("MoveOnlyPayloadRejected", flags, [this]() { moveOnlyPayloadRejected(); });
 
 		addTest("TypeConflict", flags, [this]() { typeConflict(); });
 		addTest("SameName", flags, [this]() { sameName(); });
@@ -146,6 +148,41 @@ namespace cge::test
 			ASSERT_EQUAL(event.payload.inventory[0], 10);
 			ASSERT_EQUAL(event.payload.inventory[1], 20);
 		});
+	}
+
+	// The payload is taken by const reference, which is what makes it a copy and
+	// leaves the caller's source his own. This fails if the signature is ever
+	// changed to require a move.
+	void EventUnitTest::payloadsCopyable()
+	{
+		const bool fromConstInt =
+			std::is_constructible<cge::event::Event<int>, const int &>::value;
+		const bool fromConstString =
+			std::is_constructible<cge::event::Event<std::string>, const std::string &>::value;
+		const bool fromConstAggregate =
+			std::is_constructible<cge::event::Event<SpawnRequest>, const SpawnRequest &>::value;
+
+		ASSERT_TRUE(fromConstInt);
+		ASSERT_TRUE(fromConstString);
+		ASSERT_TRUE(fromConstAggregate);
+	}
+
+	// Move-only payloads are deliberately unsupported: one event fans out to an
+	// unbounded number of listeners, so there is no coherent answer to which of
+	// them would receive a moved-from value.
+	//
+	// TODO: not assertable from out here. is_constructible resolves against the
+	// declaration, which takes const T & and is viable for any T, so a move-only
+	// payload reports as constructible and only fails when the constructor body
+	// is instantiated. The exclusion has to be stated in Event<T> itself, as a
+	// static_assert on is_copy_constructible, before a test can point at it.
+	// Until then the requirement surfaces as template errors at whatever call
+	// site instantiates first. This fails until that assert exists.
+	void EventUnitTest::moveOnlyPayloadRejected()
+	{
+		const bool rejected = false;
+
+		ASSERT_TRUE(rejected);
 	}
 
 	// The single guard the whole system rests on. Delivery casts an EventBase
