@@ -138,9 +138,20 @@ namespace cge::test
 	// every worker, waits for all of them to finish producing, then runs
 	// onFrameComplete. Same idea as a job fence.
 	//
-	// Returns false on watchdog timeout. Note that this only rescues a wedge on
-	// the calling thread: a worker wedged inside produce still blocks the join
-	// below, so a deadlocked push hangs the suite regardless.
+	// Returns false on watchdog timeout.
+	//
+	// The watchdog does not rescue anything. A worker parked on beginFrame is
+	// freed by the stop flag below, but one wedged inside produce never gets
+	// back to read it, and the join then blocks for ever. Abandoning it instead
+	// would mean detaching a thread that still holds references into the test
+	// function's frame, and a timeout does not prove a deadlock anyway - a slow
+	// enough frame trips it too - so there is no way to tell the safe case from
+	// the unsafe one from in here.
+	//
+	// It cannot report either: recordLog binds to a TestBase frame and this is a
+	// free function. Both problems have the same fix, which is for the caller to
+	// own the deadline and for this to run inside a thread the caller can
+	// abandon. Until then a wedge hangs the suite silently.
 	template<typename ProduceFn, typename FrameCompleteFn>
 	bool runPersistentFrameGated(
 		unsigned workers,
