@@ -155,11 +155,17 @@ namespace cge::test
 	// no frame and is safe from any thread, which suits a harness-level event
 	// that belongs to no test in particular.
 	//
+	// Recording without a frame means the entry arrives in the readout attached
+	// to nothing, so the message has to carry its own context. That is what
+	// label is for: the caller names itself, since several tests share this and
+	// the log would otherwise say a watchdog fired without saying whose.
+	//
 	// The real fix is for the caller to own the deadline and run this inside a
 	// thread it can abandon. Until then the log is the only thing that survives
 	// the hang.
 	template<typename ProduceFn, typename FrameCompleteFn>
 	bool runPersistentFrameGated(
+		const std::string &label,
 		unsigned workers,
 		unsigned frameCount,
 		unsigned pushesPerWorkerPerFrame,
@@ -214,7 +220,7 @@ namespace cge::test
 				partest::TestRunner::getInstance().recordLog(
 					partest::LogLevel::Error,
 					partest::LOG_TYPE_DEFAULT,
-					"Watchdog expired on frame " + std::to_string(frame) + " after 30s: "
+					label + ": watchdog expired on frame " + std::to_string(frame) + " after 30s. "
 						+ std::to_string(reported) + " of " + std::to_string(workers)
 						+ " workers reported. The join that follows blocks until the wedged worker clears.");
 				break;

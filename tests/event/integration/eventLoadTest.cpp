@@ -56,7 +56,8 @@ namespace cge::test
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 		const unsigned workers = loadWorkerCount();
 
-		const bool completed = runPersistentFrameGated(workers, kFrameCount, kPushesPerWorkerPerFrame,
+		const bool completed = runPersistentFrameGated("EventLoadTest.FrameGated.Workers",
+			workers, kFrameCount, kPushesPerWorkerPerFrame,
 			[&](unsigned frame, unsigned worker, unsigned seq) {
 				const int payload = makePayload(frame, worker, seq);
 				sent.record(payload);
@@ -102,7 +103,8 @@ namespace cge::test
 		const unsigned workers = loadWorkerCount();
 		const unsigned perWorker = kPushesPerWorkerPerFrame / 2;
 
-		const bool completed = runPersistentFrameGated(workers, kFrameCount, perWorker,
+		const bool completed = runPersistentFrameGated("EventLoadTest.FrameGated.Cascade",
+			workers, kFrameCount, perWorker,
 			[&](unsigned frame, unsigned worker, unsigned seq) {
 				const int payload = makePayload(frame, worker, seq);
 				sent.record(payload);
@@ -162,7 +164,8 @@ namespace cge::test
 
 		const unsigned churnPushes = 64;
 
-		const bool completed = runPersistentFrameGated(workers, kFrameCount, kPushesPerWorkerPerFrame,
+		const bool completed = runPersistentFrameGated("EventLoadTest.FrameGated.Churn",
+			workers, kFrameCount, kPushesPerWorkerPerFrame,
 			[&](unsigned frame, unsigned worker, unsigned seq) {
 				const int payload = makePayload(frame, worker, seq);
 				sent.record(payload);
