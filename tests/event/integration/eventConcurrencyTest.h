@@ -15,6 +15,7 @@ namespace cge::test
 		explicit EventConcurrencyTest(const DispatcherFlavor &flavor);
 
 	private:
+		void liveness();
 		void threads();
 		void churn();
 	};

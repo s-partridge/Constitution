@@ -1,6 +1,7 @@
 #include "eventConcurrencyTest.h"
 
 #include <atomic>
+#include <chrono>
 #include <memory>
 #include <thread>
 #include <vector>
@@ -16,6 +17,10 @@ namespace cge::test
 		// Batch size for churn payload packing. Keeps sequence values inside the
 		// field makePayload reserves for them.
 		const unsigned kPushesPerBatch = 512;
+
+		// The liveness probe finishes in well under a second when the locks are
+		// sound. Anything near this bound is already a wedge.
+		const std::chrono::seconds kLivenessDeadline(30);
 	}
 
 	EventConcurrencyTest::EventConcurrencyTest(const DispatcherFlavor &flavor)
@@ -23,8 +28,97 @@ namespace cge::test
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
+		// First, and it stops the rest of the suite if it fails. Everything below
+		// assumes the dispatcher makes progress under contention.
+		addTest("Liveness", flags.withStopOnFail(partest::FlagState::Enabled), [this]() { liveness(); });
 		addTest("Threads", flags, [this]() { threads(); });
 		addTest("Churn", flags, [this]() { churn(); });
+	}
+
+	// Liveness, and nothing else. No payload is checked and no delivery is
+	// asserted; the only question is whether the run finishes at all.
+	//
+	// What it drives: requestRegister takes the listener's own mutex and then the
+	// dispatcher's queue lock. The command drain goes the other way, holding the
+	// queue while it calls finalizeRegistration, which takes the listener's
+	// mutex. Listener then queue, against queue then listener, on the same
+	// listener, from two threads at once. That inversion is the one deadlock this
+	// design can have, and nothing else in the suite drives both sides of it
+	// simultaneously - the frame-gated runs park their workers while the drain
+	// runs, so they never overlap at all.
+	//
+	// stopOnFail because a failure here means the lock discipline is gone, and
+	// every check after it would be measuring a dispatcher whose invariant has
+	// already broken.
+	//
+	// Isolated because a wedge cannot be released. There is no timed join and no
+	// way to signal a thread that is not looking, so the run owns its harness,
+	// channels, listeners and threads, and on timeout the test abandons the lot
+	// and reports rather than hanging the executable. Nothing it can still reach
+	// belongs to this function.
+	void EventConcurrencyTest::liveness()
+	{
+		const char *label = "EventConcurrencyTest.Liveness";
+
+		const IsolatedOutcome<bool> outcome = runIsolated<bool>(label, kLivenessDeadline, [this]() {
+			EventHarness harness(flavor(), "liveness-dispatcher");
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("liveness");
+
+			const unsigned churners = 4;
+			const unsigned producers = 2;
+			const unsigned churnCycles = 2048;
+			const unsigned pushesPerProducer = 8192;
+			std::atomic<unsigned> running(churners + producers);
+
+			std::vector<std::unique_ptr<cge::event::ListenerBase>> listeners;
+			listeners.reserve(churners);
+			for(unsigned c = 0; c < churners; ++c)
+				listeners.push_back(std::unique_ptr<cge::event::ListenerBase>(
+					new cge::event::ListenerBase(&harness.dispatcher())));
+
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
+
+			std::vector<std::thread> threads;
+			threads.reserve(churners + producers);
+
+			// No yielding. The point is to keep both orders in flight at once,
+			// and a yield between them is exactly what would hide an inversion.
+			for(unsigned c = 0; c < churners; ++c)
+			{
+				cge::event::ListenerBase *churner = listeners[c].get();
+				threads.emplace_back([&running, &channel, churner, churnCycles]() {
+					for(unsigned i = 0; i < churnCycles; ++i)
+					{
+						churner->requestRegister(channel, [](const int &) {});
+						churner->requestUnregister(channel);
+					}
+					running.fetch_sub(1);
+				});
+			}
+			for(unsigned p = 0; p < producers; ++p)
+			{
+				threads.emplace_back([&running, &broadcaster, &channel, pushesPerProducer]() {
+					for(unsigned i = 0; i < pushesPerProducer; ++i)
+						broadcaster.broadcast(channel, 1);
+					running.fetch_sub(1);
+				});
+			}
+
+			// The other half of the pairing, on this thread: hold the queue and
+			// finalize registrations on the very listeners being churned.
+			while(running.load() > 0)
+			{
+				harness.dispatcher().dispatchCommands();
+				harness.dispatcher().dispatchEvents();
+			}
+
+			for(std::thread &t : threads)
+				t.join();
+
+			return true;
+		});
+
+		ASSERT_TRUE(outcome.completed);
 	}
 
 	void EventConcurrencyTest::threads()

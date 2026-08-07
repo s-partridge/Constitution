@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -71,6 +72,120 @@ namespace cge::test
 	private:
 		std::unique_ptr<cge::event::DispatcherBase> m_dispatcher;
 	};
+
+	// What came back from an isolated run. On timeout the result is untouched
+	// and must not be read: the run that would have filled it is still going.
+	template<typename ResultType>
+	struct IsolatedOutcome
+	{
+		bool completed;
+		ResultType result;
+
+		IsolatedOutcome()
+			: completed(false)
+			, result()
+		{
+		}
+	};
+
+	// Runs body on a thread of its own and waits for it with a deadline.
+	//
+	// The point is abandonment. A worker deadlocked inside the dispatcher cannot
+	// be released - no timed join, no way to signal a thread that is not looking
+	// - so the only way a wedge fails instead of hanging is to walk away from it.
+	// That is safe here and nowhere else, because the body owns everything it
+	// can reach: it builds its own harness, channels, logs and workers, so
+	// nothing it might touch later belongs to a frame the caller is about to
+	// leave. Capture nothing from the calling function. Capturing the suite
+	// itself is fine; it outlives the whole run.
+	//
+	// The body must not assert. Assertions bind to a TestBase frame and belong
+	// to the test thread, and the body is not on it. It returns data instead,
+	// and the caller asserts once the data is back.
+	//
+	// The gate carries the result across and decides who cleans it up. Both
+	// sides check abandoned under the lock, so exactly one of them owns it: the
+	// caller on the normal path, the body's thread if it ever finishes after
+	// being abandoned. Nothing is left allocated either way.
+	template<typename ResultType, typename BodyFn>
+	IsolatedOutcome<ResultType> runIsolated(const std::string &label, std::chrono::seconds deadline, BodyFn body)
+	{
+		struct Gate
+		{
+			std::mutex mutex;
+			std::condition_variable ready;
+			bool done;
+			bool abandoned;
+			ResultType result;
+
+			Gate()
+				: done(false)
+				, abandoned(false)
+				, result()
+			{
+			}
+		};
+
+		Gate *gate = new Gate();
+
+		std::thread runner([gate, body]() {
+			ResultType produced = body();
+
+			bool ownsGate = false;
+			{
+				std::lock_guard<std::mutex> lock(gate->mutex);
+				if(gate->abandoned)
+				{
+					ownsGate = true;
+				}
+				else
+				{
+					gate->result = std::move(produced);
+					gate->done = true;
+					gate->ready.notify_one();
+				}
+			}
+
+			// Abandoned means the caller has already let go, so this thread is
+			// the last owner. Delete outside the lock; the mutex is in here too.
+			if(ownsGate)
+				delete gate;
+		});
+
+		IsolatedOutcome<ResultType> outcome;
+		bool finished = false;
+		{
+			std::unique_lock<std::mutex> lock(gate->mutex);
+			finished = gate->ready.wait_for(lock, deadline, [gate]() { return gate->done; });
+			if(finished)
+			{
+				outcome.completed = true;
+				outcome.result = std::move(gate->result);
+			}
+			else
+			{
+				gate->abandoned = true;
+			}
+		}
+
+		if(finished)
+		{
+			runner.join();
+			delete gate;
+			return outcome;
+		}
+
+		// Frameless because no test owns a stalled harness, so the message has
+		// to name the run itself.
+		partest::TestRunner::getInstance().recordLog(
+			partest::LogLevel::Error,
+			partest::LOG_TYPE_DEFAULT,
+			label + ": abandoned after " + std::to_string(deadline.count())
+				+ "s. The run is still going and its thread is left where it is.");
+
+		runner.detach();
+		return outcome;
+	}
 
 	// The engine's actual cycle. Commands drain before the events so a request
 	// made last frame is live for this frame's traffic, and again afterwards so
