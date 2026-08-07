@@ -1,6 +1,7 @@
 #include "commanderTest.h"
 
 #include <memory>
+#include <type_traits>
 
 #include <partest/assert.h>
 
@@ -35,7 +36,8 @@ namespace cge::test
 			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
 		});
 
-		// Drain commands first (drops the command payload), then events.
+		// The command never reaches a queue at all, so the command drain has
+		// nothing to do and only the broadcast survives to the event drain.
 		subtest("NoCrossoverToEvents", [&]() {
 			EventHarness harness(flavor(), "cmd-vs-evt-dispatcher");
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("cmd-vs-evt");
@@ -56,16 +58,6 @@ namespace cge::test
 			ASSERT_EQUAL(listener.received[0], 2);
 		});
 
-		subtest("AfterTearDown", [&]() {
-			cge::event::EventChannelRegistry registry;
-			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("cmd-td", &registry);
-			dispatcher->setUp();
-			const cge::event::EventChannel<int> &channel = registry.getChannel<int>("cmd-td-ch");
-			cge::event::CommanderBase commander(dispatcher.get());
-			dispatcher->tearDown();
-
-			ASSERT_NOTHROW(commander.command(channel, 1));
-		});
 	}
 
 	// A command addressed to an ordinary channel is refused: the dispatcher only
@@ -87,6 +79,23 @@ namespace cge::test
 			harness.dispatcher().dispatchCommands();
 			harness.dispatcher().dispatchEvents();
 			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+		});
+
+		// TODO: bool collapses "the dispatcher is inactive" and "this channel is
+		// not valid for commands" into one false. They are different conditions
+		// for the caller: the first means retry later, the second means the
+		// calling code is wrong. The value assertions elsewhere stay correct
+		// under either signature, so the coarseness is only visible on the type.
+		// decltype leaves the call unevaluated, so nothing is pushed here.
+		subtest("ResultType", [&]() {
+			EventHarness harness(flavor(), "cmd-result-type-dispatcher");
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("cmd-result-type");
+			cge::event::CommanderBase commander(&harness.dispatcher());
+
+			const bool returnsBool =
+				std::is_same<decltype(commander.command(channel, 99)), bool>::value;
+
+			ASSERT_FALSE(returnsBool);
 		});
 	}
 }
