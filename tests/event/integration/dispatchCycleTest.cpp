@@ -1,6 +1,7 @@
 #include "dispatchCycleTest.h"
 
 #include <atomic>
+#include <vector>
 
 #include <partest/assert.h>
 
@@ -17,6 +18,8 @@ namespace cge::test
 		addTest("Drain", flags, [this]() { drain(); });
 		addTest("MidDrainRegistration", flags, [this]() { midDrainRegistration(); });
 		addTest("FrameCycle", flags, [this]() { frameCycle(); });
+		addTest("Cascade", flags, [this]() { cascade(); });
+		addTest("MidDrainMutation", flags, [this]() { midDrainMutation(); });
 	}
 
 	// One listener carried from request through to delivery: each case runs
@@ -226,6 +229,168 @@ namespace cge::test
 			frame(harness.dispatcher());
 
 			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+		});
+	}
+
+	// The shape ordinary game code produces: damage kills something, the death
+	// scores, the score unlocks an achievement, the achievement updates the UI.
+	// Four hops across four channels and four listeners, all of it inside the
+	// drain that delivered the first event.
+	void DispatchCycleTest::cascade()
+	{
+		EventHarness harness(flavor(), "cascade-dispatcher");
+		const cge::event::EventChannel<int> &damage = harness.registry.getChannel<int>("casc-damage");
+		const cge::event::EventChannel<int> &death = harness.registry.getChannel<int>("casc-death");
+		const cge::event::EventChannel<int> &score = harness.registry.getChannel<int>("casc-score");
+		const cge::event::EventChannel<int> &achievement = harness.registry.getChannel<int>("casc-achievement");
+		const cge::event::EventChannel<int> &ui = harness.registry.getChannel<int>("casc-ui");
+
+		std::vector<int> hops;
+		int delivered = 0;
+
+		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
+		cge::event::ListenerBase onDamage(&harness.dispatcher());
+		cge::event::ListenerBase onDeath(&harness.dispatcher());
+		cge::event::ListenerBase onScore(&harness.dispatcher());
+		cge::event::ListenerBase onAchievement(&harness.dispatcher());
+		cge::event::ListenerBase onUi(&harness.dispatcher());
+
+		onDamage.requestRegister(damage, [&](const int &v) {
+			hops.push_back(1);
+			broadcaster.broadcast(death, v);
+		});
+		onDeath.requestRegister(death, [&](const int &v) {
+			hops.push_back(2);
+			broadcaster.broadcast(score, v);
+		});
+		onScore.requestRegister(score, [&](const int &v) {
+			hops.push_back(3);
+			broadcaster.broadcast(achievement, v);
+		});
+		onAchievement.requestRegister(achievement, [&](const int &v) {
+			hops.push_back(4);
+			broadcaster.broadcast(ui, v);
+		});
+		onUi.requestRegister(ui, [&](const int &v) {
+			hops.push_back(5);
+			delivered = v;
+		});
+		harness.dispatcher().dispatchCommands();
+
+		broadcaster.broadcast(damage, 7);
+		harness.dispatcher().dispatchEvents();
+
+		// One drain, five hops, each exactly once and in order.
+		ASSERT_EQUAL(hops.size(), static_cast<size_t>(5));
+		if(hops.size() == 5)
+		{
+			for(size_t hop = 0; hop < hops.size(); ++hop)
+				ASSERT_EQUAL(hops[hop], static_cast<int>(hop) + 1);
+		}
+
+		// The payload is carried the whole way rather than regenerated.
+		ASSERT_EQUAL(delivered, 7);
+	}
+
+	// The invariant is that the listener list for a draining channel is never
+	// restructured before that drain finishes. Existing coverage only has a
+	// listener mutate itself; here one listener mutates another, which is the
+	// case a swap-and-pop removal could actually corrupt.
+	//
+	// Delivery order among listeners is not a contract, so nothing below depends
+	// on which listener the handler runs against first. Five listeners is enough
+	// that a removal relocates one, so a mutation leaking into the live list
+	// would show up as a skipped or doubled delivery.
+	void DispatchCycleTest::midDrainMutation()
+	{
+		subtest("UnregisterAnother", [&]() {
+			EventHarness harness(flavor(), "mutate-unreg-dispatcher");
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("mutate-unreg");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
+
+			CountingListener a(&harness.dispatcher());
+			CountingListener b(&harness.dispatcher());
+			CountingListener c(&harness.dispatcher());
+			CountingListener d(&harness.dispatcher());
+			CountingListener e(&harness.dispatcher());
+
+			a.requestRegister(channel, [&](const int &v) {
+				a.onInt(v);
+				d.requestUnregister(channel);
+			});
+			b.requestRegister(channel, [&b](const int &v) { b.onInt(v); });
+			c.requestRegister(channel, [&c](const int &v) { c.onInt(v); });
+			d.requestRegister(channel, [&d](const int &v) { d.onInt(v); });
+			e.requestRegister(channel, [&e](const int &v) { e.onInt(v); });
+			harness.dispatcher().dispatchCommands();
+
+			broadcaster.broadcast(channel, 1);
+			harness.dispatcher().dispatchEvents();
+
+			// Deferral means d is still registered for the whole of this drain,
+			// whether the handler on a ran before or after it.
+			ASSERT_EQUAL(a.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(b.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(c.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(d.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(e.received.size(), static_cast<size_t>(1));
+
+			harness.dispatcher().dispatchCommands();
+			broadcaster.broadcast(channel, 2);
+			harness.dispatcher().dispatchEvents();
+
+			// The removal lands now, and the survivors are all still reachable.
+			ASSERT_EQUAL(a.received.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(b.received.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(c.received.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(d.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(e.received.size(), static_cast<size_t>(2));
+		});
+
+		subtest("RegisterAnother", [&]() {
+			EventHarness harness(flavor(), "mutate-reg-dispatcher");
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("mutate-reg");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
+
+			CountingListener a(&harness.dispatcher());
+			CountingListener b(&harness.dispatcher());
+			CountingListener c(&harness.dispatcher());
+			CountingListener d(&harness.dispatcher());
+			CountingListener newcomer(&harness.dispatcher());
+			bool requested = false;
+
+			a.requestRegister(channel, [&](const int &v) {
+				a.onInt(v);
+				if(requested)
+					return;
+
+				requested = true;
+				newcomer.requestRegister(channel, [&newcomer](const int &value) {
+					newcomer.onInt(value);
+				});
+			});
+			b.requestRegister(channel, [&b](const int &v) { b.onInt(v); });
+			c.requestRegister(channel, [&c](const int &v) { c.onInt(v); });
+			d.requestRegister(channel, [&d](const int &v) { d.onInt(v); });
+			harness.dispatcher().dispatchCommands();
+
+			broadcaster.broadcast(channel, 1);
+			harness.dispatcher().dispatchEvents();
+
+			// The list being drained is not extended underneath the drain.
+			ASSERT_EQUAL(newcomer.received.size(), static_cast<size_t>(0));
+			ASSERT_EQUAL(a.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(b.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(c.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(d.received.size(), static_cast<size_t>(1));
+
+			harness.dispatcher().dispatchCommands();
+			broadcaster.broadcast(channel, 2);
+			harness.dispatcher().dispatchEvents();
+
+			ASSERT_EQUAL(newcomer.received.size(), static_cast<size_t>(1));
+			if(newcomer.received.size() == 1)
+				ASSERT_EQUAL(newcomer.received[0], 2);
 		});
 	}
 }

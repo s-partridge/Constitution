@@ -18,6 +18,8 @@ namespace cge::test
 		void drain();
 		void midDrainRegistration();
 		void frameCycle();
+		void cascade();
+		void midDrainMutation();
 	};
 }
 
