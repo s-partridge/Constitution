@@ -8,6 +8,21 @@
 
 namespace cge::test
 {
+	namespace
+	{
+		// The shape a game system actually takes: it hears one thing and emits
+		// another. ListenerBase and BroadcasterBase are unrelated types with no
+		// common ancestor, so a system is simply both of them.
+		struct RelayNode : public cge::event::ListenerBase, public cge::event::BroadcasterBase
+		{
+			explicit RelayNode(cge::event::DispatcherBase *dispatcher)
+				: ListenerBase(dispatcher)
+				, BroadcasterBase(dispatcher)
+			{
+			}
+		};
+	}
+
 	DispatchCycleTest::DispatchCycleTest(const DispatcherFlavor &flavor)
 		: DispatcherFlavorSuite("DispatchCycleTest", "Deferral, cycle order, and mid-drain behavior.", flavor)
 	{
@@ -234,6 +249,13 @@ namespace cge::test
 	// drain that delivered the first event.
 	void DispatchCycleTest::cascade()
 	{
+		subtest("AcrossChannels", [&]() { cascadeAcrossChannels(); });
+		subtest("SelfReferential", [&]() { cascadeSelfReferential(); });
+		subtest("ThroughSystems", [&]() { cascadeThroughSystems(); });
+	}
+
+	void DispatchCycleTest::cascadeAcrossChannels()
+	{
 		EventHarness harness(flavor(), "cascade-dispatcher");
 		const cge::event::EventChannel<int> &damage = harness.registry.getChannel<int>("casc-damage");
 		const cge::event::EventChannel<int> &death = harness.registry.getChannel<int>("casc-death");
@@ -286,6 +308,93 @@ namespace cge::test
 
 		// The payload is carried the whole way rather than regenerated.
 		ASSERT_EQUAL(delivered, 7);
+	}
+
+	// Reentry drains to exhaustion, so a handler that rebroadcasts on the very
+	// channel it is being drained from feeds that same drain, to whatever depth
+	// the producer chooses. The bound sits in the handler because the dispatcher
+	// deliberately has none and never will: a cascade that does not stop is a
+	// program that does not stop, which is the producer's defect to fix.
+	//
+	// ReentryBroadcasts covers this at depth one. What is added here is that the
+	// depth is unbounded in practice, not that a single hop works.
+	void DispatchCycleTest::cascadeSelfReferential()
+	{
+		EventHarness harness(flavor(), "cascade-self-dispatcher");
+		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("casc-self");
+		const int depth = 64;
+
+		CountingListener listener(&harness.dispatcher());
+		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
+
+		listener.requestRegister(channel, [&](const int &v) {
+			listener.onInt(v);
+			if(v < depth)
+				broadcaster.broadcast(channel, v + 1);
+		});
+		harness.dispatcher().dispatchCommands();
+
+		broadcaster.broadcast(channel, 1);
+		harness.dispatcher().dispatchEvents();
+
+		// One drain, sixty-four hops, in order and none skipped.
+		ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(depth));
+		if(listener.received.size() == static_cast<size_t>(depth))
+		{
+			for(int step = 0; step < depth; ++step)
+				ASSERT_EQUAL(listener.received[step], step + 1);
+		}
+	}
+
+	// Same chain, but each node is one object that both hears and emits, which
+	// is how a real system is built. Nothing here should differ from the version
+	// using separate listener and broadcaster objects; the case exists because
+	// the composition itself was untested.
+	void DispatchCycleTest::cascadeThroughSystems()
+	{
+		EventHarness harness(flavor(), "cascade-systems-dispatcher");
+		const cge::event::EventChannel<int> &damage = harness.registry.getChannel<int>("sys-damage");
+		const cge::event::EventChannel<int> &death = harness.registry.getChannel<int>("sys-death");
+		const cge::event::EventChannel<int> &score = harness.registry.getChannel<int>("sys-score");
+		const cge::event::EventChannel<int> &ui = harness.registry.getChannel<int>("sys-ui");
+
+		std::vector<int> hops;
+		int delivered = 0;
+
+		RelayNode combat(&harness.dispatcher());
+		RelayNode scoring(&harness.dispatcher());
+		RelayNode achievements(&harness.dispatcher());
+		cge::event::ListenerBase display(&harness.dispatcher());
+
+		combat.requestRegister(damage, [&](const int &v) {
+			hops.push_back(1);
+			combat.broadcast(death, v);
+		});
+		scoring.requestRegister(death, [&](const int &v) {
+			hops.push_back(2);
+			scoring.broadcast(score, v);
+		});
+		achievements.requestRegister(score, [&](const int &v) {
+			hops.push_back(3);
+			achievements.broadcast(ui, v);
+		});
+		display.requestRegister(ui, [&](const int &v) {
+			hops.push_back(4);
+			delivered = v;
+		});
+		harness.dispatcher().dispatchCommands();
+
+		combat.broadcast(damage, 11);
+		harness.dispatcher().dispatchEvents();
+
+		ASSERT_EQUAL(hops.size(), static_cast<size_t>(4));
+		if(hops.size() == 4)
+		{
+			for(size_t hop = 0; hop < hops.size(); ++hop)
+				ASSERT_EQUAL(hops[hop], static_cast<int>(hop) + 1);
+		}
+
+		ASSERT_EQUAL(delivered, 11);
 	}
 
 	// The invariant is that the listener list for a draining channel is never

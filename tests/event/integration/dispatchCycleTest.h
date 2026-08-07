@@ -19,6 +19,9 @@ namespace cge::test
 		void midDrainRegistration();
 		void frameCycle();
 		void cascade();
+		void cascadeAcrossChannels();
+		void cascadeSelfReferential();
+		void cascadeThroughSystems();
 		void midDrainMutation();
 	};
 }
