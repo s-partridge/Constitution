@@ -35,19 +35,19 @@ namespace cge::test
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("RegistrationHasNoEffectBeforeCommandDrain", flags, [this]() { registrationHasNoEffectBeforeCommandDrain(); });
-		addTest("RegistrationAppliesAtCommandDrain", flags, [this]() { registrationAppliesAtCommandDrain(); });
-		addTest("UnregistrationAppliesAtCommandDrain", flags, [this]() { unregistrationAppliesAtCommandDrain(); });
-		addTest("UnregisteringOneListenerLeavesOthers", flags, [this]() { unregisteringOneListenerLeavesOthers(); });
-		addTest("MultipleListenersAllReceive", flags, [this]() { multipleListenersAllReceive(); });
-		addTest("RegistrationIsPerChannel", flags, [this]() { registrationIsPerChannel(); });
-		addTest("EventOnUnwatchedChannelReachesNobody", flags, [this]() { eventOnUnwatchedChannelReachesNobody(); });
-		addTest("EventCarriesPayloadToHandler", flags, [this]() { eventCarriesPayloadToHandler(); });
-		addTest("DispatchEventsEmptiesTheQueue", flags, [this]() { dispatchEventsEmptiesTheQueue(); });
-		addTest("DispatchCommandsEmptiesTheQueue", flags, [this]() { dispatchCommandsEmptiesTheQueue(); });
+		addTest("RegisterDeferred", flags, [this]() { registerDeferred(); });
+		addTest("RegisterApplies", flags, [this]() { registerApplies(); });
+		addTest("UnregisterApplies", flags, [this]() { unregisterApplies(); });
+		addTest("UnregisterOne", flags, [this]() { unregisterOne(); });
+		addTest("MultipleListeners", flags, [this]() { multipleListeners(); });
+		addTest("PerChannel", flags, [this]() { perChannel(); });
+		addTest("NoListeners", flags, [this]() { noListeners(); });
+		addTest("CarriesPayload", flags, [this]() { carriesPayload(); });
+		addTest("EventDrainEmpties", flags, [this]() { eventDrainEmpties(); });
+		addTest("CommandDrainEmpties", flags, [this]() { commandDrainEmpties(); });
 	}
 
-	void DispatcherUnitTest::registrationHasNoEffectBeforeCommandDrain()
+	void DispatcherUnitTest::registerDeferred()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -63,7 +63,7 @@ namespace cge::test
 		ASSERT_EQUAL(listener.calls, 0);
 	}
 
-	void DispatcherUnitTest::registrationAppliesAtCommandDrain()
+	void DispatcherUnitTest::registerApplies()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -80,7 +80,7 @@ namespace cge::test
 		ASSERT_EQUAL(listener.calls, 1);
 	}
 
-	void DispatcherUnitTest::unregistrationAppliesAtCommandDrain()
+	void DispatcherUnitTest::unregisterApplies()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -103,7 +103,7 @@ namespace cge::test
 
 	// Removal is swap-and-pop, so the listener that gets relocated must still be
 	// reachable afterwards.
-	void DispatcherUnitTest::unregisteringOneListenerLeavesOthers()
+	void DispatcherUnitTest::unregisterOne()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -130,7 +130,7 @@ namespace cge::test
 		ASSERT_EQUAL(third.calls, 1);
 	}
 
-	void DispatcherUnitTest::multipleListenersAllReceive()
+	void DispatcherUnitTest::multipleListeners()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -153,7 +153,7 @@ namespace cge::test
 		ASSERT_EQUAL(second.last, 9);
 	}
 
-	void DispatcherUnitTest::registrationIsPerChannel()
+	void DispatcherUnitTest::perChannel()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -172,7 +172,7 @@ namespace cge::test
 		ASSERT_EQUAL(listener.calls, 0);
 	}
 
-	void DispatcherUnitTest::eventOnUnwatchedChannelReachesNobody()
+	void DispatcherUnitTest::noListeners()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -186,7 +186,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.eventCount(), static_cast<size_t>(0));
 	}
 
-	void DispatcherUnitTest::eventCarriesPayloadToHandler()
+	void DispatcherUnitTest::carriesPayload()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -204,7 +204,7 @@ namespace cge::test
 		ASSERT_EQUAL(listener.last, 123);
 	}
 
-	void DispatcherUnitTest::dispatchEventsEmptiesTheQueue()
+	void DispatcherUnitTest::eventDrainEmpties()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -221,7 +221,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.eventCount(), static_cast<size_t>(0));
 	}
 
-	void DispatcherUnitTest::dispatchCommandsEmptiesTheQueue()
+	void DispatcherUnitTest::commandDrainEmpties()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);

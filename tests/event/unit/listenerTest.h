@@ -15,22 +15,22 @@ namespace cge::test
 		ListenerUnitTest();
 
 	private:
-		void requestRegisterReturnsPending();
-		void requestRegisterQueuesOneCommand();
-		void duplicateRequestReturnsDuplicate();
-		void duplicateRequestQueuesNothing();
-		void refusedRegistrationReturnsFailure();
-		void refusedRegistrationLeavesListenerUsable();
-		void unregisterClearsPendingRegistration();
-		void unregisterOfUnknownChannelLeavesListenerUsable();
-		void registeredListenerRejectsSecondRequest();
+		void returnsPending();
+		void queuesOneCommand();
+		void duplicateResult();
+		void duplicateQueuesNothing();
+		void refusedResult();
+		void refusedRetry();
+		void unregisterClearsPending();
+		void unregisterUnknown();
+		void reregisterAfterDrain();
 
-		void handlerNotInvokedBeforeFinalize();
-		void onEventInvokesHandler();
-		void onEventPassesPayload();
-		void onEventSelectsTheChannelHandler();
-		void onEventIgnoresUnknownChannel();
-		void memberFunctionOverloadInvokesMember();
+		void handlerNotLiveYet();
+		void invokesHandler();
+		void passesPayload();
+		void selectsByChannel();
+		void ignoresUnknownChannel();
+		void memberFunctionForm();
 	};
 }
 

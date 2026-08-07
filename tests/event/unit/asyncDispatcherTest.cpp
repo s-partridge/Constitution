@@ -41,26 +41,26 @@ namespace cge::test
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("NewDispatcherIsInactive", flags, [this]() { newDispatcherIsInactive(); });
+		addTest("StartsInactive", flags, [this]() { startsInactive(); });
 		addTest("SetUpActivates", flags, [this]() { setUpActivates(); });
 		addTest("TearDownDeactivates", flags, [this]() { tearDownDeactivates(); });
-		addTest("SetUpAfterTearDownReactivates", flags, [this]() { setUpAfterTearDownReactivates(); });
-		addTest("RepeatedSetUpIsIdempotent", flags, [this]() { repeatedSetUpIsIdempotent(); });
-		addTest("RepeatedTearDownIsIdempotent", flags, [this]() { repeatedTearDownIsIdempotent(); });
+		addTest("Reactivates", flags, [this]() { reactivates(); });
+		addTest("RepeatedSetUp", flags, [this]() { repeatedSetUp(); });
+		addTest("RepeatedTearDown", flags, [this]() { repeatedTearDown(); });
 
-		addTest("PushWhileInactiveIsRefused", flags, [this]() { pushWhileInactiveIsRefused(); });
-		addTest("PushWhileInactiveQueuesNothing", flags, [this]() { pushWhileInactiveQueuesNothing(); });
-		addTest("EventPushLandsInEventQueue", flags, [this]() { eventPushLandsInEventQueue(); });
-		addTest("CommandPushLandsInCommandQueue", flags, [this]() { commandPushLandsInCommandQueue(); });
-		addTest("EventPushLeavesCommandQueueEmpty", flags, [this]() { eventPushLeavesCommandQueueEmpty(); });
-		addTest("CommandPushLeavesEventQueueEmpty", flags, [this]() { commandPushLeavesEventQueueEmpty(); });
+		addTest("InactiveRefused", flags, [this]() { inactiveRefused(); });
+		addTest("InactiveQueuesNothing", flags, [this]() { inactiveQueuesNothing(); });
+		addTest("EventQueued", flags, [this]() { eventQueued(); });
+		addTest("CommandQueued", flags, [this]() { commandQueued(); });
+		addTest("EventNotInCommands", flags, [this]() { eventNotInCommands(); });
+		addTest("CommandNotInEvents", flags, [this]() { commandNotInEvents(); });
 
-		addTest("DispatchOnEmptyQueuesIsSafe", flags, [this]() { dispatchOnEmptyQueuesIsSafe(); });
-		addTest("DispatchEventsDrainsWithNoListeners", flags, [this]() { dispatchEventsDrainsWithNoListeners(); });
-		addTest("QueuedEventsSurviveTearDown", flags, [this]() { queuedEventsSurviveTearDown(); });
+		addTest("DrainEmpty", flags, [this]() { drainEmpty(); });
+		addTest("DrainNoListeners", flags, [this]() { drainNoListeners(); });
+		addTest("QueueSurvivesTearDown", flags, [this]() { queueSurvivesTearDown(); });
 	}
 
-	void AsyncDispatcherUnitTest::newDispatcherIsInactive()
+	void AsyncDispatcherUnitTest::startsInactive()
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("new", &registry);
@@ -91,7 +91,7 @@ namespace cge::test
 
 	// The level transition path: a dispatcher torn down between levels has to
 	// come back when the next one starts.
-	void AsyncDispatcherUnitTest::setUpAfterTearDownReactivates()
+	void AsyncDispatcherUnitTest::reactivates()
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("recycle", &registry);
@@ -105,7 +105,7 @@ namespace cge::test
 		ASSERT_TRUE(dispatcher.onPushEvent(channel, makeEvent(1)));
 	}
 
-	void AsyncDispatcherUnitTest::repeatedSetUpIsIdempotent()
+	void AsyncDispatcherUnitTest::repeatedSetUp()
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("double-setup", &registry);
@@ -119,7 +119,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(1));
 	}
 
-	void AsyncDispatcherUnitTest::repeatedTearDownIsIdempotent()
+	void AsyncDispatcherUnitTest::repeatedTearDown()
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("double-teardown", &registry);
@@ -131,7 +131,7 @@ namespace cge::test
 		ASSERT_FALSE(dispatcher.active());
 	}
 
-	void AsyncDispatcherUnitTest::pushWhileInactiveIsRefused()
+	void AsyncDispatcherUnitTest::inactiveRefused()
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("inactive", &registry);
@@ -141,7 +141,7 @@ namespace cge::test
 		ASSERT_FALSE(dispatcher.onPushCommand(channel, makeEvent(1)));
 	}
 
-	void AsyncDispatcherUnitTest::pushWhileInactiveQueuesNothing()
+	void AsyncDispatcherUnitTest::inactiveQueuesNothing()
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("inactive-queue", &registry);
@@ -154,7 +154,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.queuedCommands(), static_cast<size_t>(0));
 	}
 
-	void AsyncDispatcherUnitTest::eventPushLandsInEventQueue()
+	void AsyncDispatcherUnitTest::eventQueued()
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("event-push", &registry);
@@ -165,7 +165,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(1));
 	}
 
-	void AsyncDispatcherUnitTest::commandPushLandsInCommandQueue()
+	void AsyncDispatcherUnitTest::commandQueued()
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("command-push", &registry);
@@ -176,7 +176,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.queuedCommands(), static_cast<size_t>(1));
 	}
 
-	void AsyncDispatcherUnitTest::eventPushLeavesCommandQueueEmpty()
+	void AsyncDispatcherUnitTest::eventNotInCommands()
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("event-only", &registry);
@@ -188,7 +188,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.queuedCommands(), static_cast<size_t>(0));
 	}
 
-	void AsyncDispatcherUnitTest::commandPushLeavesEventQueueEmpty()
+	void AsyncDispatcherUnitTest::commandNotInEvents()
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("command-only", &registry);
@@ -200,7 +200,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(0));
 	}
 
-	void AsyncDispatcherUnitTest::dispatchOnEmptyQueuesIsSafe()
+	void AsyncDispatcherUnitTest::drainEmpty()
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("empty-drain", &registry);
@@ -215,7 +215,7 @@ namespace cge::test
 
 	// Nobody is registered, so there is nowhere for the event to go. It still
 	// has to leave the queue rather than accumulating there.
-	void AsyncDispatcherUnitTest::dispatchEventsDrainsWithNoListeners()
+	void AsyncDispatcherUnitTest::drainNoListeners()
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("no-listeners", &registry);
@@ -232,7 +232,7 @@ namespace cge::test
 
 	// Once accepted, always delivered, at its smallest testable size: tearDown
 	// stops intake but must not discard what is already queued.
-	void AsyncDispatcherUnitTest::queuedEventsSurviveTearDown()
+	void AsyncDispatcherUnitTest::queueSurvivesTearDown()
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("survive", &registry);

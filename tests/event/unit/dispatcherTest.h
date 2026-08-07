@@ -15,16 +15,16 @@ namespace cge::test
 		DispatcherUnitTest();
 
 	private:
-		void registrationHasNoEffectBeforeCommandDrain();
-		void registrationAppliesAtCommandDrain();
-		void unregistrationAppliesAtCommandDrain();
-		void unregisteringOneListenerLeavesOthers();
-		void multipleListenersAllReceive();
-		void registrationIsPerChannel();
-		void eventOnUnwatchedChannelReachesNobody();
-		void eventCarriesPayloadToHandler();
-		void dispatchEventsEmptiesTheQueue();
-		void dispatchCommandsEmptiesTheQueue();
+		void registerDeferred();
+		void registerApplies();
+		void unregisterApplies();
+		void unregisterOne();
+		void multipleListeners();
+		void perChannel();
+		void noListeners();
+		void carriesPayload();
+		void eventDrainEmpties();
+		void commandDrainEmpties();
 	};
 }
 

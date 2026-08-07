@@ -14,25 +14,25 @@ namespace cge::test
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("BroadcastQueuesOnePush", flags, [this]() { broadcastQueuesOnePush(); });
-		addTest("BroadcastUsesTheGivenChannel", flags, [this]() { broadcastUsesTheGivenChannel(); });
-		addTest("BroadcastCarriesThePayload", flags, [this]() { broadcastCarriesThePayload(); });
-		addTest("BroadcastCopiesThePayload", flags, [this]() { broadcastCopiesThePayload(); });
-		addTest("BroadcastReturnsTrueWhenAccepted", flags, [this]() { broadcastReturnsTrueWhenAccepted(); });
-		addTest("BroadcastReturnsFalseWhenRefused", flags, [this]() { broadcastReturnsFalseWhenRefused(); });
-		addTest("BroadcastQueuesNothingWhenRefused", flags, [this]() { broadcastQueuesNothingWhenRefused(); });
-		addTest("BroadcastLeavesCommandQueueEmpty", flags, [this]() { broadcastLeavesCommandQueueEmpty(); });
+		addTest("BroadcastQueuesOne", flags, [this]() { broadcastQueuesOne(); });
+		addTest("BroadcastChannel", flags, [this]() { broadcastChannel(); });
+		addTest("BroadcastPayload", flags, [this]() { broadcastPayload(); });
+		addTest("BroadcastCopies", flags, [this]() { broadcastCopies(); });
+		addTest("BroadcastAccepted", flags, [this]() { broadcastAccepted(); });
+		addTest("BroadcastRefused", flags, [this]() { broadcastRefused(); });
+		addTest("BroadcastRefusedQueue", flags, [this]() { broadcastRefusedQueue(); });
+		addTest("BroadcastQueueOnly", flags, [this]() { broadcastQueueOnly(); });
 
-		addTest("CommandQueuesOnePush", flags, [this]() { commandQueuesOnePush(); });
-		addTest("CommandUsesTheGivenChannel", flags, [this]() { commandUsesTheGivenChannel(); });
-		addTest("CommandCarriesThePayload", flags, [this]() { commandCarriesThePayload(); });
-		addTest("CommandReturnsTrueWhenAccepted", flags, [this]() { commandReturnsTrueWhenAccepted(); });
-		addTest("CommandReturnsFalseWhenRefused", flags, [this]() { commandReturnsFalseWhenRefused(); });
-		addTest("CommandQueuesNothingWhenRefused", flags, [this]() { commandQueuesNothingWhenRefused(); });
-		addTest("CommandLeavesEventQueueEmpty", flags, [this]() { commandLeavesEventQueueEmpty(); });
+		addTest("CommandQueuesOne", flags, [this]() { commandQueuesOne(); });
+		addTest("CommandChannel", flags, [this]() { commandChannel(); });
+		addTest("CommandPayload", flags, [this]() { commandPayload(); });
+		addTest("CommandAccepted", flags, [this]() { commandAccepted(); });
+		addTest("CommandRefused", flags, [this]() { commandRefused(); });
+		addTest("CommandRefusedQueue", flags, [this]() { commandRefusedQueue(); });
+		addTest("CommandQueueOnly", flags, [this]() { commandQueueOnly(); });
 	}
 
-	void BroadcasterUnitTest::broadcastQueuesOnePush()
+	void BroadcasterUnitTest::broadcastQueuesOne()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -44,7 +44,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.eventCount(), static_cast<size_t>(1));
 	}
 
-	void BroadcasterUnitTest::broadcastUsesTheGivenChannel()
+	void BroadcasterUnitTest::broadcastChannel()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -58,7 +58,7 @@ namespace cge::test
 		ASSERT_NOT_EQUAL(dispatcher.eventChannel(0), channel.id());
 	}
 
-	void BroadcasterUnitTest::broadcastCarriesThePayload()
+	void BroadcasterUnitTest::broadcastPayload()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -72,7 +72,7 @@ namespace cge::test
 
 	// The push takes a reference and stores a copy, so the caller's source is
 	// free the moment broadcast returns.
-	void BroadcasterUnitTest::broadcastCopiesThePayload()
+	void BroadcasterUnitTest::broadcastCopies()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -86,7 +86,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.eventPayload<std::string>(0), std::string("original"));
 	}
 
-	void BroadcasterUnitTest::broadcastReturnsTrueWhenAccepted()
+	void BroadcasterUnitTest::broadcastAccepted()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -96,7 +96,7 @@ namespace cge::test
 		ASSERT_TRUE(broadcaster.broadcast(channel, 1));
 	}
 
-	void BroadcasterUnitTest::broadcastReturnsFalseWhenRefused()
+	void BroadcasterUnitTest::broadcastRefused()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -107,7 +107,7 @@ namespace cge::test
 		ASSERT_FALSE(broadcaster.broadcast(channel, 1));
 	}
 
-	void BroadcasterUnitTest::broadcastQueuesNothingWhenRefused()
+	void BroadcasterUnitTest::broadcastRefusedQueue()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -120,7 +120,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.eventCount(), static_cast<size_t>(0));
 	}
 
-	void BroadcasterUnitTest::broadcastLeavesCommandQueueEmpty()
+	void BroadcasterUnitTest::broadcastQueueOnly()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -132,7 +132,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.commandCount(), static_cast<size_t>(0));
 	}
 
-	void BroadcasterUnitTest::commandQueuesOnePush()
+	void BroadcasterUnitTest::commandQueuesOne()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -144,7 +144,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.commandCount(), static_cast<size_t>(1));
 	}
 
-	void BroadcasterUnitTest::commandUsesTheGivenChannel()
+	void BroadcasterUnitTest::commandChannel()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -158,7 +158,7 @@ namespace cge::test
 		ASSERT_NOT_EQUAL(dispatcher.commandChannel(0), channel.id());
 	}
 
-	void BroadcasterUnitTest::commandCarriesThePayload()
+	void BroadcasterUnitTest::commandPayload()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -170,7 +170,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.commandPayload<std::string>(0), std::string("payload"));
 	}
 
-	void BroadcasterUnitTest::commandReturnsTrueWhenAccepted()
+	void BroadcasterUnitTest::commandAccepted()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -180,7 +180,7 @@ namespace cge::test
 		ASSERT_TRUE(commander.command(channel, 1));
 	}
 
-	void BroadcasterUnitTest::commandReturnsFalseWhenRefused()
+	void BroadcasterUnitTest::commandRefused()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -191,7 +191,7 @@ namespace cge::test
 		ASSERT_FALSE(commander.command(channel, 1));
 	}
 
-	void BroadcasterUnitTest::commandQueuesNothingWhenRefused()
+	void BroadcasterUnitTest::commandRefusedQueue()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -204,7 +204,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.commandCount(), static_cast<size_t>(0));
 	}
 
-	void BroadcasterUnitTest::commandLeavesEventQueueEmpty()
+	void BroadcasterUnitTest::commandQueueOnly()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);

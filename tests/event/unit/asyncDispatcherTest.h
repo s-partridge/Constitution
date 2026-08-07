@@ -14,23 +14,23 @@ namespace cge::test
 		AsyncDispatcherUnitTest();
 
 	private:
-		void newDispatcherIsInactive();
+		void startsInactive();
 		void setUpActivates();
 		void tearDownDeactivates();
-		void setUpAfterTearDownReactivates();
-		void repeatedSetUpIsIdempotent();
-		void repeatedTearDownIsIdempotent();
+		void reactivates();
+		void repeatedSetUp();
+		void repeatedTearDown();
 
-		void pushWhileInactiveIsRefused();
-		void pushWhileInactiveQueuesNothing();
-		void eventPushLandsInEventQueue();
-		void commandPushLandsInCommandQueue();
-		void eventPushLeavesCommandQueueEmpty();
-		void commandPushLeavesEventQueueEmpty();
+		void inactiveRefused();
+		void inactiveQueuesNothing();
+		void eventQueued();
+		void commandQueued();
+		void eventNotInCommands();
+		void commandNotInEvents();
 
-		void dispatchOnEmptyQueuesIsSafe();
-		void dispatchEventsDrainsWithNoListeners();
-		void queuedEventsSurviveTearDown();
+		void drainEmpty();
+		void drainNoListeners();
+		void queueSurvivesTearDown();
 	};
 }
 

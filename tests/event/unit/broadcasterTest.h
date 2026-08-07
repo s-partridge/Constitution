@@ -14,22 +14,22 @@ namespace cge::test
 		BroadcasterUnitTest();
 
 	private:
-		void broadcastQueuesOnePush();
-		void broadcastUsesTheGivenChannel();
-		void broadcastCarriesThePayload();
-		void broadcastCopiesThePayload();
-		void broadcastReturnsTrueWhenAccepted();
-		void broadcastReturnsFalseWhenRefused();
-		void broadcastQueuesNothingWhenRefused();
-		void broadcastLeavesCommandQueueEmpty();
+		void broadcastQueuesOne();
+		void broadcastChannel();
+		void broadcastPayload();
+		void broadcastCopies();
+		void broadcastAccepted();
+		void broadcastRefused();
+		void broadcastRefusedQueue();
+		void broadcastQueueOnly();
 
-		void commandQueuesOnePush();
-		void commandUsesTheGivenChannel();
-		void commandCarriesThePayload();
-		void commandReturnsTrueWhenAccepted();
-		void commandReturnsFalseWhenRefused();
-		void commandQueuesNothingWhenRefused();
-		void commandLeavesEventQueueEmpty();
+		void commandQueuesOne();
+		void commandChannel();
+		void commandPayload();
+		void commandAccepted();
+		void commandRefused();
+		void commandRefusedQueue();
+		void commandQueueOnly();
 	};
 }
 

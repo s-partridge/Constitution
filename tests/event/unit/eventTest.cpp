@@ -35,21 +35,21 @@ namespace cge::test
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("EventStoresPayload", flags, [this]() { eventStoresPayload(); });
-		addTest("EventCopiesPayloadAtConstruction", flags, [this]() { eventCopiesPayloadAtConstruction(); });
-		addTest("EventOutlivesItsPayloadSource", flags, [this]() { eventOutlivesItsPayloadSource(); });
-		addTest("PayloadCategoriesPreserved", flags, [this]() { payloadCategoriesPreserved(); });
+		addTest("StoresPayload", flags, [this]() { storesPayload(); });
+		addTest("CopiesPayload", flags, [this]() { copiesPayload(); });
+		addTest("OutlivesSource", flags, [this]() { outlivesSource(); });
+		addTest("PayloadCategories", flags, [this]() { payloadCategories(); });
 
-		addTest("MismatchedPayloadTypeIsRefused", flags, [this]() { mismatchedPayloadTypeIsRefused(); });
-		addTest("SameNameGivesSameChannel", flags, [this]() { sameNameGivesSameChannel(); });
-		addTest("DistinctNamesGiveDistinctIds", flags, [this]() { distinctNamesGiveDistinctIds(); });
-		addTest("DistinctRegistriesGiveDistinctChannels", flags, [this]() { distinctRegistriesGiveDistinctChannels(); });
-		addTest("ChannelIsNotDefaultConstructible", flags, [this]() { channelIsNotDefaultConstructible(); });
-		addTest("ChannelCopyKeepsId", flags, [this]() { channelCopyKeepsId(); });
-		addTest("ChannelIsNotMoveConstructible", flags, [this]() { channelIsNotMoveConstructible(); });
+		addTest("TypeConflict", flags, [this]() { typeConflict(); });
+		addTest("SameName", flags, [this]() { sameName(); });
+		addTest("DistinctNames", flags, [this]() { distinctNames(); });
+		addTest("DistinctRegistries", flags, [this]() { distinctRegistries(); });
+		addTest("NoDefaultConstruct", flags, [this]() { noDefaultConstruct(); });
+		addTest("CopyKeepsId", flags, [this]() { copyKeepsId(); });
+		addTest("NoMoveConstruct", flags, [this]() { noMoveConstruct(); });
 	}
 
-	void EventUnitTest::eventStoresPayload()
+	void EventUnitTest::storesPayload()
 	{
 		cge::event::Event<int> event(42);
 
@@ -58,7 +58,7 @@ namespace cge::test
 
 	// The constructor takes a reference and stores a copy, so the caller owns
 	// his source for as long as he likes and may change it immediately.
-	void EventUnitTest::eventCopiesPayloadAtConstruction()
+	void EventUnitTest::copiesPayload()
 	{
 		std::string source = "original";
 		cge::event::Event<std::string> event(source);
@@ -70,7 +70,7 @@ namespace cge::test
 
 	// The async case in miniature: the source is a local in a worker function
 	// that returned long before anything reads the payload.
-	void EventUnitTest::eventOutlivesItsPayloadSource()
+	void EventUnitTest::outlivesSource()
 	{
 		std::unique_ptr<cge::event::Event<std::string>> event;
 		{
@@ -83,7 +83,7 @@ namespace cge::test
 
 	// One behavior, five payload categories. Event<T> has to preserve each of
 	// them across construction whatever the copy costs.
-	void EventUnitTest::payloadCategoriesPreserved()
+	void EventUnitTest::payloadCategories()
 	{
 		subtest("Enum", [&]() {
 			cge::event::Event<GameState> event(GameState::Playing);
@@ -157,14 +157,14 @@ namespace cge::test
 	// current signature, and asserting the throw that stands in for it today
 	// would pin a mechanism that is being removed. This fails until getChannel
 	// can return a result.
-	void EventUnitTest::mismatchedPayloadTypeIsRefused()
+	void EventUnitTest::typeConflict()
 	{
-		const bool mismatchedTypeRequestReportsRejectionToCaller = false;
+		const bool refused = false;
 
-		ASSERT_TRUE(mismatchedTypeRequestReportsRejectionToCaller);
+		ASSERT_TRUE(refused);
 	}
 
-	void EventUnitTest::sameNameGivesSameChannel()
+	void EventUnitTest::sameName()
 	{
 		cge::event::EventChannelRegistry registry;
 		const cge::event::EventChannel<int> &first = registry.getChannel<int>("alpha");
@@ -174,7 +174,7 @@ namespace cge::test
 		ASSERT_TRUE(&first == &second);
 	}
 
-	void EventUnitTest::distinctNamesGiveDistinctIds()
+	void EventUnitTest::distinctNames()
 	{
 		cge::event::EventChannelRegistry registry;
 		const cge::event::EventChannel<int> &a = registry.getChannel<int>("a");
@@ -185,7 +185,7 @@ namespace cge::test
 
 	// Channel ids come from a process-global counter, so the same tag in two
 	// registries is two different channels rather than a collision.
-	void EventUnitTest::distinctRegistriesGiveDistinctChannels()
+	void EventUnitTest::distinctRegistries()
 	{
 		cge::event::EventChannelRegistry first;
 		cge::event::EventChannelRegistry second;
@@ -197,13 +197,13 @@ namespace cge::test
 	}
 
 	// Protected default ctor: new channels must come from the registry.
-	void EventUnitTest::channelIsNotDefaultConstructible()
+	void EventUnitTest::noDefaultConstruct()
 	{
 		ASSERT_FALSE(std::is_default_constructible<cge::event::EventChannel<int>>::value);
 		ASSERT_FALSE(std::is_default_constructible<cge::event::EventChannelBase>::value);
 	}
 
-	void EventUnitTest::channelCopyKeepsId()
+	void EventUnitTest::copyKeepsId()
 	{
 		ASSERT_TRUE(std::is_copy_constructible<cge::event::EventChannel<int>>::value);
 
@@ -215,7 +215,7 @@ namespace cge::test
 	}
 
 	// Move is disabled so channel identities cannot be shuffled past the registry.
-	void EventUnitTest::channelIsNotMoveConstructible()
+	void EventUnitTest::noMoveConstruct()
 	{
 		ASSERT_FALSE(std::is_move_constructible<cge::event::EventChannel<int>>::value);
 		ASSERT_FALSE(std::is_move_constructible<cge::event::EventChannelBase>::value);

@@ -14,18 +14,18 @@ namespace cge::test
 		EventUnitTest();
 
 	private:
-		void eventStoresPayload();
-		void eventCopiesPayloadAtConstruction();
-		void eventOutlivesItsPayloadSource();
-		void payloadCategoriesPreserved();
+		void storesPayload();
+		void copiesPayload();
+		void outlivesSource();
+		void payloadCategories();
 
-		void mismatchedPayloadTypeIsRefused();
-		void sameNameGivesSameChannel();
-		void distinctNamesGiveDistinctIds();
-		void distinctRegistriesGiveDistinctChannels();
-		void channelIsNotDefaultConstructible();
-		void channelCopyKeepsId();
-		void channelIsNotMoveConstructible();
+		void typeConflict();
+		void sameName();
+		void distinctNames();
+		void distinctRegistries();
+		void noDefaultConstruct();
+		void copyKeepsId();
+		void noMoveConstruct();
 	};
 }
 
