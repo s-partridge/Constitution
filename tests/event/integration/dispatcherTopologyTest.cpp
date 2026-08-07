@@ -51,5 +51,43 @@ namespace cge::test
 			first->tearDown();
 			second->tearDown();
 		});
+
+		// A listener holds a single dispatcher for life, so a system that wants
+		// to hear from two of them needs two listeners. The case worth pinning is
+		// the one someone will assume works: registering once and expecting to
+		// hear everything.
+		subtest("ListenerHearsOnlyItsOwnDispatcher", [&]() {
+			cge::event::EventChannelRegistry registry;
+			std::unique_ptr<cge::event::DispatcherBase> first = flavor().create("owner", &registry);
+			std::unique_ptr<cge::event::DispatcherBase> second = flavor().create("stranger", &registry);
+			first->setUp();
+			second->setUp();
+
+			const cge::event::EventChannel<int> &channel = registry.getChannel<int>("one-owner");
+			CountingListener listener(first.get());
+
+			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
+			first->dispatchCommands();
+			second->dispatchCommands();
+
+			cge::event::BroadcasterBase strangerBroadcaster(second.get());
+			strangerBroadcaster.broadcast(channel, 1);
+			second->dispatchEvents();
+			first->dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+
+			// Same channel, same listener, the dispatcher it actually belongs to.
+			cge::event::BroadcasterBase ownerBroadcaster(first.get());
+			ownerBroadcaster.broadcast(channel, 2);
+			first->dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			if(listener.received.size() == 1)
+				ASSERT_EQUAL(listener.received[0], 2);
+
+			first->tearDown();
+			second->tearDown();
+		});
 	}
 }
