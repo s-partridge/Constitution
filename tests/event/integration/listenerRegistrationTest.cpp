@@ -14,6 +14,7 @@ namespace cge::test
 		addTest("RegistrationLifecycle", flags, [this]() { registrationLifecycle(); });
 		addTest("Unregister", flags, [this]() { unregister(); });
 		addTest("BatchedRequests", flags, [this]() { batchedRequests(); });
+		addTest("OneHandlerPerChannel", flags, [this]() { oneHandlerPerChannel(); });
 		addTest("Handlers", flags, [this]() { handlers(); });
 	}
 
@@ -148,19 +149,23 @@ namespace cge::test
 		});
 	}
 
-	// One command batch, drained FIFO, then the recovery afterwards.
+	// Several requests queued before any of them is applied, then drained in one
+	// command pass. The rule under test is that the last request in the batch
+	// decides the outcome, whatever the earlier ones asked for. Each case brings
+	// its own channel and listener so none of them inherits the last one's state.
 	void ListenerRegistrationTest::batchedRequests()
 	{
 		EventHarness harness(flavor(), "batch-dispatcher");
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch");
-		CountingListener listener(&harness.dispatcher());
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
-		auto handler = [&listener](const int &v) { listener.onInt(v); };
 
 		// The caller asked to end up registered, so it must end up registered and
 		// receiving. Currently fails: the re-register is rejected as Duplicate
 		// against the still-pending first request and queues nothing.
-		subtest("EndsUpRegistered", [&]() {
+		subtest("RegisterUnregisterRegister", [&]() {
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch-rur");
+			CountingListener listener(&harness.dispatcher());
+			auto handler = [&listener](const int &v) { listener.onInt(v); };
+
 			listener.requestRegister(channel, handler);
 			listener.requestUnregister(channel);
 			listener.requestRegister(channel, handler);
@@ -173,6 +178,105 @@ namespace cge::test
 			if(listener.received.size() == 1)
 				ASSERT_EQUAL(listener.received[0], 1);
 		});
+
+		subtest("RegisterThenUnregister", [&]() {
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch-ru");
+			CountingListener listener(&harness.dispatcher());
+
+			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
+			listener.requestUnregister(channel);
+
+			harness.dispatcher().dispatchCommands();
+			broadcaster.broadcast(channel, 1);
+			harness.dispatcher().dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+		});
+
+		// The leading unregistration is a no-op against a listener that was never
+		// registered, and must not poison the request that follows it.
+		subtest("UnregisterThenRegister", [&]() {
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch-ur");
+			CountingListener listener(&harness.dispatcher());
+
+			listener.requestUnregister(channel);
+			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
+
+			harness.dispatcher().dispatchCommands();
+			broadcaster.broadcast(channel, 1);
+			harness.dispatcher().dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			if(listener.received.size() == 1)
+				ASSERT_EQUAL(listener.received[0], 1);
+		});
+
+		subtest("RegisterTwice", [&]() {
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch-rr");
+			CountingListener listener(&harness.dispatcher());
+			auto handler = [&listener](const int &v) { listener.onInt(v); };
+
+			listener.requestRegister(channel, handler);
+			listener.requestRegister(channel, handler);
+
+			harness.dispatcher().dispatchCommands();
+			broadcaster.broadcast(channel, 1);
+			harness.dispatcher().dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+		});
+
+		subtest("UnregisterTwice", [&]() {
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch-uu");
+			CountingListener listener(&harness.dispatcher());
+			auto handler = [&listener](const int &v) { listener.onInt(v); };
+
+			listener.requestRegister(channel, handler);
+			harness.dispatcher().dispatchCommands();
+
+			listener.requestUnregister(channel);
+			listener.requestUnregister(channel);
+			harness.dispatcher().dispatchCommands();
+
+			broadcaster.broadcast(channel, 1);
+			harness.dispatcher().dispatchEvents();
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+
+			// The redundant second request must not leave the listener stuck.
+			listener.requestRegister(channel, handler);
+			harness.dispatcher().dispatchCommands();
+			broadcaster.broadcast(channel, 2);
+			harness.dispatcher().dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			if(listener.received.size() == 1)
+				ASSERT_EQUAL(listener.received[0], 2);
+		});
+	}
+
+	// A listener holds one handler per channel. The second request is refused as
+	// a duplicate rather than adding a handler or replacing the first, so the
+	// handler that was registered first is the one that stays live.
+	void ListenerRegistrationTest::oneHandlerPerChannel()
+	{
+		EventHarness harness(flavor(), "one-handler-dispatcher");
+		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("one-handler");
+		cge::event::ListenerBase listener(&harness.dispatcher());
+		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
+		int firstCalls = 0;
+		int secondCalls = 0;
+
+		listener.requestRegister(channel, [&firstCalls](const int &) { ++firstCalls; });
+		harness.dispatcher().dispatchCommands();
+
+		listener.requestRegister(channel, [&secondCalls](const int &) { ++secondCalls; });
+		harness.dispatcher().dispatchCommands();
+
+		broadcaster.broadcast(channel, 1);
+		harness.dispatcher().dispatchEvents();
+
+		ASSERT_EQUAL(firstCalls, 1);
+		ASSERT_EQUAL(secondCalls, 0);
 	}
 
 	// Shared dispatcher; the callback form and the listener count are what vary.

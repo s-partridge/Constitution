@@ -16,6 +16,7 @@ namespace cge::test
 		void registrationLifecycle();
 		void unregister();
 		void batchedRequests();
+		void oneHandlerPerChannel();
 		void handlers();
 	};
 }
