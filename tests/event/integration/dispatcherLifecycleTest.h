@@ -15,6 +15,8 @@ namespace cge::test
 
 	private:
 		void lifecycle();
+		void restoration();
+		void destruction();
 		void broadcastPushResult();
 		void commandPushResult();
 	};
