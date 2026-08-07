@@ -11,6 +11,8 @@
 #include <thread>
 #include <vector>
 
+#include <partest/log.h>
+#include <partest/runner.h>
 #include <partest/testbase.h>
 
 #include "dispatcher.h"
@@ -148,10 +150,14 @@ namespace cge::test
 	// enough frame trips it too - so there is no way to tell the safe case from
 	// the unsafe one from in here.
 	//
-	// It cannot report either: recordLog binds to a TestBase frame and this is a
-	// free function. Both problems have the same fix, which is for the caller to
-	// own the deadline and for this to run inside a thread the caller can
-	// abandon. Until then a wedge hangs the suite silently.
+	// What it can do is say so before the join swallows it. TestBase::recordLog
+	// is out of reach from a free function, but the runner's own recordLog takes
+	// no frame and is safe from any thread, which suits a harness-level event
+	// that belongs to no test in particular.
+	//
+	// The real fix is for the caller to own the deadline and run this inside a
+	// thread it can abandon. Until then the log is the only thing that survives
+	// the hang.
 	template<typename ProduceFn, typename FrameCompleteFn>
 	bool runPersistentFrameGated(
 		unsigned workers,
@@ -191,6 +197,7 @@ namespace cge::test
 			currentFrame.store(frame, std::memory_order_release);
 			for(unsigned w = 0; w < workers; ++w)
 				beginFrame.release();
+			unsigned reported = 0;
 			for(unsigned w = 0; w < workers; ++w)
 			{
 				if(!endFrame.try_acquire_for(std::chrono::seconds(30)))
@@ -198,10 +205,22 @@ namespace cge::test
 					completed = false;
 					break;
 				}
+
+				++reported;
 			}
 
-			if(completed)
-				onFrameComplete();
+			if(!completed)
+			{
+				partest::TestRunner::getInstance().recordLog(
+					partest::LogLevel::Error,
+					partest::LOG_TYPE_DEFAULT,
+					"Watchdog expired on frame " + std::to_string(frame) + " after 30s: "
+						+ std::to_string(reported) + " of " + std::to_string(workers)
+						+ " workers reported. The join that follows blocks until the wedged worker clears.");
+				break;
+			}
+
+			onFrameComplete();
 		}
 
 		stop.store(true, std::memory_order_release);
