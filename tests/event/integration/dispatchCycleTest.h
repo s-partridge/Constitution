@@ -17,6 +17,7 @@ namespace cge::test
 		void deferral();
 		void drain();
 		void midDrainRegistration();
+		void frameCycle();
 	};
 }
 

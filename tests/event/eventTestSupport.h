@@ -70,6 +70,21 @@ namespace cge::test
 		std::unique_ptr<cge::event::DispatcherBase> m_dispatcher;
 	};
 
+	// The engine's actual cycle. Commands drain before the events so a request
+	// made last frame is live for this frame's traffic, and again afterwards so
+	// anything a handler asked for during the drain applies within the frame it
+	// was asked in rather than sitting queued until the next one.
+	//
+	// Tests whose subject is deferral itself still call the halves separately:
+	// proving that a registration waits for the command drain means running the
+	// event drain without one.
+	inline void frame(cge::event::DispatcherBase &dispatcher)
+	{
+		dispatcher.dispatchCommands();
+		dispatcher.dispatchEvents();
+		dispatcher.dispatchCommands();
+	}
+
 	struct CountingListener : public cge::event::ListenerBase
 	{
 		std::vector<int> received;
