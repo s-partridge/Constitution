@@ -20,7 +20,7 @@ namespace cge::test
 	{
 		// Two dispatchers share the registry's named registration channels, but
 		// queues are per-dispatcher, so traffic must not cross.
-		subtest("TwoDispatchersOneRegistry", [&]() {
+		subtest("SharedRegistry", [&]() {
 			cge::event::EventChannelRegistry registry;
 			std::unique_ptr<cge::event::DispatcherBase> first = flavor().create("dispatcher-a", &registry);
 			std::unique_ptr<cge::event::DispatcherBase> second = flavor().create("dispatcher-b", &registry);
@@ -56,7 +56,7 @@ namespace cge::test
 		// to hear from two of them needs two listeners. The case worth pinning is
 		// the one someone will assume works: registering once and expecting to
 		// hear everything.
-		subtest("ListenerHearsOnlyItsOwnDispatcher", [&]() {
+		subtest("OwnDispatcherOnly", [&]() {
 			cge::event::EventChannelRegistry registry;
 			std::unique_ptr<cge::event::DispatcherBase> first = flavor().create("owner", &registry);
 			std::unique_ptr<cge::event::DispatcherBase> second = flavor().create("stranger", &registry);

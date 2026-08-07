@@ -28,7 +28,7 @@ namespace cge::test
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 		auto handler = [&listener](const int &v) { listener.onInt(v); };
 
-		subtest("DeliversAfterCommandDrain", [&]() {
+		subtest("Delivers", [&]() {
 			listener.requestRegister(channel, handler);
 			harness.dispatcher().dispatchCommands();
 			broadcaster.broadcast(channel, 1);
@@ -40,7 +40,7 @@ namespace cge::test
 
 		// Whatever the second request returns, it must not double the delivery.
 		// The return value itself is asserted in the listener unit tests.
-		subtest("RequestAgainAfterSuccess", [&]() {
+		subtest("RequestAgain", [&]() {
 			listener.requestRegister(channel, handler);
 			harness.dispatcher().dispatchCommands();
 
@@ -51,7 +51,7 @@ namespace cge::test
 			ASSERT_EQUAL(listener.received[1], 2);
 		});
 
-		subtest("UnregisterStopsDelivery", [&]() {
+		subtest("UnregisterStops", [&]() {
 			listener.requestUnregister(channel);
 			harness.dispatcher().dispatchCommands();
 

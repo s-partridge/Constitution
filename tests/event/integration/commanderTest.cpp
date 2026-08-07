@@ -20,7 +20,7 @@ namespace cge::test
 
 	void CommanderTest::command()
 	{
-		subtest("NotDeliveredToListeners", [&]() {
+		subtest("NotDelivered", [&]() {
 			EventHarness harness(flavor(), "cmd-int-dispatcher");
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("cmd-int");
 			CountingListener listener(&harness.dispatcher());
@@ -38,7 +38,7 @@ namespace cge::test
 
 		// The command never reaches a queue at all, so the command drain has
 		// nothing to do and only the broadcast survives to the event drain.
-		subtest("NoCrossoverToEvents", [&]() {
+		subtest("NoCrossover", [&]() {
 			EventHarness harness(flavor(), "cmd-vs-evt-dispatcher");
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("cmd-vs-evt");
 			CountingListener listener(&harness.dispatcher());

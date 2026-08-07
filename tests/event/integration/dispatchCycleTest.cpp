@@ -1,6 +1,5 @@
 #include "dispatchCycleTest.h"
 
-#include <atomic>
 #include <vector>
 
 #include <partest/assert.h>
@@ -31,7 +30,7 @@ namespace cge::test
 		CountingListener listener(&harness.dispatcher());
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 
-		subtest("RegistrationWaitsForCommandDrain", [&]() {
+		subtest("Registration", [&]() {
 			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
 
 			// Listener map not updated yet, so this event drains to nobody.
@@ -40,7 +39,7 @@ namespace cge::test
 			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
 		});
 
-		subtest("EventsWaitForEventDrain", [&]() {
+		subtest("Events", [&]() {
 			harness.dispatcher().dispatchCommands();
 
 			broadcaster.broadcast(channel, 42);
@@ -117,37 +116,34 @@ namespace cge::test
 	// nothing here needs volume to reproduce.
 	void DispatchCycleTest::midDrainRegistration()
 	{
-		subtest("TakesEffectAtNextCommandDrain", [&]() {
-			EventHarness harness(flavor(), "mid-drain-reg-dispatcher");
-			const cge::event::EventChannel<int> &kick = harness.registry.getChannel<int>("reg-kick");
-			const cge::event::EventChannel<int> &late = harness.registry.getChannel<int>("reg-late");
-			std::atomic<int> lateHits(0);
-			std::atomic<bool> requested(false);
+		EventHarness harness(flavor(), "mid-drain-reg-dispatcher");
+		const cge::event::EventChannel<int> &kick = harness.registry.getChannel<int>("reg-kick");
+		const cge::event::EventChannel<int> &late = harness.registry.getChannel<int>("reg-late");
+		int lateHits = 0;
+		bool requested = false;
 
-			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
-			cge::event::ListenerBase kickListener(&harness.dispatcher());
-			cge::event::ListenerBase lateListener(&harness.dispatcher());
+		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
+		cge::event::ListenerBase kickListener(&harness.dispatcher());
+		cge::event::ListenerBase lateListener(&harness.dispatcher());
 
-			kickListener.requestRegister(kick, [&](const int &) {
-				if(!requested.exchange(true))
-				{
-					lateListener.requestRegister(late, [&lateHits](const int &) {
-						lateHits.fetch_add(1);
-					});
-				}
-			});
-			harness.dispatcher().dispatchCommands();
+		kickListener.requestRegister(kick, [&](const int &) {
+			if(requested)
+				return;
 
-			broadcaster.broadcast(kick, 1);
-			harness.dispatcher().dispatchEvents();
-			ASSERT_EQUAL(lateHits.load(), 0);
-
-			harness.dispatcher().dispatchCommands();
-			broadcaster.broadcast(late, 99);
-			harness.dispatcher().dispatchEvents();
-
-			ASSERT_EQUAL(lateHits.load(), 1);
+			requested = true;
+			lateListener.requestRegister(late, [&lateHits](const int &) { ++lateHits; });
 		});
+		harness.dispatcher().dispatchCommands();
+
+		broadcaster.broadcast(kick, 1);
+		harness.dispatcher().dispatchEvents();
+		ASSERT_EQUAL(lateHits, 0);
+
+		harness.dispatcher().dispatchCommands();
+		broadcaster.broadcast(late, 99);
+		harness.dispatcher().dispatchEvents();
+
+		ASSERT_EQUAL(lateHits, 1);
 	}
 
 	// What a whole frame settles, rather than what half of one does. Every case
@@ -157,7 +153,7 @@ namespace cge::test
 	// frame's leading one.
 	void DispatchCycleTest::frameCycle()
 	{
-		subtest("UnregisterAppliesWithinTheFrame", [&]() {
+		subtest("UnregisterApplies", [&]() {
 			EventHarness harness(flavor(), "frame-unreg-dispatcher");
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("frame-unreg");
 			CountingListener listener(&harness.dispatcher());
@@ -182,7 +178,7 @@ namespace cge::test
 			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(2));
 		});
 
-		subtest("RegisterAppliesWithinTheFrame", [&]() {
+		subtest("RegisterApplies", [&]() {
 			EventHarness harness(flavor(), "frame-reg-dispatcher");
 			const cge::event::EventChannel<int> &kick = harness.registry.getChannel<int>("frame-kick");
 			const cge::event::EventChannel<int> &late = harness.registry.getChannel<int>("frame-late");
@@ -215,7 +211,7 @@ namespace cge::test
 
 		// The ordering the leading command drain exists for: a request made after
 		// the events were broadcast still beats them, because commands run first.
-		subtest("CommandsLeadTheFrame", [&]() {
+		subtest("CommandsLead", [&]() {
 			EventHarness harness(flavor(), "frame-order-dispatcher");
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("frame-order");
 			CountingListener listener(&harness.dispatcher());

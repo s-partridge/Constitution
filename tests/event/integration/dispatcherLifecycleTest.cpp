@@ -107,7 +107,7 @@ namespace cge::test
 
 		// Unregistration stays valid while inactive: a listener must always be
 		// able to leave, whatever state the dispatcher is in.
-		subtest("UnregisterAfterTearDownStaysValid", [&]() {
+		subtest("UnregisterStaysValid", [&]() {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("unreg-inactive", &registry);
 			dispatcher->setUp();
 
@@ -144,7 +144,7 @@ namespace cge::test
 
 		// tearDown stops intake, not processing: the engine keeps driving dispatch
 		// on its own schedule, and work already queued still drains.
-		subtest("QueuedEventsDrainAfterTearDown", [&]() {
+		subtest("DrainAfterTearDown", [&]() {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("drain-after-teardown", &registry);
 			dispatcher->setUp();
 
@@ -202,7 +202,7 @@ namespace cge::test
 		// Once accepted, always delivered. tearDown refuses new intake and never
 		// discards what is already queued, so an event that was accepted before
 		// the level ended is still there when the next one starts.
-		subtest("QueuedWorkSurvivesTheGap", [&]() {
+		subtest("QueuedWorkSurvives", [&]() {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("restore-queue", &registry);
 			dispatcher->setUp();
 
