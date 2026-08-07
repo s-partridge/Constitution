@@ -172,7 +172,16 @@ namespace cge::test
 		ProduceFn produce,
 		FrameCompleteFn onFrameComplete)
 	{
-		std::counting_semaphore<> beginFrame(0);
+		// One gate per worker rather than a count on a shared one. A single
+		// counting semaphore lets a worker that finishes early loop round and
+		// take a second permit from the same frame, producing that frame's
+		// sequence twice while a slower sibling produces it none, which shows up
+		// as its own sequence numbers running backwards.
+		std::vector<std::unique_ptr<std::binary_semaphore>> beginFrame;
+		beginFrame.reserve(workers);
+		for(unsigned w = 0; w < workers; ++w)
+			beginFrame.push_back(std::unique_ptr<std::binary_semaphore>(new std::binary_semaphore(0)));
+
 		std::counting_semaphore<> endFrame(0);
 		std::atomic<unsigned> currentFrame(0);
 		std::atomic<bool> stop(false);
@@ -184,7 +193,7 @@ namespace cge::test
 			threads.emplace_back([&, w]() {
 				while(true)
 				{
-					beginFrame.acquire();
+					beginFrame[w]->acquire();
 					if(stop.load(std::memory_order_acquire))
 						break;
 
@@ -202,7 +211,8 @@ namespace cge::test
 		{
 			currentFrame.store(frame, std::memory_order_release);
 			for(unsigned w = 0; w < workers; ++w)
-				beginFrame.release();
+				beginFrame[w]->release();
+
 			unsigned reported = 0;
 			for(unsigned w = 0; w < workers; ++w)
 			{
@@ -231,7 +241,7 @@ namespace cge::test
 
 		stop.store(true, std::memory_order_release);
 		for(unsigned w = 0; w < workers; ++w)
-			beginFrame.release();
+			beginFrame[w]->release();
 		for(std::thread &t : threads)
 			t.join();
 		return completed;
