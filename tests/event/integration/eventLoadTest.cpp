@@ -12,8 +12,8 @@ namespace cge::test
 {
 	namespace
 	{
-		const unsigned kPushesPerWorkerPerFrame = 512;
-		const unsigned kFrameCount = 32;
+		const unsigned pushesPerWorkerPerFrame = 512;
+		const unsigned frameCount = 32;
 	}
 
 	EventLoadTest::EventLoadTest(const DispatcherFlavor &flavor)
@@ -57,7 +57,7 @@ namespace cge::test
 		const unsigned workers = loadWorkerCount();
 
 		const bool completed = runPersistentFrameGated("EventLoadTest.FrameGated.Workers",
-			workers, kFrameCount, kPushesPerWorkerPerFrame,
+			workers, frameCount, pushesPerWorkerPerFrame,
 			[&](unsigned frame, unsigned worker, unsigned seq) {
 				const int payload = makePayload(frame, worker, seq);
 				sent.record(payload);
@@ -101,10 +101,10 @@ namespace cge::test
 		harness.dispatcher().dispatchCommands();
 
 		const unsigned workers = loadWorkerCount();
-		const unsigned perWorker = kPushesPerWorkerPerFrame / 2;
+		const unsigned perWorker = pushesPerWorkerPerFrame / 2;
 
 		const bool completed = runPersistentFrameGated("EventLoadTest.FrameGated.Cascade",
-			workers, kFrameCount, perWorker,
+			workers, frameCount, perWorker,
 			[&](unsigned frame, unsigned worker, unsigned seq) {
 				const int payload = makePayload(frame, worker, seq);
 				sent.record(payload);
@@ -165,7 +165,7 @@ namespace cge::test
 		const unsigned churnPushes = 64;
 
 		const bool completed = runPersistentFrameGated("EventLoadTest.FrameGated.Churn",
-			workers, kFrameCount, kPushesPerWorkerPerFrame,
+			workers, frameCount, pushesPerWorkerPerFrame,
 			[&](unsigned frame, unsigned worker, unsigned seq) {
 				const int payload = makePayload(frame, worker, seq);
 				sent.record(payload);
@@ -206,7 +206,7 @@ namespace cge::test
 
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 		const unsigned workers = loadWorkerCount();
-		const unsigned pushesPerWorker = kPushesPerWorkerPerFrame * kFrameCount;
+		const unsigned pushesPerWorker = pushesPerWorkerPerFrame * frameCount;
 
 		std::vector<std::thread> threads;
 		threads.reserve(workers);
@@ -216,8 +216,8 @@ namespace cge::test
 				for(unsigned i = 0; i < pushesPerWorker; ++i)
 				{
 					// Frame slot folded into the high bits via i / perFrame for uniqueness.
-					const unsigned frame = i / kPushesPerWorkerPerFrame;
-					const unsigned seq = i % kPushesPerWorkerPerFrame;
+					const unsigned frame = i / pushesPerWorkerPerFrame;
+					const unsigned seq = i % pushesPerWorkerPerFrame;
 					const int payload = makePayload(frame, w, seq);
 					sent.record(payload);
 					broadcaster.broadcast(channel, payload);
@@ -225,7 +225,7 @@ namespace cge::test
 			});
 		}
 
-		for(unsigned frame = 0; frame < kFrameCount; ++frame)
+		for(unsigned frame = 0; frame < frameCount; ++frame)
 			harness.dispatcher().dispatchEvents();
 
 		for(std::thread &t : threads)
@@ -261,8 +261,8 @@ namespace cge::test
 		harness.dispatcher().dispatchCommands();
 
 		const unsigned workers = loadWorkerCount();
-		const unsigned perFrame = kPushesPerWorkerPerFrame / 2;
-		const unsigned pushesPerWorker = perFrame * kFrameCount;
+		const unsigned perFrame = pushesPerWorkerPerFrame / 2;
+		const unsigned pushesPerWorker = perFrame * frameCount;
 
 		std::vector<std::thread> threads;
 		for(unsigned w = 0; w < workers; ++w)
@@ -279,7 +279,7 @@ namespace cge::test
 			});
 		}
 
-		for(unsigned frame = 0; frame < kFrameCount; ++frame)
+		for(unsigned frame = 0; frame < frameCount; ++frame)
 			harness.dispatcher().dispatchEvents();
 
 		for(std::thread &t : threads)

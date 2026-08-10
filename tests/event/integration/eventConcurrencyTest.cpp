@@ -16,11 +16,11 @@ namespace cge::test
 	{
 		// Batch size for churn payload packing. Keeps sequence values inside the
 		// field makePayload reserves for them.
-		const unsigned kPushesPerBatch = 512;
+		const unsigned pushesPerBatch = 512;
 
 		// The liveness probe finishes in well under a second when the locks are
 		// sound. Anything near this bound is already a wedge.
-		const std::chrono::seconds kLivenessDeadline(30);
+		const std::chrono::seconds livenessDeadline(30);
 	}
 
 	EventConcurrencyTest::EventConcurrencyTest(const DispatcherFlavor &flavor)
@@ -58,7 +58,7 @@ namespace cge::test
 	{
 		const char *label = "EventConcurrencyTest.Liveness";
 
-		const IsolatedOutcome<bool> outcome = runIsolated<bool>(label, kLivenessDeadline, [this]() {
+		const IsolatedOutcome<bool> outcome = runIsolated<bool>(label, livenessDeadline, [this]() {
 			EventHarness harness(flavor(), "liveness-dispatcher");
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("liveness");
 
@@ -173,7 +173,7 @@ namespace cge::test
 			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const unsigned producers = 2;
 			const unsigned churners = 2;
-			const unsigned perProducer = kPushesPerBatch * 8;
+			const unsigned perProducer = pushesPerBatch * 8;
 			const unsigned churnCycles = 256;
 			std::atomic<unsigned> runningWorkers(producers + churners);
 
@@ -188,7 +188,7 @@ namespace cge::test
 				threads.emplace_back([&, p]() {
 					for(unsigned i = 0; i < perProducer; ++i)
 					{
-						const int payload = makePayload(i / kPushesPerBatch, p, i % kPushesPerBatch);
+						const int payload = makePayload(i / pushesPerBatch, p, i % pushesPerBatch);
 						sent.record(payload);
 						broadcaster.broadcast(channel, payload);
 					}

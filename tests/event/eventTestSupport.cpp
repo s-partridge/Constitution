@@ -13,10 +13,10 @@ namespace cge::test
 	{
 		// Payload packing. Generous for the volumes the load suites use:
 		// frames * workers * seq fits well inside 32 bits.
-		const unsigned kFrameShift = 20;
-		const unsigned kWorkerShift = 12;
-		const unsigned kWorkerMask = 0xFF;
-		const unsigned kSeqMask = 0xFFF;
+		const unsigned frameShift = 20;
+		const unsigned workerShift = 12;
+		const unsigned workerMask = 0xFF;
+		const unsigned seqMask = 0xFFF;
 	}
 
 	const std::vector<DispatcherFlavor> &dispatcherFlavors()
@@ -36,22 +36,22 @@ namespace cge::test
 
 	int makePayload(unsigned frame, unsigned worker, unsigned seq)
 	{
-		return static_cast<int>((frame << kFrameShift) | (worker << kWorkerShift) | seq);
+		return static_cast<int>((frame << frameShift) | (worker << workerShift) | seq);
 	}
 
 	unsigned frameFromPayload(int payload)
 	{
-		return static_cast<unsigned>(payload) >> kFrameShift;
+		return static_cast<unsigned>(payload) >> frameShift;
 	}
 
 	unsigned workerFromPayload(int payload)
 	{
-		return (static_cast<unsigned>(payload) >> kWorkerShift) & kWorkerMask;
+		return (static_cast<unsigned>(payload) >> workerShift) & workerMask;
 	}
 
 	unsigned seqFromPayload(int payload)
 	{
-		return static_cast<unsigned>(payload) & kSeqMask;
+		return static_cast<unsigned>(payload) & seqMask;
 	}
 
 	unsigned smokeProducerCount()
@@ -105,7 +105,7 @@ namespace cge::test
 		{
 			const int payload = received[i];
 			const unsigned worker = workerFromPayload(payload);
-			const unsigned position = (frameFromPayload(payload) << kFrameShift) | seqFromPayload(payload);
+			const unsigned position = (frameFromPayload(payload) << frameShift) | seqFromPayload(payload);
 
 			std::unordered_map<unsigned, unsigned>::iterator it = lastSeen.find(worker);
 			if(it != lastSeen.end() && position < it->second)

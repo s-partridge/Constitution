@@ -20,7 +20,7 @@ namespace cge::test
 		// by accident. Its numeric position is arbitrary and will not survive an
 		// enumerator being inserted rather than appended, which is part of what
 		// the TODO is here to catch.
-		const cge::event::RegistrationResult kRejectedPlaceholder =
+		const cge::event::RegistrationResult rejectedPlaceholder =
 			static_cast<cge::event::RegistrationResult>(100);
 
 		// Counts its own live instances, so a queue torn down with events still
@@ -90,7 +90,7 @@ namespace cge::test
 				listener.requestRegister(channel, [](const int &) {});
 
 			ASSERT_FALSE(result == cge::event::RegistrationResult::Failure);
-			ASSERT_TRUE(result == kRejectedPlaceholder);
+			ASSERT_TRUE(result == rejectedPlaceholder);
 		});
 
 		subtest("RegisterAfterTearDown", [&]() {
@@ -103,7 +103,7 @@ namespace cge::test
 				listener.requestRegister(channel, [](const int &) {});
 
 			ASSERT_FALSE(result == cge::event::RegistrationResult::Failure);
-			ASSERT_TRUE(result == kRejectedPlaceholder);
+			ASSERT_TRUE(result == rejectedPlaceholder);
 		});
 
 		// Unregistration stays valid while inactive: a listener must always be
@@ -119,7 +119,7 @@ namespace cge::test
 
 			const cge::event::RegistrationResult result = listener.requestUnregister(channel);
 			ASSERT_FALSE(result == cge::event::RegistrationResult::Failure);
-			ASSERT_FALSE(result == kRejectedPlaceholder);
+			ASSERT_FALSE(result == rejectedPlaceholder);
 		});
 
 		// Dispatch always drains, so a parked event would surface on the next
