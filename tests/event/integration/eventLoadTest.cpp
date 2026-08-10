@@ -45,12 +45,12 @@ namespace cge::test
 	void EventLoadTest::frameGatedWorkers()
 	{
 		EventHarness harness(flavor(), "load-gated-dispatcher");
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("load-gated");
+		const cge::event::EventChannel<LoadPayload> &channel = harness.registry.getChannel<LoadPayload>("load-gated");
 		PayloadLog sent;
 		PayloadLog received;
 
 		cge::event::ListenerBase listener(&harness.dispatcher());
-		listener.requestRegister(channel, [&received](const int &v) { received.record(v); });
+		listener.requestRegister(channel, [&received](const LoadPayload &v) { received.record(v); });
 		harness.dispatcher().dispatchCommands();
 
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
@@ -59,7 +59,7 @@ namespace cge::test
 		const bool completed = runPersistentFrameGated("EventLoadTest.FrameGated.Workers",
 			workers, frameCount, pushesPerWorkerPerFrame,
 			[&](unsigned frame, unsigned worker, unsigned seq) {
-				const int payload = makePayload(frame, worker, seq);
+				const LoadPayload payload(frame, worker, seq);
 				sent.record(payload);
 				broadcaster.broadcast(channel, payload);
 			},
@@ -80,8 +80,8 @@ namespace cge::test
 	void EventLoadTest::frameGatedCascade()
 	{
 		EventHarness harness(flavor(), "load-gated-casc-dispatcher");
-		const cge::event::EventChannel<int> &primary = harness.registry.getChannel<int>("load-gated-casc-a");
-		const cge::event::EventChannel<int> &secondary = harness.registry.getChannel<int>("load-gated-casc-b");
+		const cge::event::EventChannel<LoadPayload> &primary = harness.registry.getChannel<LoadPayload>("load-gated-casc-a");
+		const cge::event::EventChannel<LoadPayload> &secondary = harness.registry.getChannel<LoadPayload>("load-gated-casc-b");
 		PayloadLog sent;
 		PayloadLog receivedPrimary;
 		PayloadLog receivedSecondary;
@@ -90,12 +90,12 @@ namespace cge::test
 		cge::event::ListenerBase primaryListener(&harness.dispatcher());
 		cge::event::ListenerBase secondaryListener(&harness.dispatcher());
 
-		primaryListener.requestRegister(primary, [&](const int &v) {
+		primaryListener.requestRegister(primary, [&](const LoadPayload &v) {
 			receivedPrimary.record(v);
 			// Cascade preserves the same payload identity on the secondary channel.
 			broadcaster.broadcast(secondary, v);
 		});
-		secondaryListener.requestRegister(secondary, [&](const int &v) {
+		secondaryListener.requestRegister(secondary, [&](const LoadPayload &v) {
 			receivedSecondary.record(v);
 		});
 		harness.dispatcher().dispatchCommands();
@@ -106,7 +106,7 @@ namespace cge::test
 		const bool completed = runPersistentFrameGated("EventLoadTest.FrameGated.Cascade",
 			workers, frameCount, perWorker,
 			[&](unsigned frame, unsigned worker, unsigned seq) {
-				const int payload = makePayload(frame, worker, seq);
+				const LoadPayload payload(frame, worker, seq);
 				sent.record(payload);
 				broadcaster.broadcast(primary, payload);
 			},
@@ -121,7 +121,7 @@ namespace cge::test
 		for(unsigned extra = 0; extra < 8; ++extra)
 			harness.dispatcher().dispatchEvents();
 
-		std::vector<int> expected = sent.snapshot();
+		std::vector<LoadPayload> expected = sent.snapshot();
 		assertPayloadsPreserved(expected, receivedPrimary.snapshot());
 		assertPayloadsPreserved(expected, receivedSecondary.snapshot());
 
@@ -142,13 +142,13 @@ namespace cge::test
 	void EventLoadTest::frameGatedChurn()
 	{
 		EventHarness harness(flavor(), "load-gated-churn-dispatcher");
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("load-gated-churn");
+		const cge::event::EventChannel<LoadPayload> &channel = harness.registry.getChannel<LoadPayload>("load-gated-churn");
 		const cge::event::EventChannel<int> &churned = harness.registry.getChannel<int>("load-gated-churn-target");
 		PayloadLog sent;
 		PayloadLog received;
 
 		cge::event::ListenerBase stable(&harness.dispatcher());
-		stable.requestRegister(channel, [&received](const int &v) { received.record(v); });
+		stable.requestRegister(channel, [&received](const LoadPayload &v) { received.record(v); });
 		harness.dispatcher().dispatchCommands();
 
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
@@ -167,7 +167,7 @@ namespace cge::test
 		const bool completed = runPersistentFrameGated("EventLoadTest.FrameGated.Churn",
 			workers, frameCount, pushesPerWorkerPerFrame,
 			[&](unsigned frame, unsigned worker, unsigned seq) {
-				const int payload = makePayload(frame, worker, seq);
+				const LoadPayload payload(frame, worker, seq);
 				sent.record(payload);
 				broadcaster.broadcast(channel, payload);
 
@@ -196,12 +196,12 @@ namespace cge::test
 	void EventLoadTest::continuousWorkers()
 	{
 		EventHarness harness(flavor(), "load-cont-dispatcher");
-		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("load-cont");
+		const cge::event::EventChannel<LoadPayload> &channel = harness.registry.getChannel<LoadPayload>("load-cont");
 		PayloadLog sent;
 		PayloadLog received;
 
 		cge::event::ListenerBase listener(&harness.dispatcher());
-		listener.requestRegister(channel, [&received](const int &v) { received.record(v); });
+		listener.requestRegister(channel, [&received](const LoadPayload &v) { received.record(v); });
 		harness.dispatcher().dispatchCommands();
 
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
@@ -218,7 +218,7 @@ namespace cge::test
 					// Frame slot folded into the high bits via i / perFrame for uniqueness.
 					const unsigned frame = i / pushesPerWorkerPerFrame;
 					const unsigned seq = i % pushesPerWorkerPerFrame;
-					const int payload = makePayload(frame, w, seq);
+					const LoadPayload payload(frame, w, seq);
 					sent.record(payload);
 					broadcaster.broadcast(channel, payload);
 				}
@@ -241,8 +241,8 @@ namespace cge::test
 	void EventLoadTest::continuousCascade()
 	{
 		EventHarness harness(flavor(), "load-cont-casc-dispatcher");
-		const cge::event::EventChannel<int> &primary = harness.registry.getChannel<int>("load-cont-casc-a");
-		const cge::event::EventChannel<int> &secondary = harness.registry.getChannel<int>("load-cont-casc-b");
+		const cge::event::EventChannel<LoadPayload> &primary = harness.registry.getChannel<LoadPayload>("load-cont-casc-a");
+		const cge::event::EventChannel<LoadPayload> &secondary = harness.registry.getChannel<LoadPayload>("load-cont-casc-b");
 		PayloadLog sent;
 		PayloadLog receivedPrimary;
 		PayloadLog receivedSecondary;
@@ -251,11 +251,11 @@ namespace cge::test
 		cge::event::ListenerBase primaryListener(&harness.dispatcher());
 		cge::event::ListenerBase secondaryListener(&harness.dispatcher());
 
-		primaryListener.requestRegister(primary, [&](const int &v) {
+		primaryListener.requestRegister(primary, [&](const LoadPayload &v) {
 			receivedPrimary.record(v);
 			broadcaster.broadcast(secondary, v);
 		});
-		secondaryListener.requestRegister(secondary, [&](const int &v) {
+		secondaryListener.requestRegister(secondary, [&](const LoadPayload &v) {
 			receivedSecondary.record(v);
 		});
 		harness.dispatcher().dispatchCommands();
@@ -272,7 +272,7 @@ namespace cge::test
 				{
 					const unsigned frame = i / perFrame;
 					const unsigned seq = i % perFrame;
-					const int payload = makePayload(frame, w, seq);
+					const LoadPayload payload(frame, w, seq);
 					sent.record(payload);
 					broadcaster.broadcast(primary, payload);
 				}
@@ -288,7 +288,7 @@ namespace cge::test
 		for(unsigned extra = 0; extra < 8; ++extra)
 			harness.dispatcher().dispatchEvents();
 
-		std::vector<int> expected = sent.snapshot();
+		std::vector<LoadPayload> expected = sent.snapshot();
 		assertPayloadsPreserved(expected, receivedPrimary.snapshot());
 		assertPayloadsPreserved(expected, receivedSecondary.snapshot());
 	}

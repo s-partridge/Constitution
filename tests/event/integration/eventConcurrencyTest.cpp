@@ -162,12 +162,12 @@ namespace cge::test
 	{
 		subtest("ConcurrentChurn", [&]() {
 			EventHarness harness(flavor(), "churn-dispatcher");
-			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("churn");
+			const cge::event::EventChannel<LoadPayload> &channel = harness.registry.getChannel<LoadPayload>("churn");
 			PayloadLog sent;
 			PayloadLog received;
 
 			cge::event::ListenerBase stable(&harness.dispatcher());
-			stable.requestRegister(channel, [&received](const int &v) { received.record(v); });
+			stable.requestRegister(channel, [&received](const LoadPayload &v) { received.record(v); });
 			harness.dispatcher().dispatchCommands();
 
 			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
@@ -188,7 +188,7 @@ namespace cge::test
 				threads.emplace_back([&, p]() {
 					for(unsigned i = 0; i < perProducer; ++i)
 					{
-						const int payload = makePayload(i / pushesPerBatch, p, i % pushesPerBatch);
+						const LoadPayload payload(i / pushesPerBatch, p, i % pushesPerBatch);
 						sent.record(payload);
 						broadcaster.broadcast(channel, payload);
 					}
@@ -202,7 +202,7 @@ namespace cge::test
 					for(unsigned i = 0; i < churnCycles; ++i)
 					{
 						// Results ignored: Duplicate/NotFound are legal under churn.
-						churner->requestRegister(channel, [](const int &) {});
+						churner->requestRegister(channel, [](const LoadPayload &) {});
 						std::this_thread::yield();
 						churner->requestUnregister(channel);
 						std::this_thread::yield();

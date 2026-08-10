@@ -217,17 +217,62 @@ namespace cge::test
 		}
 	};
 
+	// The load suites need each pushed value to say who sent it and when, since
+	// the handler receives the payload and nothing else. Ordering is
+	// lexicographic over frame, worker and sequence: it sorts for the set
+	// comparison, and within one worker it reduces to frame then sequence,
+	// which is what the per-producer ordering check asks.
+	struct LoadPayload
+	{
+		unsigned frame;
+		unsigned worker;
+		unsigned seq;
+
+		LoadPayload()
+			: frame(0)
+			, worker(0)
+			, seq(0)
+		{
+		}
+
+		LoadPayload(unsigned frame, unsigned worker, unsigned seq)
+			: frame(frame)
+			, worker(worker)
+			, seq(seq)
+		{
+		}
+	};
+
+	inline bool operator==(const LoadPayload &lhs, const LoadPayload &rhs)
+	{
+		return lhs.frame == rhs.frame && lhs.worker == rhs.worker && lhs.seq == rhs.seq;
+	}
+
+	inline bool operator<(const LoadPayload &lhs, const LoadPayload &rhs)
+	{
+		if(lhs.frame != rhs.frame)
+			return lhs.frame < rhs.frame;
+		if(lhs.worker != rhs.worker)
+			return lhs.worker < rhs.worker;
+		return lhs.seq < rhs.seq;
+	}
+
+	inline bool operator>=(const LoadPayload &lhs, const LoadPayload &rhs)
+	{
+		return !(lhs < rhs);
+	}
+
 	// Thread-safe reference / receive log for the load suites.
 	class PayloadLog
 	{
 	public:
-		void record(int value)
+		void record(const LoadPayload &value)
 		{
 			std::lock_guard<std::mutex> lock(m_mutex);
 			m_values.push_back(value);
 		}
 
-		std::vector<int> snapshot()
+		std::vector<LoadPayload> snapshot()
 		{
 			std::lock_guard<std::mutex> lock(m_mutex);
 			return m_values;
@@ -235,17 +280,8 @@ namespace cge::test
 
 	private:
 		std::mutex m_mutex;
-		std::vector<int> m_values;
+		std::vector<LoadPayload> m_values;
 	};
-
-	// Unique payload: frame, worker and sequence stay recoverable from the
-	// value, which is what lets the load suites check per-producer ordering
-	// as well as set equality.
-	int makePayload(unsigned frame, unsigned worker, unsigned seq);
-
-	unsigned frameFromPayload(int payload);
-	unsigned workerFromPayload(int payload);
-	unsigned seqFromPayload(int payload);
 
 	// Worker counts: light concurrent smoke versus frame-scale load.
 	unsigned smokeProducerCount();
@@ -400,13 +436,13 @@ namespace cge::test
 		// Sorted comparison: arrival order across producers is not a contract,
 		// so only set equality is required here. Asserts record and continue,
 		// so the scan stays in bounds whether or not the size check passed.
-		void assertPayloadsPreserved(const std::vector<int> &sent, const std::vector<int> &received);
+		void assertPayloadsPreserved(const std::vector<LoadPayload> &sent, const std::vector<LoadPayload> &received);
 
 		// Per-producer ordering is a contract even though cross-producer
 		// ordering is not: events from one producer must arrive in the order
 		// that producer sent them. Checks each worker's subsequence in
 		// isolation, ignoring how they interleave.
-		void assertProducerOrderPreserved(const std::vector<int> &received);
+		void assertProducerOrderPreserved(const std::vector<LoadPayload> &received);
 	};
 }
 

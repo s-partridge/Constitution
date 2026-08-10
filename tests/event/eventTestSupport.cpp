@@ -9,16 +9,6 @@
 
 namespace cge::test
 {
-	namespace
-	{
-		// Payload packing. Generous for the volumes the load suites use:
-		// frames * workers * seq fits well inside 32 bits.
-		const unsigned frameShift = 20;
-		const unsigned workerShift = 12;
-		const unsigned workerMask = 0xFF;
-		const unsigned seqMask = 0xFFF;
-	}
-
 	const std::vector<DispatcherFlavor> &dispatcherFlavors()
 	{
 		static const std::vector<DispatcherFlavor> flavors = []() {
@@ -32,26 +22,6 @@ namespace cge::test
 		}();
 
 		return flavors;
-	}
-
-	int makePayload(unsigned frame, unsigned worker, unsigned seq)
-	{
-		return static_cast<int>((frame << frameShift) | (worker << workerShift) | seq);
-	}
-
-	unsigned frameFromPayload(int payload)
-	{
-		return static_cast<unsigned>(payload) >> frameShift;
-	}
-
-	unsigned workerFromPayload(int payload)
-	{
-		return (static_cast<unsigned>(payload) >> workerShift) & workerMask;
-	}
-
-	unsigned seqFromPayload(int payload)
-	{
-		return static_cast<unsigned>(payload) & seqMask;
 	}
 
 	unsigned smokeProducerCount()
@@ -74,19 +44,19 @@ namespace cge::test
 		return hc;
 	}
 
-	void EventLoadSuite::assertPayloadsPreserved(const std::vector<int> &sent, const std::vector<int> &received)
+	void EventLoadSuite::assertPayloadsPreserved(const std::vector<LoadPayload> &sent, const std::vector<LoadPayload> &received)
 	{
 		ASSERT_EQUAL(received.size(), sent.size());
 
-		std::vector<int> expected = sent;
-		std::vector<int> actual = received;
+		std::vector<LoadPayload> expected = sent;
+		std::vector<LoadPayload> actual = received;
 		std::sort(expected.begin(), expected.end());
 		std::sort(actual.begin(), actual.end());
 
 		const size_t bound = std::min(expected.size(), actual.size());
 		for(size_t i = 0; i < bound; ++i)
 		{
-			if(expected[i] != actual[i])
+			if(!(expected[i] == actual[i]))
 			{
 				// Report the first divergence rather than every one of them.
 				ASSERT_EQUAL(actual[i], expected[i]);
@@ -95,28 +65,26 @@ namespace cge::test
 		}
 	}
 
-	void EventLoadSuite::assertProducerOrderPreserved(const std::vector<int> &received)
+	void EventLoadSuite::assertProducerOrderPreserved(const std::vector<LoadPayload> &received)
 	{
-		// Last (frame, seq) seen per worker, packed back into a single value so
-		// the comparison is a plain ordering test.
-		std::unordered_map<unsigned, unsigned> lastSeen;
+		// Last payload seen per worker. Within a worker the ordering reduces to
+		// frame then sequence, so comparing whole payloads is the ordering test.
+		std::unordered_map<unsigned, LoadPayload> lastSeen;
 
 		for(size_t i = 0; i < received.size(); ++i)
 		{
-			const int payload = received[i];
-			const unsigned worker = workerFromPayload(payload);
-			const unsigned position = (frameFromPayload(payload) << frameShift) | seqFromPayload(payload);
+			const LoadPayload &payload = received[i];
 
-			std::unordered_map<unsigned, unsigned>::iterator it = lastSeen.find(worker);
-			if(it != lastSeen.end() && position < it->second)
+			std::unordered_map<unsigned, LoadPayload>::iterator it = lastSeen.find(payload.worker);
+			if(it != lastSeen.end() && payload < it->second)
 			{
 				// One report per run: a reordering usually cascades, and the
 				// first offending pair is the one worth reading.
-				ASSERT_GREATER_EQUAL(position, it->second);
+				ASSERT_GREATER_EQUAL(payload, it->second);
 				return;
 			}
 
-			lastSeen[worker] = position;
+			lastSeen[payload.worker] = payload;
 		}
 	}
 }
