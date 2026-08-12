@@ -57,22 +57,21 @@ namespace cge::test
 		}
 
 	protected:
-		bool onPushEvent(const cge::event::EventChannelBase &channel, std::unique_ptr<cge::event::EventBase> event) override
+		event::DispatchStatus onPushEvent(const cge::event::EventChannelBase &channel, std::unique_ptr<cge::event::EventBase> event) override
 		{
 			if(!m_acceptPushes)
-				return false;
-
-			m_events.push_back(cge::event::EventPair(channel.id(), std::move(event)));
-			return true;
+				return event::DispatchStatus::Failure;
+			m_events.emplace_back(cge::event::EventPair(channel.id(), std::move(event)));
+			return event::DispatchStatus::Pending;
 		}
 
-		bool onPushCommand(const cge::event::EventChannelBase &channel, std::unique_ptr<cge::event::EventBase> event) override
+		event::DispatchStatus onPushCommand(const cge::event::EventChannelBase &channel, std::unique_ptr<cge::event::EventBase> event) override
 		{
 			if(!m_acceptPushes)
-				return false;
+				return event::DispatchStatus::Failure;
 
-			m_commands.push_back(cge::event::EventPair(channel.id(), std::move(event)));
-			return true;
+			m_commands.emplace_back(cge::event::EventPair(channel.id(), std::move(event)));
+			return event::DispatchStatus::Pending;
 		}
 
 	private:

@@ -74,7 +74,7 @@ namespace cge::test
 			harness.dispatcher().dispatchCommands();
 
 			cge::event::CommanderBase commander(&harness.dispatcher());
-			ASSERT_FALSE(commander.command(channel, 99));
+			ASSERT_EQUAL(commander.command(channel, 99), event::DispatchStatus::Failure);
 
 			harness.dispatcher().dispatchCommands();
 			harness.dispatcher().dispatchEvents();
@@ -87,7 +87,7 @@ namespace cge::test
 		// calling code is wrong. The value assertions elsewhere stay correct
 		// under either signature, so the coarseness is only visible on the type.
 		// decltype leaves the call unevaluated, so nothing is pushed here.
-		subtest("ResultType", [&]() {
+		subtest("ResultType", "Ensure Commander.command() does not return boolean type", [&]() {
 			EventHarness harness(flavor(), "cmd-result-type-dispatcher");
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("cmd-result-type");
 			cge::event::CommanderBase commander(&harness.dispatcher());

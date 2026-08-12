@@ -30,7 +30,7 @@ namespace cge::event
 		virtual ~ListenerBase() = default;
 
 		template <typename PayloadType, std::invocable<const PayloadType &> CallbackType>
-		RegistrationResult requestRegister(const EventChannel<PayloadType> &channel, CallbackType callback)
+		DispatchStatus requestRegister(const EventChannel<PayloadType> &channel, CallbackType callback)
 		{
 			ChannelId id = channel.id();
 			{
@@ -44,7 +44,7 @@ namespace cge::event
 
 				if(it != m_pendingHandlers.end())
 				{
-					return RegistrationResult::Duplicate;
+					return DispatchStatus::Duplicate;
 				}
 
 				HandlerPair handlerPair(id, [callback](const EventBase &event) {
@@ -58,7 +58,7 @@ namespace cge::event
 
 		// Version of subscribe that requires channel, source object, and raw function pointer
 		template <typename PayloadType, typename SourceType, std::invocable<SourceType*, const PayloadType&> CallbackType>
-		RegistrationResult requestRegister(const EventChannel<PayloadType> &channel, SourceType *self, CallbackType callback)
+		DispatchStatus requestRegister(const EventChannel<PayloadType> &channel, SourceType *self, CallbackType callback)
 		{
 			ChannelId id = channel.id();
 			{
@@ -71,7 +71,7 @@ namespace cge::event
 					});
 				if(it != m_pendingHandlers.end())
 				{
-					return RegistrationResult::Duplicate;
+					return DispatchStatus::Duplicate;
 				}
 				HandlerPair handlerPair(id, [self, callback](const EventBase &event) {
 					const Event<PayloadType> &typedEvent = static_cast<const Event<PayloadType> &>(event);
@@ -83,7 +83,7 @@ namespace cge::event
 		}
 
 		template<typename PayloadType>
-		RegistrationResult requestUnregister(const EventChannel<PayloadType>& channel)
+		DispatchStatus requestUnregister(const EventChannel<PayloadType>& channel)
 		{
 			ChannelId id = channel.id();
 			{
@@ -112,8 +112,8 @@ namespace cge::event
 
 		DispatcherBase *m_dispatcher;
 
-		void finalizeRegistration(ChannelId channelId, RegistrationResult result);
-		void finalizeUnregistration(ChannelId channelId, RegistrationResult result);
+		void finalizeRegistration(ChannelId channelId, DispatchStatus result);
+		void finalizeUnregistration(ChannelId channelId, DispatchStatus result);
 	};
 }
 

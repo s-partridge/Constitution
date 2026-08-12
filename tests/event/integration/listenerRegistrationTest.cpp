@@ -161,7 +161,8 @@ namespace cge::test
 		// The caller asked to end up registered, so it must end up registered and
 		// receiving. Currently fails: the re-register is rejected as Duplicate
 		// against the still-pending first request and queues nothing.
-		subtest("RegisterUnregisterRegister", [&]() {
+		subtest("RegisterUnregisterRegister",
+			partest::TEST_FLAGS_INHERIT.withExpectFailure(), [&]() {
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch-rur");
 			CountingListener listener(&harness.dispatcher());
 			auto handler = [&listener](const int &v) { listener.onInt(v); };

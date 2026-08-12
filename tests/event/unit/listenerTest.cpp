@@ -64,8 +64,7 @@ namespace cge::test
 		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("ch");
 		cge::event::ListenerBase listener(&dispatcher);
 
-		ASSERT_TRUE(listener.requestRegister(channel, [](const int &) {})
-			== cge::event::RegistrationResult::Pending);
+		ASSERT_EQUAL(listener.requestRegister(channel, [](const int &) {}), cge::event::DispatchStatus::Pending);
 	}
 
 	void ListenerUnitTest::queuesOneCommand()
@@ -92,7 +91,7 @@ namespace cge::test
 		listener.requestRegister(channel, [](const int &) {});
 
 		ASSERT_TRUE(listener.requestRegister(channel, [](const int &) {})
-			== cge::event::RegistrationResult::Duplicate);
+			== cge::event::DispatchStatus::Duplicate);
 	}
 
 	void ListenerUnitTest::duplicateQueuesNothing()
@@ -119,7 +118,7 @@ namespace cge::test
 		cge::event::ListenerBase listener(&dispatcher);
 
 		ASSERT_TRUE(listener.requestRegister(channel, [](const int &) {})
-			== cge::event::RegistrationResult::Failure);
+			== cge::event::DispatchStatus::Failure);
 	}
 
 	// A refused registration must leave the listener able to try again. Expected
@@ -138,8 +137,7 @@ namespace cge::test
 		listener.requestRegister(channel, [](const int &) {});
 		dispatcher.setAcceptPushes(true);
 
-		ASSERT_TRUE(listener.requestRegister(channel, [](const int &) {})
-			== cge::event::RegistrationResult::Pending);
+		ASSERT_EQUAL(listener.requestRegister(channel, [](const int &) {}), cge::event::DispatchStatus::Pending);
 	}
 
 	void ListenerUnitTest::unregisterClearsPending()
@@ -154,8 +152,7 @@ namespace cge::test
 		listener.requestUnregister(channel);
 
 		// The pending entry is gone, so this is a fresh request rather than a duplicate.
-		ASSERT_TRUE(listener.requestRegister(channel, [](const int &) {})
-			== cge::event::RegistrationResult::Pending);
+		ASSERT_EQUAL(listener.requestRegister(channel, [](const int &) {}), cge::event::DispatchStatus::Pending);
 	}
 
 	void ListenerUnitTest::unregisterUnknown()
@@ -170,8 +167,7 @@ namespace cge::test
 
 		// What the call returns is unsettled, see D1 in docs/test-refactor.md.
 		// What is settled is that it must not poison the listener.
-		ASSERT_TRUE(listener.requestRegister(channel, [](const int &) {})
-			== cge::event::RegistrationResult::Pending);
+		ASSERT_EQUAL(listener.requestRegister(channel, [](const int &) {}), cge::event::DispatchStatus::Pending);
 	}
 
 	// Re-registering a listener that is already registered is the same caller
@@ -188,9 +184,7 @@ namespace cge::test
 
 		listener.requestRegister(channel, [](const int &) {});
 		dispatcher.dispatchCommands();
-
-		ASSERT_TRUE(listener.requestRegister(channel, [](const int &) {})
-			== cge::event::RegistrationResult::Duplicate);
+		ASSERT_EQUAL(listener.requestRegister(channel, [](const int &) {}), cge::event::DispatchStatus::Duplicate);
 	}
 
 	void ListenerUnitTest::handlerNotLiveYet()

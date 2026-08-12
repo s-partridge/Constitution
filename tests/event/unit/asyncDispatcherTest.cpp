@@ -102,7 +102,7 @@ namespace cge::test
 		dispatcher.setUp();
 
 		ASSERT_TRUE(dispatcher.active());
-		ASSERT_TRUE(dispatcher.onPushEvent(channel, makeEvent(1)));
+		ASSERT_EQUAL(dispatcher.onPushEvent(channel, makeEvent(1)), cge::event::DispatchStatus::Pending);
 	}
 
 	void AsyncDispatcherUnitTest::repeatedSetUp()
@@ -115,7 +115,7 @@ namespace cge::test
 		dispatcher.setUp();
 
 		ASSERT_TRUE(dispatcher.active());
-		ASSERT_TRUE(dispatcher.onPushEvent(channel, makeEvent(1)));
+		ASSERT_EQUAL(dispatcher.onPushEvent(channel, makeEvent(1)), cge::event::DispatchStatus::Pending);
 		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(1));
 	}
 
@@ -137,8 +137,8 @@ namespace cge::test
 		TestableAsyncDispatcher dispatcher("inactive", &registry);
 		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("inactive-ch");
 
-		ASSERT_FALSE(dispatcher.onPushEvent(channel, makeEvent(1)));
-		ASSERT_FALSE(dispatcher.onPushCommand(channel, makeEvent(1)));
+		ASSERT_EQUAL(dispatcher.onPushEvent(channel, makeEvent(1)), cge::event::DispatchStatus::NotReady);
+		ASSERT_EQUAL(dispatcher.onPushCommand(channel, makeEvent(1)), cge::event::DispatchStatus::NotReady);
 	}
 
 	void AsyncDispatcherUnitTest::inactiveQueuesNothing()
@@ -161,7 +161,7 @@ namespace cge::test
 		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("event-push-ch");
 		dispatcher.setUp();
 
-		ASSERT_TRUE(dispatcher.onPushEvent(channel, makeEvent(1)));
+		ASSERT_EQUAL(dispatcher.onPushEvent(channel, makeEvent(1)), cge::event::DispatchStatus::Pending);
 		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(1));
 	}
 
@@ -172,7 +172,7 @@ namespace cge::test
 		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("command-push-ch");
 		dispatcher.setUp();
 
-		ASSERT_TRUE(dispatcher.onPushCommand(channel, makeEvent(1)));
+		ASSERT_EQUAL(dispatcher.onPushCommand(channel, makeEvent(1)), cge::event::DispatchStatus::Pending);
 		ASSERT_EQUAL(dispatcher.queuedCommands(), static_cast<size_t>(1));
 	}
 

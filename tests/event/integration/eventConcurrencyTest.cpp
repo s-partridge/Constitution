@@ -201,7 +201,7 @@ namespace cge::test
 				threads.emplace_back([&, churner]() {
 					for(unsigned i = 0; i < churnCycles; ++i)
 					{
-						// Results ignored: Duplicate/NotFound are legal under churn.
+						// Results ignored: Duplicate/BadInput are legal under churn.
 						churner->requestRegister(channel, [](const LoadPayload &) {});
 						std::this_thread::yield();
 						churner->requestUnregister(channel);

@@ -18,7 +18,7 @@ namespace cge::event
 		bool broadcast(const EventChannel<PayloadType> &channel, const PayloadType &payload)
 		{
 			std::unique_ptr<EventBase> event = std::make_unique<Event<PayloadType>>(payload);
-			return m_dispatcher->pushEvent(channel, std::move(event));
+			return m_dispatcher->pushEvent(channel, std::move(event)) == DispatchStatus::Pending;
 		}
 	private:
 		DispatcherBase *m_dispatcher;
@@ -33,7 +33,7 @@ namespace cge::event
 		// Returns false when the dispatcher refused the push (inactive); the
 		// command is discarded in that case, not queued for later.
 		template<typename PayloadType>
-		bool command(const EventChannel<PayloadType> &channel, const PayloadType &payload)
+		DispatchStatus command(const EventChannel<PayloadType> &channel, const PayloadType &payload)
 		{
 			std::unique_ptr<EventBase> event = std::make_unique<Event<PayloadType>>(payload);
 			return m_dispatcher->pushCommand(channel, std::move(event));

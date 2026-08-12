@@ -62,5 +62,8 @@
     <ClInclude Include="listener.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="eventTypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

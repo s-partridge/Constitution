@@ -53,23 +53,24 @@ namespace cge::event
 		}
 	}
 
-	bool AsyncDispatcher::onPushEvent(const EventChannelBase &channel, std::unique_ptr<EventBase> event)
+	DispatchStatus AsyncDispatcher::onPushEvent(const EventChannelBase &channel, std::unique_ptr<EventBase> event)
 	{
 		std::lock_guard<std::mutex> lock(m_eventQueueMutex);
 		if(!m_active)
-			return false;
+			return DispatchStatus::NotReady;
 
 		m_events.emplace_back(channel.id(), std::move(event));
-		return true;
+		return DispatchStatus::Pending;
 	}
 
-	bool AsyncDispatcher::onPushCommand(const EventChannelBase &channel, std::unique_ptr<EventBase> command)
+	DispatchStatus AsyncDispatcher::onPushCommand(const EventChannelBase &channel, std::unique_ptr<EventBase> command)
 	{
 		std::lock_guard<std::mutex> lock(m_commandQueueMutex);
-		if(!m_active)
-			return false;
+		// Only unregistration requests can only be pushed while dispatcher is inactive.
+		if(!m_active && channel.id() != m_unregistrationChannel->id())
+			return DispatchStatus::NotReady;
 
 		m_commands.emplace_back(channel.id(), std::move(command));
-		return true;
+		return DispatchStatus::Pending;
 	}
 }

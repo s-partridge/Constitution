@@ -177,7 +177,7 @@ namespace cge::test
 		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("cmd");
 		cge::event::CommanderBase commander(&dispatcher);
 
-		ASSERT_TRUE(commander.command(channel, 1));
+		ASSERT_EQUAL(commander.command(channel, 1), event::DispatchStatus::Pending);
 	}
 
 	void BroadcasterUnitTest::commandRefused()
@@ -188,7 +188,7 @@ namespace cge::test
 		cge::event::CommanderBase commander(&dispatcher);
 		dispatcher.setAcceptPushes(false);
 
-		ASSERT_FALSE(commander.command(channel, 1));
+		ASSERT_EQUAL(commander.command(channel, 1), event::DispatchStatus::Failure);
 	}
 
 	void BroadcasterUnitTest::commandRefusedQueue()

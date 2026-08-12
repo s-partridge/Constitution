@@ -20,8 +20,8 @@ namespace cge::event
 		void dispatchEvents() override;
 		void dispatchCommands() override;
 	protected:
-		bool onPushEvent(const EventChannelBase &channel, std::unique_ptr<EventBase> event) override;
-		bool onPushCommand(const EventChannelBase &channel, std::unique_ptr<EventBase> event) override;
+		DispatchStatus onPushEvent(const EventChannelBase &channel, std::unique_ptr<EventBase> event) override;
+		DispatchStatus onPushCommand(const EventChannelBase &channel, std::unique_ptr<EventBase> event) override;
 
 	private:
 		std::deque<EventPair> m_eventSwap;

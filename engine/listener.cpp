@@ -15,7 +15,7 @@ namespace cge::event
 		}
 	}
 
-	void ListenerBase::finalizeRegistration(ChannelId channelId, RegistrationResult result)
+	void ListenerBase::finalizeRegistration(ChannelId channelId, DispatchStatus result)
 	{
 		HandlerPairIter it;
 		HandlerFunction handler;
@@ -38,14 +38,14 @@ namespace cge::event
 		}
 		switch(result)
 		{
-		case RegistrationResult::Success:
+		case DispatchStatus::Success:
 			if(found)
 				m_handlers.emplace_back(channelId, std::move(handler));
 			break;
-		case RegistrationResult::Duplicate:
+		case DispatchStatus::Duplicate:
 			// Handle duplicate registration if needed
 			break;
-		case RegistrationResult::Failure:
+		case DispatchStatus::Failure:
 			// Handle failure if needed
 			break;
 		default:
@@ -53,13 +53,13 @@ namespace cge::event
 		}
 	}
 
-	void ListenerBase::finalizeUnregistration(ChannelId channelId, RegistrationResult result)
+	void ListenerBase::finalizeUnregistration(ChannelId channelId, DispatchStatus result)
 	{
 		HandlerPairIter it;
 
 		switch(result)
 		{
-		case RegistrationResult::Success:
+		case DispatchStatus::Success:
 			it = std::remove_if(m_handlers.begin(), m_handlers.end(),
 				[&channelId](const HandlerPair &pair) {
 					return pair.first == channelId;
@@ -67,10 +67,10 @@ namespace cge::event
 			if(it != m_handlers.end())
 				m_handlers.erase(it, m_handlers.end());
 			break;
-		case RegistrationResult::NotFound:
+		case DispatchStatus::BadInput:
 			// Handle not found if needed
 			break;
-		case RegistrationResult::Failure:
+		case DispatchStatus::Failure:
 			// Handle failure if needed
 			break;
 		default:
