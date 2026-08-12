@@ -21,15 +21,99 @@
     <ClCompile Include="engineTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="event\unit\asyncDispatcherTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="event\unit\broadcasterTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="event\unit\eventTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="event\unit\dispatcherTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="event\unit\listenerTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="event\integration\commanderTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="event\integration\dispatchCycleTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="event\integration\dispatcherLifecycleTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="event\integration\dispatcherTopologyTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="event\integration\eventConcurrencyTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="event\integration\eventLoadTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="event\eventTestSupport.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="event\integration\listenerRegistrationTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="event\integration\payloadTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engineTest.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="eventSystemTest.h">
+    <ClInclude Include="clockTest.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="clockTest.h">
+    <ClInclude Include="event\unit\asyncDispatcherTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="event\unit\broadcasterTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="event\unit\eventTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="event\unit\dispatcherTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="event\unit\listenerTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="event\unit\mockDispatcher.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="event\integration\commanderTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="event\integration\dispatchCycleTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="event\integration\dispatcherLifecycleTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="event\integration\dispatcherTopologyTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="event\integration\eventConcurrencyTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="event\integration\eventLoadTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="event\eventTestSupport.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="event\integration\listenerRegistrationTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="event\integration\payloadTest.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
