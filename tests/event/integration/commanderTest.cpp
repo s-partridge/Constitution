@@ -60,9 +60,7 @@ namespace cge::test
 
 	}
 
-	// A command addressed to an ordinary channel is refused: the dispatcher only
-	// accepts registration and unregistration, and the caller is told rather
-	// than having the command silently discarded at the drain.
+	// Ensure invalid channels are rejects as commands.
 	void CommanderTest::nonRegistrationChannel()
 	{
 		subtest("Rejected", [&]() {
@@ -74,7 +72,7 @@ namespace cge::test
 			harness.dispatcher().dispatchCommands();
 
 			cge::event::CommanderBase commander(&harness.dispatcher());
-			ASSERT_EQUAL(commander.command(channel, 99), event::DispatchStatus::Failure);
+			ASSERT_EQUAL(commander.command(channel, 99), event::DispatchStatus::Invalid);
 
 			harness.dispatcher().dispatchCommands();
 			harness.dispatcher().dispatchEvents();
