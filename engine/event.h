@@ -11,7 +11,12 @@ namespace cge::event
 {
 	using ChannelTag = std::string;
 	using ChannelId = size_t;
-	
+
+	// Reserved: ids are issued from 1, so no channel ever carries this. It gives
+	// a return that has no channel to report something to say other than a real
+	// id belonging to someone else.
+	constexpr ChannelId InvalidChannelId = 0;
+
 	class EventBase
 	{
 	public:
@@ -35,7 +40,8 @@ namespace cge::event
 		ChannelId m_id;
 		static ChannelId nextId()
 		{
-			static std::atomic<ChannelId> id(0); return id.fetch_add(1, std::memory_order_relaxed);
+			// From 1: zero is reserved as InvalidChannelId.
+			static std::atomic<ChannelId> id(1); return id.fetch_add(1, std::memory_order_relaxed);
 		}
 
 	protected:

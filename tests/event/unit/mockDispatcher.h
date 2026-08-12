@@ -36,24 +36,69 @@ namespace cge::test
 		size_t eventCount() const { return m_events.size(); }
 		size_t commandCount() const { return m_commands.size(); }
 
-		cge::event::ChannelId eventChannel(size_t index) const { return m_events[index].first; }
-		cge::event::ChannelId commandChannel(size_t index) const { return m_commands[index].first; }
+		// A test indexes these precisely when it believes a push was taken, so an
+		// empty queue is what a bug produces rather than what a careless caller
+		// produces. Out of range therefore has to report, not crash: a crash
+		// costs the assertion that would have named the fault, every later
+		// suite's results, and the log they were going into.
+		cge::event::ChannelId eventChannel(size_t index) const
+		{
+			if(index >= m_events.size())
+				return cge::event::InvalidChannelId;
 
-		const cge::event::EventBase &queuedEvent(size_t index) const { return *m_events[index].second; }
-		const cge::event::EventBase &queuedCommand(size_t index) const { return *m_commands[index].second; }
+			return m_events[index].first;
+		}
+
+		cge::event::ChannelId commandChannel(size_t index) const
+		{
+			if(index >= m_commands.size())
+				return cge::event::InvalidChannelId;
+
+			return m_commands[index].first;
+		}
+
+		const cge::event::EventBase *queuedEvent(size_t index) const
+		{
+			if(index >= m_events.size())
+				return nullptr;
+
+			return m_events[index].second.get();
+		}
+
+		const cge::event::EventBase *queuedCommand(size_t index) const
+		{
+			if(index >= m_commands.size())
+				return nullptr;
+
+			return m_commands[index].second.get();
+		}
 
 		// Payload of a queued push, for the common case where the test knows the
-		// channel's payload type.
+		// channel's payload type. By value with a fallback rather than by pointer
+		// so the ordinary one-line comparison still reads as one line: an index
+		// with nothing behind it fails the caller's assertion on the fallback.
+		//
+		// The cast is unchecked on purpose. broadcast and command bind payload
+		// type to channel type through a single template parameter, so a queued
+		// event cannot be carrying a payload of any other type.
 		template<typename PayloadType>
-		const PayloadType &eventPayload(size_t index) const
+		PayloadType eventPayload(size_t index, const PayloadType &fallback = PayloadType()) const
 		{
-			return static_cast<const cge::event::Event<PayloadType> &>(queuedEvent(index)).payload;
+			const cge::event::EventBase *event = queuedEvent(index);
+			if(event == nullptr)
+				return fallback;
+
+			return static_cast<const cge::event::Event<PayloadType> *>(event)->payload;
 		}
 
 		template<typename PayloadType>
-		const PayloadType &commandPayload(size_t index) const
+		PayloadType commandPayload(size_t index, const PayloadType &fallback = PayloadType()) const
 		{
-			return static_cast<const cge::event::Event<PayloadType> &>(queuedCommand(index)).payload;
+			const cge::event::EventBase *command = queuedCommand(index);
+			if(command == nullptr)
+				return fallback;
+
+			return static_cast<const cge::event::Event<PayloadType> *>(command)->payload;
 		}
 
 	protected:
