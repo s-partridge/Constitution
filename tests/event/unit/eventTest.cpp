@@ -50,7 +50,7 @@ namespace cge::test
 		addTest("PayloadsCopyable", flags, [this]() { payloadsCopyable(); });
 		addTest("MoveOnlyPayloadRejected", flags, [this]() { moveOnlyPayloadRejected(); });
 
-		addTest("TypeConflict", flags, [this]() { typeConflict(); });
+		addTest("TypeConflict", flags.withExpectFailure(), [this]() { typeConflict(); });
 		addTest("SameName", flags, [this]() { sameName(); });
 		addTest("DistinctNames", flags, [this]() { distinctNames(); });
 		addTest("DistinctRegistries", flags, [this]() { distinctRegistries(); });

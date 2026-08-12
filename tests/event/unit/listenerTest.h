@@ -23,7 +23,7 @@ namespace cge::test
 		void refusedRetry();
 		void unregisterClearsPending();
 		void unregisterUnknown();
-		void reregisterAfterDrain();
+		void reregisterAfterDispatch();
 
 		void handlerNotLiveYet();
 		void invokesHandler();

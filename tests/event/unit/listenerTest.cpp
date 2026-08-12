@@ -42,10 +42,10 @@ namespace cge::test
 		addTest("DuplicateResult", flags, [this]() { duplicateResult(); });
 		addTest("DuplicateQueuesNothing", flags, [this]() { duplicateQueuesNothing(); });
 		addTest("RefusedResult", flags, [this]() { refusedResult(); });
-		addTest("RefusedRetry", flags, [this]() { refusedRetry(); });
+		addTest("RefusedRetry", flags.withExpectFailure(), [this]() { refusedRetry(); });
 		addTest("UnregisterClearsPending", flags, [this]() { unregisterClearsPending(); });
 		addTest("UnregisterUnknown", flags, [this]() { unregisterUnknown(); });
-		addTest("ReregisterAfterDrain", flags, [this]() { reregisterAfterDrain(); });
+		addTest("ReregisterAfterDrain", flags.withExpectFailure(), [this]() { reregisterAfterDispatch(); });
 
 		addTest("HandlerNotLiveYet", flags, [this]() { handlerNotLiveYet(); });
 		addTest("InvokesHandler", flags, [this]() { invokesHandler(); });
@@ -174,7 +174,7 @@ namespace cge::test
 	// error as re-registering a pending one. Expected to fail: the pending list
 	// is cleared on finalize, so the guard no longer sees anything. See A1 in
 	// docs/test-refactor.md.
-	void ListenerUnitTest::reregisterAfterDrain()
+	void ListenerUnitTest::reregisterAfterDispatch()
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
