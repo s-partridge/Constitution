@@ -167,6 +167,7 @@
     <ClInclude Include="listener.h" />
     <ClInclude Include="scaffold.h" />
     <ClInclude Include="system.h" />
+    <ClInclude Include="utilities.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
