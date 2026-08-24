@@ -23,6 +23,7 @@ namespace cge::test
 
 		void inactiveRefused();
 		void inactiveQueuesNothing();
+		void inactiveUnregisterQueued();
 		void eventQueued();
 		void commandQueued();
 		void eventNotInCommands();

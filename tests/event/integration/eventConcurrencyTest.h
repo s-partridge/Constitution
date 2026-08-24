@@ -16,6 +16,7 @@ namespace cge::test
 
 	private:
 		void liveness();
+		void handoff();
 		void threads();
 		void churn();
 	};

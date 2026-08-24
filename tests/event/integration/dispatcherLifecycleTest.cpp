@@ -104,7 +104,56 @@ namespace cge::test
 
 			const cge::event::DispatchStatus result = listener.requestUnregister(channel);
 			ASSERT_EQUAL(result, cge::event::DispatchStatus::Pending);
+
+			// Accepted while inactive means the command still applies. A component
+			// may finish tearing down before the next level starts, so resuming the
+			// dispatcher must not revive the listener.
+			dispatcher->dispatchCommands();
+			dispatcher->setUp();
+
+			cge::event::BroadcasterBase broadcaster(dispatcher.get());
+			ASSERT_TRUE(broadcaster.broadcast(channel, 1));
+			dispatcher->dispatchEvents();
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+
+			dispatcher->tearDown();
 		});
+
+		// Refusal is not a deferred registration. Once the next level begins the
+		// listener may submit a new callback, and only that callback may become
+		// live. This is deliberately red until rejected registrations stop leaving
+		// a stale pending handler behind.
+		subtest("RefusedRegistrationLeavesNoState",
+			partest::TEST_FLAGS_INHERIT.withExpectFailure(), [&]() {
+				std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("refused-register", &registry);
+				int refusedCalls = 0;
+				int acceptedCalls = 0;
+				cge::event::ListenerBase listener(dispatcher.get());
+
+				ASSERT_EQUAL(listener.requestRegister(channel, [&refusedCalls](const int &) {
+					++refusedCalls;
+				}), cge::event::DispatchStatus::NotReady);
+
+				dispatcher->setUp();
+				const cge::event::DispatchStatus retry = listener.requestRegister(channel, [&acceptedCalls](const int &) {
+					++acceptedCalls;
+				});
+				ASSERT_EQUAL(retry, cge::event::DispatchStatus::Pending);
+				if(retry != cge::event::DispatchStatus::Pending)
+				{
+					dispatcher->tearDown();
+					return;
+				}
+				dispatcher->dispatchCommands();
+
+				cge::event::BroadcasterBase broadcaster(dispatcher.get());
+				ASSERT_TRUE(broadcaster.broadcast(channel, 1));
+				dispatcher->dispatchEvents();
+
+				ASSERT_EQUAL(refusedCalls, 0);
+				ASSERT_EQUAL(acceptedCalls, 1);
+				dispatcher->tearDown();
+			});
 
 		// Dispatch always drains, so a parked event would surface on the next
 		// drain. Nothing arriving therefore proves the push was refused outright.
@@ -370,16 +419,25 @@ namespace cge::test
 	}
 
 	// command reports whether the dispatcher accepted the push, same as broadcast.
+	//
+	// Both refusal cases are marked expectFailure rather than skipped, because the
+	// contract is settled even though it cannot be met yet: a command that the
+	// dispatcher is not ready to take reports NotReady. The channel here is an
+	// ordinary one and so is not a valid command channel, which pushCommand
+	// rejects as Invalid before readiness is ever consulted, so both report
+	// Invalid today. They go green when a dispatcher can declare its own command
+	// channels and this one can be declared on it, at which point the assertion
+	// is about readiness alone. See docs/expected-failures.md.
 	void DispatcherLifecycleTest::commandPushResult()
 	{
 		cge::event::EventChannelRegistry registry;
 		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("cmd-result-ch");
 
-		subtest("FailsBeforeSetUp", [&]() {
+		subtest("FailsBeforeSetUp", partest::TEST_FLAGS_INHERIT.withExpectFailure(), [&]() {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("cmd-pre", &registry);
 			cge::event::CommanderBase commander(dispatcher.get());
 
-			//ASSERT_EQUAL(commander.command(channel, 1), event::DispatchStatus::NotReady);
+			ASSERT_EQUAL(commander.command(channel, 1), event::DispatchStatus::NotReady);
 		});
 
 		// TODO: no valid command exists to push. Channels are validated at push
@@ -389,13 +447,13 @@ namespace cge::test
 		subtest("SucceedsWhileActive", partest::TEST_FLAGS_SKIP, [&]() {
 		});
 
-		subtest("FailsAfterTearDown", [&]() {
+		subtest("FailsAfterTearDown", partest::TEST_FLAGS_INHERIT.withExpectFailure(), [&]() {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("cmd-post", &registry);
 			dispatcher->setUp();
 			dispatcher->tearDown();
 			cge::event::CommanderBase commander(dispatcher.get());
 
-			//ASSERT_EQUAL(commander.command(channel, 1), event::DispatchStatus::NotReady);
+			ASSERT_EQUAL(commander.command(channel, 1), event::DispatchStatus::NotReady);
 		});
 	}
 }

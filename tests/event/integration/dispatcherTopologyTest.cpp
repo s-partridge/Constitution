@@ -89,5 +89,40 @@ namespace cge::test
 			first->tearDown();
 			second->tearDown();
 		});
+
+		// A copied channel is an identity handle, not a borrow of the registry's
+		// storage. Move assignment may replace the target registry's name map, but
+		// it cannot invalidate a copied id that callers still use for routing.
+		subtest("CopiedChannelSurvivesRegistryMoveAssignment", [&]() {
+			cge::event::EventChannelRegistry source;
+			source.getChannel<int>("source-channel");
+
+			cge::event::EventChannelRegistry target;
+			const cge::event::EventChannel<int> &original =
+				target.getChannel<int>("retained-target-channel");
+			cge::event::EventChannel<int> retained(original);
+
+			target = std::move(source);
+
+			std::unique_ptr<cge::event::DispatcherBase> dispatcher =
+				flavor().create("moved-registry", &target);
+			dispatcher->setUp();
+
+			CountingListener listener(dispatcher.get());
+			listener.requestRegister(retained, [&listener](const int &v) {
+				listener.onInt(v);
+			});
+			dispatcher->dispatchCommands();
+
+			cge::event::BroadcasterBase broadcaster(dispatcher.get());
+			ASSERT_TRUE(broadcaster.broadcast(retained, 17));
+			dispatcher->dispatchEvents();
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			if(listener.received.size() == 1)
+				ASSERT_EQUAL(listener.received[0], 17);
+
+			dispatcher->tearDown();
+		});
 	}
 }

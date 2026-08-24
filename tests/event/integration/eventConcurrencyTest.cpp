@@ -3,6 +3,7 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <semaphore>
 #include <thread>
 #include <vector>
 
@@ -21,6 +22,17 @@ namespace cge::test
 		// The liveness probe finishes in well under a second when the locks are
 		// sound. Anything near this bound is already a wedge.
 		const std::chrono::seconds livenessDeadline(30);
+
+		struct HandoffResult
+		{
+			bool accepted;
+			std::vector<int> received;
+
+			HandoffResult()
+				: accepted(false)
+			{
+			}
+		};
 	}
 
 	EventConcurrencyTest::EventConcurrencyTest(const DispatcherFlavor &flavor)
@@ -31,6 +43,7 @@ namespace cge::test
 		// First, and it stops the rest of the suite if it fails. Everything below
 		// assumes the dispatcher makes progress under contention.
 		addTest("Liveness", flags.withStopOnFail(partest::FlagState::Enabled), [this]() { liveness(); });
+		addTest("Handoff", flags, [this]() { handoff(); });
 		addTest("Threads", flags, [this]() { threads(); });
 		addTest("Churn", flags, [this]() { churn(); });
 	}
@@ -117,6 +130,62 @@ namespace cge::test
 		});
 
 		ASSERT_TRUE(outcome.completed);
+	}
+
+	// Queue handoff has a narrow but important boundary: an event accepted after
+	// the dispatcher has taken its current queue, while a handler keeps that
+	// drain open, still belongs to this dispatchEvents call. Semaphores make the
+	// boundary deliberate rather than hoping a load run happens to hit it.
+	void EventConcurrencyTest::handoff()
+	{
+		const char *label = "EventConcurrencyTest.Handoff";
+
+		const IsolatedOutcome<HandoffResult> outcome =
+			runIsolated<HandoffResult>(label, livenessDeadline, [this]() {
+				EventHarness harness(flavor(), "handoff-dispatcher");
+				const cge::event::EventChannel<int> &channel =
+					harness.registry.getChannel<int>("handoff");
+				HandoffResult result;
+				std::binary_semaphore handlerEntered(0);
+				std::binary_semaphore releaseHandler(0);
+
+				cge::event::ListenerBase listener(&harness.dispatcher());
+				listener.requestRegister(channel, [&](const int &value) {
+					result.received.push_back(value);
+					if(value == 1)
+					{
+						handlerEntered.release();
+						releaseHandler.acquire();
+					}
+				});
+				harness.dispatcher().dispatchCommands();
+
+				cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
+				broadcaster.broadcast(channel, 1);
+
+				std::thread drain([&harness]() {
+					harness.dispatcher().dispatchEvents();
+				});
+
+				handlerEntered.acquire();
+				result.accepted = broadcaster.broadcast(channel, 2);
+				releaseHandler.release();
+				drain.join();
+
+				return result;
+			});
+
+		ASSERT_TRUE(outcome.completed);
+		if(!outcome.completed)
+			return;
+
+		ASSERT_TRUE(outcome.result.accepted);
+		ASSERT_EQUAL(outcome.result.received.size(), static_cast<size_t>(2));
+		if(outcome.result.received.size() == 2)
+		{
+			ASSERT_EQUAL(outcome.result.received[0], 1);
+			ASSERT_EQUAL(outcome.result.received[1], 2);
+		}
 	}
 
 	void EventConcurrencyTest::threads()

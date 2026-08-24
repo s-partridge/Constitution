@@ -147,6 +147,30 @@ namespace cge::test
 			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
 			ASSERT_EQUAL(listener.received[0], 3);
 		});
+
+		// Component teardown is separate from storage release. Once the queued
+		// unregistration has drained, the listener may be destroyed while the
+		// dispatcher continues to run without retaining a stale pointer.
+		subtest("DestroyedAfterCommandDrain", [&]() {
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("destroy-after-unregister");
+			int deliveries = 0;
+
+			{
+				cge::event::ListenerBase listener(&harness.dispatcher());
+				listener.requestRegister(channel, [&deliveries](const int &) {
+					++deliveries;
+				});
+				harness.dispatcher().dispatchCommands();
+
+				listener.requestUnregister(channel);
+				harness.dispatcher().dispatchCommands();
+			}
+
+			broadcaster.broadcast(channel, 1);
+			harness.dispatcher().dispatchEvents();
+
+			ASSERT_EQUAL(deliveries, 0);
+		});
 	}
 
 	// Several requests queued before any of them is applied, then drained in one
@@ -159,8 +183,16 @@ namespace cge::test
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 
 		// The caller asked to end up registered, so it must end up registered and
-		// receiving. Currently fails: the re-register is rejected as Duplicate
-		// against the still-pending first request and queues nothing.
+		// receiving.
+		//
+		// Currently fails, and not for the reason it looks like: all three
+		// requests are accepted and queued, because requestUnregister clears the
+		// pending entry before forwarding. The defect is that the listener holds
+		// one pending slot per channel while the queue holds three requests. The
+		// first Reg command consumes the slot, the Unreg strips the handler back
+		// out, and the second Reg finds no pending entry and installs nothing -
+		// leaving the listener in the dispatcher's map with no handler for the
+		// channel. See docs/expected-failures.md.
 		subtest("RegisterUnregisterRegister",
 			partest::TEST_FLAGS_INHERIT.withExpectFailure(), [&]() {
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch-rur");

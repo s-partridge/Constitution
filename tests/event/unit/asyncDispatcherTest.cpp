@@ -7,6 +7,7 @@
 
 #include "asyncDispatcher.h"
 #include "event.h"
+#include "listener.h"
 
 namespace cge::test
 {
@@ -50,6 +51,7 @@ namespace cge::test
 
 		addTest("InactiveRefused", flags, [this]() { inactiveRefused(); });
 		addTest("InactiveQueuesNothing", flags, [this]() { inactiveQueuesNothing(); });
+		addTest("InactiveUnregisterQueued", flags, [this]() { inactiveUnregisterQueued(); });
 		addTest("EventQueued", flags, [this]() { eventQueued(); });
 		addTest("CommandQueued", flags, [this]() { commandQueued(); });
 		addTest("EventNotInCommands", flags, [this]() { eventNotInCommands(); });
@@ -151,6 +153,30 @@ namespace cge::test
 		dispatcher.onPushCommand(channel, makeEvent(1));
 
 		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(0));
+		ASSERT_EQUAL(dispatcher.queuedCommands(), static_cast<size_t>(0));
+	}
+
+	// Inactivity rejects new registrations but never traps a component in the
+	// dispatcher. A queued unregistration remains valid and can be drained
+	// before the next setup.
+	void AsyncDispatcherUnitTest::inactiveUnregisterQueued()
+	{
+		cge::event::EventChannelRegistry registry;
+		TestableAsyncDispatcher dispatcher("inactive-unregister", &registry);
+		const cge::event::EventChannel<int> &channel =
+			registry.getChannel<int>("inactive-unregister-ch");
+		cge::event::ListenerBase listener(&dispatcher);
+
+		dispatcher.setUp();
+		listener.requestRegister(channel, [](const int &) {});
+		dispatcher.dispatchCommands();
+		dispatcher.tearDown();
+
+		ASSERT_EQUAL(listener.requestUnregister(channel),
+			cge::event::DispatchStatus::Pending);
+		ASSERT_EQUAL(dispatcher.queuedCommands(), static_cast<size_t>(1));
+
+		dispatcher.dispatchCommands();
 		ASSERT_EQUAL(dispatcher.queuedCommands(), static_cast<size_t>(0));
 	}
 
