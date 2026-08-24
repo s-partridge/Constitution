@@ -14,7 +14,7 @@ namespace cge
 	* @param str The input string to hash.
 	* @return The computed hash value as a size_t.
 	*/
-	inline constexpr size_t fnv1aHash(std::string_view str)
+	constexpr size_t fnv1aHash(std::string_view str)
 	{
 		// Seed for FNV-1a hash algorithm. The exact value is not critical, but it should be a large prime number to reduce the chance of collisions. This number is derived from the FNV-1a specification.
 		constexpr size_t fnvOffsetBasis = 14695981039346656037ull;
@@ -36,7 +36,7 @@ namespace cge
 	* @note This function uses compiler-specific macros to extract the type name. It supports Clang, GCC, and MSVC. If an unsupported compiler is used, a compilation error will be generated.
 	*/
 	template<typename T>
-	inline constexpr std::string_view getTypeName()
+	constexpr std::string_view getTypeName()
 	{
 		// Use compiler-specific macros to get the type name
 #if defined(__clang__) || defined(__GNUC__)
@@ -60,7 +60,16 @@ namespace cge
 	* @return A size_t representing the unique type ID.
 	*/
 	template <typename T>
-	inline constexpr size_t getTypeId()	{ return fnv1aHash(getTypeName<T>()); }
+	constexpr size_t getTypeId()	{ return fnv1aHash(getTypeName<T>()); }
+
+	/**
+	* UDL for generating a unique type ID from a string literal at compile time.
+	* @usage This user-defined literal can be used to generate a unique type ID from a string literal. For example, "MyType"_hash will return the hash value of the string "MyType".
+	*/
+	constexpr size_t operator""_hash(const char* str, size_t len)
+	{
+		return fnv1aHash(std::string_view(str, len));
+	}
 
 	// Hard requirement: Compound Requirements in requires-expressions are BANNED.
 	// NEVER use (Grammar: { expression } [noexcept] [-> type-constraint] ;)
