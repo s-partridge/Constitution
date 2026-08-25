@@ -55,12 +55,18 @@ namespace cge::event
 		EventChannelBase(EventChannelBase &&) = delete;
 		EventChannelBase &operator=(EventChannelBase &&) = delete;
 
+		virtual constexpr size_t getTypeId() const = 0;
+
 		ChannelId id() const { return m_id; }
 	};
 
 	template<typename PayloadType>
 	class EventChannel : public EventChannelBase
 	{
+	protected:
+		EventChannel() = default;
+		friend class EventChannelRegistry;
+
 	public:
 		virtual ~EventChannel() = default;
 
@@ -69,9 +75,7 @@ namespace cge::event
 		EventChannel(EventChannel &&) = delete;
 		EventChannel &operator=(EventChannel &&) = delete;
 
-	protected:
-		EventChannel() = default;
-		friend class EventChannelRegistry;
+		constexpr size_t getTypeId() const override { return getTypeId<EventChannel<PayloadType>>(); }
 	};
 
 	class EventChannelRegistry
@@ -99,7 +103,7 @@ namespace cge::event
 			{
 				// Check if the existing channel has the same payload type with typeid
 				EventChannelBase *existingChannel = it->second;
-				if(typeid(*existingChannel) != typeid(EventChannel<PayloadType>))
+				if(existingChannel->getTypeId() != getTypeId<EventChannel<PayloadType>>())
 				{
 					// TODO: replace with CGE_FATAL (log, debug break, abort) once the
 					// fatal-error facility exists. This is the engine's only throw;
