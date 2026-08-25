@@ -106,9 +106,8 @@ namespace cge::event
 				if(existingChannel->getTypeId() != getTypeId<EventChannel<PayloadType>>())
 				{
 					// TODO: replace with CGE_FATAL (log, debug break, abort) once the
-					// fatal-error facility exists. This is the engine's only throw;
-					// see docs/exception-removal.md.
-					throw std::runtime_error("Type error: attempted to re-register channel with a different payload type");
+					// fatal-error facility exists.
+					assert(false && "Type error: attempted to re-register channel with a different payload type");
 				}
 				return *static_cast<const EventChannel<PayloadType> *>(existingChannel);
 			}
