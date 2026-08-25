@@ -2,6 +2,7 @@
 #define CGE_UTILITIES_H
 
 #include <string_view>
+#include <concepts>
 
 // Lightweight compile-time replacement mechanisms for RTTI
 
@@ -60,5 +61,20 @@ namespace cge
 	*/
 	template <typename T>
 	inline constexpr size_t getTypeId()	{ return fnv1aHash(getTypeName<T>()); }
+
+	// Hard requirement: Compound Requirements in requires-expressions are BANNED.
+	// NEVER use (Grammar: { expression } [noexcept] [-> type-constraint] ;)
+	// Use only simple requirements, which are either:
+	// - an expression (which must be valid and well-formed)
+	// - a type (which must be valid and well-formed)
+	/**
+	* Concept to check if a type T has a getTypeId() method that returns a size_t.
+	*/
+	template<typename T>
+	concept HasTypeId = requires(const T& t)
+	{
+		t.getTypeId();
+		requires std::convertible_to<decltype(t.getTypeId()), size_t>;
+	};
 }
 #endif // CGE_UTILITIES_H
