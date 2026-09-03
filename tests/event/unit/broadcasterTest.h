@@ -14,22 +14,22 @@ namespace cge::test
 		BroadcasterUnitTest();
 
 	private:
-		void broadcastQueuesOne();
-		void broadcastChannel();
-		void broadcastPayload();
-		void broadcastCopies();
-		void broadcastAccepted();
-		void broadcastRefused();
-		void broadcastRefusedQueue();
-		void broadcastQueueOnly();
+		void broadcastQueuesOne(partest::TestContext &ctx);
+		void broadcastChannel(partest::TestContext &ctx);
+		void broadcastPayload(partest::TestContext &ctx);
+		void broadcastCopies(partest::TestContext &ctx);
+		void broadcastAccepted(partest::TestContext &ctx);
+		void broadcastRefused(partest::TestContext &ctx);
+		void broadcastRefusedQueue(partest::TestContext &ctx);
+		void broadcastQueueOnly(partest::TestContext &ctx);
 
-		void commandQueuesOne();
-		void commandChannel();
-		void commandPayload();
-		void commandAccepted();
-		void commandRefused();
-		void commandRefusedQueue();
-		void commandQueueOnly();
+		void commandQueuesOne(partest::TestContext &ctx);
+		void commandChannel(partest::TestContext &ctx);
+		void commandPayload(partest::TestContext &ctx);
+		void commandAccepted(partest::TestContext &ctx);
+		void commandRefused(partest::TestContext &ctx);
+		void commandRefusedQueue(partest::TestContext &ctx);
+		void commandQueueOnly(partest::TestContext &ctx);
 	};
 }
 
