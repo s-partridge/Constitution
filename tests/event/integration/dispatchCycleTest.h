@@ -14,15 +14,15 @@ namespace cge::test
 		explicit DispatchCycleTest(const DispatcherFlavor &flavor);
 
 	private:
-		void deferral();
-		void drain();
-		void midDrainRegistration();
-		void frameCycle();
-		void cascade();
-		void cascadeAcrossChannels();
-		void cascadeSelfReferential();
-		void cascadeThroughSystems();
-		void midDrainMutation();
+		void deferral(partest::TestContext &ctx);
+		void drain(partest::TestContext &ctx);
+		void midDrainRegistration(partest::TestContext &ctx);
+		void frameCycle(partest::TestContext &ctx);
+		void cascade(partest::TestContext &ctx);
+		void cascadeAcrossChannels(partest::TestContext &ctx);
+		void cascadeSelfReferential(partest::TestContext &ctx);
+		void cascadeThroughSystems(partest::TestContext &ctx);
+		void midDrainMutation(partest::TestContext &ctx);
 	};
 }
 

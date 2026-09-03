@@ -37,24 +37,24 @@ namespace cge::test
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("Deferral", flags, [this]() { deferral(); });
-		addTest("Drain", flags, [this]() { drain(); });
-		addTest("MidDrainRegistration", flags, [this]() { midDrainRegistration(); });
-		addTest("FrameCycle", flags, [this]() { frameCycle(); });
-		addTest("Cascade", flags, [this]() { cascade(); });
-		addTest("MidDrainMutation", flags, [this]() { midDrainMutation(); });
+		addTest("Deferral", flags, PARTEST_CTX(this) { deferral(ctx); });
+		addTest("Drain", flags, PARTEST_CTX(this) { drain(ctx); });
+		addTest("MidDrainRegistration", flags, PARTEST_CTX(this) { midDrainRegistration(ctx); });
+		addTest("FrameCycle", flags, PARTEST_CTX(this) { frameCycle(ctx); });
+		addTest("Cascade", flags, PARTEST_CTX(this) { cascade(ctx); });
+		addTest("MidDrainMutation", flags, PARTEST_CTX(this) { midDrainMutation(ctx); });
 	}
 
 	// One listener carried from request through to delivery: each case runs
 	// against the dispatcher state the previous one left behind.
-	void DispatchCycleTest::deferral()
+	void DispatchCycleTest::deferral(partest::TestContext &ctx)
 	{
 		EventHarness harness(flavor(), "deferral-dispatcher");
 		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("deferral");
 		CountingListener listener(&harness.dispatcher());
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 
-		subtest("Registration", [&]() {
+		ctx.subtest("Registration", PARTEST_CTX(&) {
 			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
 
 			// Listener map not updated yet, so this event drains to nobody.
@@ -63,7 +63,7 @@ namespace cge::test
 			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
 		});
 
-		subtest("Events", [&]() {
+		ctx.subtest("Events", PARTEST_CTX(&) {
 			harness.dispatcher().dispatchCommands();
 
 			broadcaster.broadcast(channel, 42);
@@ -76,12 +76,12 @@ namespace cge::test
 	}
 
 	// Shared dispatcher; what varies is what the handler does during the drain.
-	void DispatchCycleTest::drain()
+	void DispatchCycleTest::drain(partest::TestContext &ctx)
 	{
 		EventHarness harness(flavor(), "drain-dispatcher");
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 
-		subtest("ReentryBroadcasts", [&]() {
+		ctx.subtest("ReentryBroadcasts", PARTEST_CTX(&) {
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reentry");
 			CountingListener listener(&harness.dispatcher());
 
@@ -102,7 +102,7 @@ namespace cge::test
 
 		// Pending semantics: an unregistration requested mid-drain takes effect at
 		// the next command drain, so the rest of this drain still delivers.
-		subtest("UnregisterMidDrain", [&]() {
+		ctx.subtest("UnregisterMidDrain", PARTEST_CTX(&) {
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("same-drain");
 			CountingListener listener(&harness.dispatcher());
 
@@ -138,7 +138,7 @@ namespace cge::test
 	// A handler registering another listener while the event drain is running.
 	// Deterministic and single-threaded despite having lived in the load suite:
 	// nothing here needs volume to reproduce.
-	void DispatchCycleTest::midDrainRegistration()
+	void DispatchCycleTest::midDrainRegistration(partest::TestContext &ctx)
 	{
 		EventHarness harness(flavor(), "mid-drain-reg-dispatcher");
 		const cge::event::EventChannel<int> &kick = harness.registry.getChannel<int>("reg-kick");
@@ -175,9 +175,9 @@ namespace cge::test
 	// event drain alone: anything a handler requested during the drain has to
 	// have been applied by the trailing command pass, not be waiting on the next
 	// frame's leading one.
-	void DispatchCycleTest::frameCycle()
+	void DispatchCycleTest::frameCycle(partest::TestContext &ctx)
 	{
-		subtest("UnregisterApplies", [&]() {
+		ctx.subtest("UnregisterApplies", PARTEST_CTX(&) {
 			EventHarness harness(flavor(), "frame-unreg-dispatcher");
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("frame-unreg");
 			CountingListener listener(&harness.dispatcher());
@@ -202,7 +202,7 @@ namespace cge::test
 			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(2));
 		});
 
-		subtest("RegisterApplies", [&]() {
+		ctx.subtest("RegisterApplies", PARTEST_CTX(&) {
 			EventHarness harness(flavor(), "frame-reg-dispatcher");
 			const cge::event::EventChannel<int> &kick = harness.registry.getChannel<int>("frame-kick");
 			const cge::event::EventChannel<int> &late = harness.registry.getChannel<int>("frame-late");
@@ -235,7 +235,7 @@ namespace cge::test
 
 		// The ordering the leading command drain exists for: a request made after
 		// the events were broadcast still beats them, because commands run first.
-		subtest("CommandsLead", [&]() {
+		ctx.subtest("CommandsLead", PARTEST_CTX(&) {
 			EventHarness harness(flavor(), "frame-order-dispatcher");
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("frame-order");
 			CountingListener listener(&harness.dispatcher());
@@ -256,14 +256,14 @@ namespace cge::test
 	// scores, the score unlocks an achievement, the achievement updates the UI.
 	// Four hops across four channels and four listeners, all of it inside the
 	// drain that delivered the first event.
-	void DispatchCycleTest::cascade()
+	void DispatchCycleTest::cascade(partest::TestContext &ctx)
 	{
-		subtest("AcrossChannels", [&]() { cascadeAcrossChannels(); });
-		subtest("SelfReferential", [&]() { cascadeSelfReferential(); });
-		subtest("ThroughSystems", [&]() { cascadeThroughSystems(); });
+		ctx.subtest("AcrossChannels", PARTEST_CTX(&) { cascadeAcrossChannels(ctx); });
+		ctx.subtest("SelfReferential", PARTEST_CTX(&) { cascadeSelfReferential(ctx); });
+		ctx.subtest("ThroughSystems", PARTEST_CTX(&) { cascadeThroughSystems(ctx); });
 	}
 
-	void DispatchCycleTest::cascadeAcrossChannels()
+	void DispatchCycleTest::cascadeAcrossChannels(partest::TestContext &ctx)
 	{
 		EventHarness harness(flavor(), "cascade-dispatcher");
 		const cge::event::EventChannel<int> &damage = harness.registry.getChannel<int>("casc-damage");
@@ -327,7 +327,7 @@ namespace cge::test
 	//
 	// ReentryBroadcasts covers this at depth one. What is added here is that the
 	// depth is unbounded in practice, not that a single hop works.
-	void DispatchCycleTest::cascadeSelfReferential()
+	void DispatchCycleTest::cascadeSelfReferential(partest::TestContext &ctx)
 	{
 		EventHarness harness(flavor(), "cascade-self-dispatcher");
 		const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("casc-self");
@@ -359,7 +359,7 @@ namespace cge::test
 	// is how a real system is built. Nothing here should differ from the version
 	// using free-standing listeners and broadcasters; the case exists because
 	// nothing covered a single object sitting on both sides of a drain.
-	void DispatchCycleTest::cascadeThroughSystems()
+	void DispatchCycleTest::cascadeThroughSystems(partest::TestContext &ctx)
 	{
 		EventHarness harness(flavor(), "cascade-systems-dispatcher");
 		const cge::event::EventChannel<int> &damage = harness.registry.getChannel<int>("sys-damage");
@@ -417,9 +417,9 @@ namespace cge::test
 	// on which listener the handler runs against first. Five listeners is enough
 	// that a removal relocates one, so a mutation leaking into the live list
 	// would show up as a skipped or doubled delivery.
-	void DispatchCycleTest::midDrainMutation()
+	void DispatchCycleTest::midDrainMutation(partest::TestContext &ctx)
 	{
-		subtest("UnregisterAnother", [&]() {
+		ctx.subtest("UnregisterAnother", PARTEST_CTX(&) {
 			EventHarness harness(flavor(), "mutate-unreg-dispatcher");
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("mutate-unreg");
 			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
@@ -463,7 +463,7 @@ namespace cge::test
 			ASSERT_EQUAL(e.received.size(), static_cast<size_t>(2));
 		});
 
-		subtest("RegisterAnother", [&]() {
+		ctx.subtest("RegisterAnother", PARTEST_CTX(&) {
 			EventHarness harness(flavor(), "mutate-reg-dispatcher");
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("mutate-reg");
 			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
