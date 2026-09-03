@@ -2,10 +2,10 @@
 #define CGE_EVENT_H
 
 #include <atomic>
-#include <unordered_map>
 #include <string>
-#include <typeinfo>
-#include <stdexcept>
+#include <cassert>
+#include <unordered_map>
+#include "utilities.h"
 
 namespace cge::event
 {
@@ -75,7 +75,7 @@ namespace cge::event
 		EventChannel(EventChannel &&) = delete;
 		EventChannel &operator=(EventChannel &&) = delete;
 
-		constexpr size_t getTypeId() const override { return getTypeId<EventChannel<PayloadType>>(); }
+		constexpr size_t getTypeId() const override { return cge::getTypeId<EventChannel<PayloadType>>(); }
 	};
 
 	class EventChannelRegistry

@@ -60,7 +60,7 @@ namespace cge
 	* @return A size_t representing the unique type ID.
 	*/
 	template <typename T>
-	constexpr size_t getTypeId()	{ return fnv1aHash(getTypeName<T>()); }
+	constexpr size_t getTypeId() { return fnv1aHash(getTypeName<T>()); }
 
 	/**
 	* UDL for generating a unique type ID from a string literal at compile time.
