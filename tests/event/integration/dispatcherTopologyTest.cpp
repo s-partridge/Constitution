@@ -13,14 +13,14 @@ namespace cge::test
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("Isolation", flags, [this]() { isolation(); });
+		addTest("Isolation", flags, PARTEST_CTX(this) { isolation(ctx); });
 	}
 
-	void DispatcherTopologyTest::isolation()
+	void DispatcherTopologyTest::isolation(partest::TestContext &ctx)
 	{
 		// Two dispatchers share the registry's named registration channels, but
 		// queues are per-dispatcher, so traffic must not cross.
-		subtest("SharedRegistry", [&]() {
+		ctx.subtest("SharedRegistry", PARTEST_CTX(&) {
 			cge::event::EventChannelRegistry registry;
 			std::unique_ptr<cge::event::DispatcherBase> first = flavor().create("dispatcher-a", &registry);
 			std::unique_ptr<cge::event::DispatcherBase> second = flavor().create("dispatcher-b", &registry);
@@ -56,7 +56,7 @@ namespace cge::test
 		// to hear from two of them needs two listeners. The case worth pinning is
 		// the one someone will assume works: registering once and expecting to
 		// hear everything.
-		subtest("OwnDispatcherOnly", [&]() {
+		ctx.subtest("OwnDispatcherOnly", PARTEST_CTX(&) {
 			cge::event::EventChannelRegistry registry;
 			std::unique_ptr<cge::event::DispatcherBase> first = flavor().create("owner", &registry);
 			std::unique_ptr<cge::event::DispatcherBase> second = flavor().create("stranger", &registry);
@@ -93,7 +93,7 @@ namespace cge::test
 		// A copied channel is an identity handle, not a borrow of the registry's
 		// storage. Move assignment may replace the target registry's name map, but
 		// it cannot invalidate a copied id that callers still use for routing.
-		subtest("CopiedChannelSurvivesRegistryMoveAssignment", [&]() {
+		ctx.subtest("CopiedChannelSurvivesRegistryMoveAssignment", PARTEST_CTX(&) {
 			cge::event::EventChannelRegistry source;
 			source.getChannel<int>("source-channel");
 

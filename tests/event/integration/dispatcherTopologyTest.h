@@ -14,7 +14,7 @@ namespace cge::test
 		explicit DispatcherTopologyTest(const DispatcherFlavor &flavor);
 
 	private:
-		void isolation();
+		void isolation(partest::TestContext &ctx);
 	};
 }
 
