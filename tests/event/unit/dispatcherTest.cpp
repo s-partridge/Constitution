@@ -35,19 +35,19 @@ namespace cge::test
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("RegisterDeferred", flags, [this]() { registerDeferred(); });
-		addTest("RegisterApplies", flags, [this]() { registerApplies(); });
-		addTest("UnregisterApplies", flags, [this]() { unregisterApplies(); });
-		addTest("UnregisterOne", flags, [this]() { unregisterOne(); });
-		addTest("MultipleListeners", flags, [this]() { multipleListeners(); });
-		addTest("PerChannel", flags, [this]() { perChannel(); });
-		addTest("NoListeners", flags, [this]() { noListeners(); });
-		addTest("CarriesPayload", flags, [this]() { carriesPayload(); });
-		addTest("EventDrainEmpties", flags, [this]() { eventDrainEmpties(); });
-		addTest("CommandDrainEmpties", flags, [this]() { commandDrainEmpties(); });
+		addTest("RegisterDeferred", flags, PARTEST_CTX(this) { registerDeferred(ctx); });
+		addTest("RegisterApplies", flags, PARTEST_CTX(this) { registerApplies(ctx); });
+		addTest("UnregisterApplies", flags, PARTEST_CTX(this) { unregisterApplies(ctx); });
+		addTest("UnregisterOne", flags, PARTEST_CTX(this) { unregisterOne(ctx); });
+		addTest("MultipleListeners", flags, PARTEST_CTX(this) { multipleListeners(ctx); });
+		addTest("PerChannel", flags, PARTEST_CTX(this) { perChannel(ctx); });
+		addTest("NoListeners", flags, PARTEST_CTX(this) { noListeners(ctx); });
+		addTest("CarriesPayload", flags, PARTEST_CTX(this) { carriesPayload(ctx); });
+		addTest("EventDrainEmpties", flags, PARTEST_CTX(this) { eventDrainEmpties(ctx); });
+		addTest("CommandDrainEmpties", flags, PARTEST_CTX(this) { commandDrainEmpties(ctx); });
 	}
 
-	void DispatcherUnitTest::registerDeferred()
+	void DispatcherUnitTest::registerDeferred(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -63,7 +63,7 @@ namespace cge::test
 		ASSERT_EQUAL(listener.calls, 0);
 	}
 
-	void DispatcherUnitTest::registerApplies()
+	void DispatcherUnitTest::registerApplies(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -80,7 +80,7 @@ namespace cge::test
 		ASSERT_EQUAL(listener.calls, 1);
 	}
 
-	void DispatcherUnitTest::unregisterApplies()
+	void DispatcherUnitTest::unregisterApplies(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -103,7 +103,7 @@ namespace cge::test
 
 	// Removal is swap-and-pop, so the listener that gets relocated must still be
 	// reachable afterwards.
-	void DispatcherUnitTest::unregisterOne()
+	void DispatcherUnitTest::unregisterOne(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -130,7 +130,7 @@ namespace cge::test
 		ASSERT_EQUAL(third.calls, 1);
 	}
 
-	void DispatcherUnitTest::multipleListeners()
+	void DispatcherUnitTest::multipleListeners(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -153,7 +153,7 @@ namespace cge::test
 		ASSERT_EQUAL(second.last, 9);
 	}
 
-	void DispatcherUnitTest::perChannel()
+	void DispatcherUnitTest::perChannel(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -172,7 +172,7 @@ namespace cge::test
 		ASSERT_EQUAL(listener.calls, 0);
 	}
 
-	void DispatcherUnitTest::noListeners()
+	void DispatcherUnitTest::noListeners(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -186,7 +186,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.eventCount(), static_cast<size_t>(0));
 	}
 
-	void DispatcherUnitTest::carriesPayload()
+	void DispatcherUnitTest::carriesPayload(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -204,7 +204,7 @@ namespace cge::test
 		ASSERT_EQUAL(listener.last, 123);
 	}
 
-	void DispatcherUnitTest::eventDrainEmpties()
+	void DispatcherUnitTest::eventDrainEmpties(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -221,7 +221,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.eventCount(), static_cast<size_t>(0));
 	}
 
-	void DispatcherUnitTest::commandDrainEmpties()
+	void DispatcherUnitTest::commandDrainEmpties(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);

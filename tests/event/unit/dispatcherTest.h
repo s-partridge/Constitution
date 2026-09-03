@@ -15,16 +15,16 @@ namespace cge::test
 		DispatcherUnitTest();
 
 	private:
-		void registerDeferred();
-		void registerApplies();
-		void unregisterApplies();
-		void unregisterOne();
-		void multipleListeners();
-		void perChannel();
-		void noListeners();
-		void carriesPayload();
-		void eventDrainEmpties();
-		void commandDrainEmpties();
+		void registerDeferred(partest::TestContext &ctx);
+		void registerApplies(partest::TestContext &ctx);
+		void unregisterApplies(partest::TestContext &ctx);
+		void unregisterOne(partest::TestContext &ctx);
+		void multipleListeners(partest::TestContext &ctx);
+		void perChannel(partest::TestContext &ctx);
+		void noListeners(partest::TestContext &ctx);
+		void carriesPayload(partest::TestContext &ctx);
+		void eventDrainEmpties(partest::TestContext &ctx);
+		void commandDrainEmpties(partest::TestContext &ctx);
 	};
 }
 
