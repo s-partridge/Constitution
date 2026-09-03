@@ -15,23 +15,23 @@ namespace cge::test
 		ListenerUnitTest();
 
 	private:
-		void returnsPending();
-		void queuesOneCommand();
-		void duplicateResult();
-		void duplicateQueuesNothing();
-		void refusedResult();
-		void refusedRetry();
-		void unregisterClearsPending();
-		void unregisterUnknown();
-		void reregisterAfterDispatch();
+		void returnsPending(partest::TestContext &ctx);
+		void queuesOneCommand(partest::TestContext &ctx);
+		void duplicateResult(partest::TestContext &ctx);
+		void duplicateQueuesNothing(partest::TestContext &ctx);
+		void refusedResult(partest::TestContext &ctx);
+		void refusedRetry(partest::TestContext &ctx);
+		void unregisterClearsPending(partest::TestContext &ctx);
+		void unregisterUnknown(partest::TestContext &ctx);
+		void reregisterAfterDispatch(partest::TestContext &ctx);
 
-		void handlerNotLiveYet();
-		void invokesHandler();
-		void passesPayload();
-		void selectsByChannel();
-		void selectsAcrossTypes();
-		void ignoresUnknownChannel();
-		void memberFunctionForm();
+		void handlerNotLiveYet(partest::TestContext &ctx);
+		void invokesHandler(partest::TestContext &ctx);
+		void passesPayload(partest::TestContext &ctx);
+		void selectsByChannel(partest::TestContext &ctx);
+		void selectsAcrossTypes(partest::TestContext &ctx);
+		void ignoresUnknownChannel(partest::TestContext &ctx);
+		void memberFunctionForm(partest::TestContext &ctx);
 	};
 }
 

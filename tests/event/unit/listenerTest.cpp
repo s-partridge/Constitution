@@ -37,26 +37,26 @@ namespace cge::test
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("ReturnsPending", flags, [this]() { returnsPending(); });
-		addTest("QueuesOneCommand", flags, [this]() { queuesOneCommand(); });
-		addTest("DuplicateResult", flags, [this]() { duplicateResult(); });
-		addTest("DuplicateQueuesNothing", flags, [this]() { duplicateQueuesNothing(); });
-		addTest("RefusedResult", flags, [this]() { refusedResult(); });
-		addTest("RefusedRetry", flags.withExpectFailure(), [this]() { refusedRetry(); });
-		addTest("UnregisterClearsPending", flags, [this]() { unregisterClearsPending(); });
-		addTest("UnregisterUnknown", flags, [this]() { unregisterUnknown(); });
-		addTest("ReregisterAfterDrain", flags.withExpectFailure(), [this]() { reregisterAfterDispatch(); });
+		addTest("ReturnsPending", flags, PARTEST_CTX(this) { returnsPending(ctx); });
+		addTest("QueuesOneCommand", flags, PARTEST_CTX(this) { queuesOneCommand(ctx); });
+		addTest("DuplicateResult", flags, PARTEST_CTX(this) { duplicateResult(ctx); });
+		addTest("DuplicateQueuesNothing", flags, PARTEST_CTX(this) { duplicateQueuesNothing(ctx); });
+		addTest("RefusedResult", flags, PARTEST_CTX(this) { refusedResult(ctx); });
+		addTest("RefusedRetry", flags.withExpectFailure(), PARTEST_CTX(this) { refusedRetry(ctx); });
+		addTest("UnregisterClearsPending", flags, PARTEST_CTX(this) { unregisterClearsPending(ctx); });
+		addTest("UnregisterUnknown", flags, PARTEST_CTX(this) { unregisterUnknown(ctx); });
+		addTest("ReregisterAfterDrain", flags.withExpectFailure(), PARTEST_CTX(this) { reregisterAfterDispatch(ctx); });
 
-		addTest("HandlerNotLiveYet", flags, [this]() { handlerNotLiveYet(); });
-		addTest("InvokesHandler", flags, [this]() { invokesHandler(); });
-		addTest("PassesPayload", flags, [this]() { passesPayload(); });
-		addTest("SelectsByChannel", flags, [this]() { selectsByChannel(); });
-		addTest("SelectsAcrossTypes", flags, [this]() { selectsAcrossTypes(); });
-		addTest("IgnoresUnknownChannel", flags, [this]() { ignoresUnknownChannel(); });
-		addTest("MemberFunctionForm", flags, [this]() { memberFunctionForm(); });
+		addTest("HandlerNotLiveYet", flags, PARTEST_CTX(this) { handlerNotLiveYet(ctx); });
+		addTest("InvokesHandler", flags, PARTEST_CTX(this) { invokesHandler(ctx); });
+		addTest("PassesPayload", flags, PARTEST_CTX(this) { passesPayload(ctx); });
+		addTest("SelectsByChannel", flags, PARTEST_CTX(this) { selectsByChannel(ctx); });
+		addTest("SelectsAcrossTypes", flags, PARTEST_CTX(this) { selectsAcrossTypes(ctx); });
+		addTest("IgnoresUnknownChannel", flags, PARTEST_CTX(this) { ignoresUnknownChannel(ctx); });
+		addTest("MemberFunctionForm", flags, PARTEST_CTX(this) { memberFunctionForm(ctx); });
 	}
 
-	void ListenerUnitTest::returnsPending()
+	void ListenerUnitTest::returnsPending(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -67,7 +67,7 @@ namespace cge::test
 		ASSERT_EQUAL(listener.requestRegister(channel, [](const int &) {}), cge::event::DispatchStatus::Pending);
 	}
 
-	void ListenerUnitTest::queuesOneCommand()
+	void ListenerUnitTest::queuesOneCommand(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -80,7 +80,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.commandCount(), static_cast<size_t>(1));
 	}
 
-	void ListenerUnitTest::duplicateResult()
+	void ListenerUnitTest::duplicateResult(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -94,7 +94,7 @@ namespace cge::test
 			== cge::event::DispatchStatus::Duplicate);
 	}
 
-	void ListenerUnitTest::duplicateQueuesNothing()
+	void ListenerUnitTest::duplicateQueuesNothing(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -108,7 +108,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.commandCount(), static_cast<size_t>(1));
 	}
 
-	void ListenerUnitTest::refusedResult()
+	void ListenerUnitTest::refusedResult(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -125,7 +125,7 @@ namespace cge::test
 	// to fail: the handler is committed to the pending list before the dispatcher
 	// is asked, so a refusal leaves a stale entry and the retry reads as a
 	// duplicate. See docs/open-items.md.
-	void ListenerUnitTest::refusedRetry()
+	void ListenerUnitTest::refusedRetry(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -140,7 +140,7 @@ namespace cge::test
 		ASSERT_EQUAL(listener.requestRegister(channel, [](const int &) {}), cge::event::DispatchStatus::Pending);
 	}
 
-	void ListenerUnitTest::unregisterClearsPending()
+	void ListenerUnitTest::unregisterClearsPending(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -155,7 +155,7 @@ namespace cge::test
 		ASSERT_EQUAL(listener.requestRegister(channel, [](const int &) {}), cge::event::DispatchStatus::Pending);
 	}
 
-	void ListenerUnitTest::unregisterUnknown()
+	void ListenerUnitTest::unregisterUnknown(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -174,7 +174,7 @@ namespace cge::test
 	// error as re-registering a pending one. Expected to fail: the pending list
 	// is cleared on finalize, so the guard no longer sees anything. See A1 in
 	// docs/test-refactor.md.
-	void ListenerUnitTest::reregisterAfterDispatch()
+	void ListenerUnitTest::reregisterAfterDispatch(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -187,7 +187,7 @@ namespace cge::test
 		ASSERT_EQUAL(listener.requestRegister(channel, [](const int &) {}), cge::event::DispatchStatus::Duplicate);
 	}
 
-	void ListenerUnitTest::handlerNotLiveYet()
+	void ListenerUnitTest::handlerNotLiveYet(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -205,7 +205,7 @@ namespace cge::test
 		ASSERT_EQUAL(calls, 0);
 	}
 
-	void ListenerUnitTest::invokesHandler()
+	void ListenerUnitTest::invokesHandler(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -223,7 +223,7 @@ namespace cge::test
 		ASSERT_EQUAL(calls, 1);
 	}
 
-	void ListenerUnitTest::passesPayload()
+	void ListenerUnitTest::passesPayload(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -241,7 +241,7 @@ namespace cge::test
 		ASSERT_EQUAL(seen, 77);
 	}
 
-	void ListenerUnitTest::selectsByChannel()
+	void ListenerUnitTest::selectsByChannel(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -268,7 +268,7 @@ namespace cge::test
 	// carry int, so a mis-keyed lookup there shows up as a wrong count. Here the
 	// same mistake casts an Event<string> through a handler expecting an int,
 	// which is the failure the channel-to-type binding exists to prevent.
-	void ListenerUnitTest::selectsAcrossTypes()
+	void ListenerUnitTest::selectsAcrossTypes(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -296,7 +296,7 @@ namespace cge::test
 		ASSERT_EQUAL(seenName, std::string("archer"));
 	}
 
-	void ListenerUnitTest::ignoresUnknownChannel()
+	void ListenerUnitTest::ignoresUnknownChannel(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -315,7 +315,7 @@ namespace cge::test
 		ASSERT_EQUAL(calls, 0);
 	}
 
-	void ListenerUnitTest::memberFunctionForm()
+	void ListenerUnitTest::memberFunctionForm(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
