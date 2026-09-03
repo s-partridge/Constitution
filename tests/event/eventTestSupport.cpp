@@ -44,7 +44,7 @@ namespace cge::test
 		return hc;
 	}
 
-	void EventLoadSuite::assertPayloadsPreserved(const std::vector<LoadPayload> &sent, const std::vector<LoadPayload> &received)
+	void EventLoadSuite::assertPayloadsPreserved(partest::TestContext &ctx, const std::vector<LoadPayload> &sent, const std::vector<LoadPayload> &received)
 	{
 		ASSERT_EQUAL(received.size(), sent.size());
 
@@ -65,7 +65,7 @@ namespace cge::test
 		}
 	}
 
-	void EventLoadSuite::assertProducerOrderPreserved(const std::vector<LoadPayload> &received)
+	void EventLoadSuite::assertProducerOrderPreserved(partest::TestContext &ctx, const std::vector<LoadPayload> &received)
 	{
 		// Last payload seen per worker. Within a worker the ordering reduces to
 		// frame then sequence, so comparing whole payloads is the ordering test.

@@ -436,13 +436,13 @@ namespace cge::test
 		// Sorted comparison: arrival order across producers is not a contract,
 		// so only set equality is required here. Asserts record and continue,
 		// so the scan stays in bounds whether or not the size check passed.
-		void assertPayloadsPreserved(const std::vector<LoadPayload> &sent, const std::vector<LoadPayload> &received);
+		void assertPayloadsPreserved(partest::TestContext &ctx, const std::vector<LoadPayload> &sent, const std::vector<LoadPayload> &received);
 
 		// Per-producer ordering is a contract even though cross-producer
 		// ordering is not: events from one producer must arrive in the order
 		// that producer sent them. Checks each worker's subsequence in
 		// isolation, ignoring how they interleave.
-		void assertProducerOrderPreserved(const std::vector<LoadPayload> &received);
+		void assertProducerOrderPreserved(partest::TestContext &ctx, const std::vector<LoadPayload> &received);
 	};
 }
 
