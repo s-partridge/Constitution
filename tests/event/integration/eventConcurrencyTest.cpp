@@ -42,10 +42,10 @@ namespace cge::test
 
 		// First, and it stops the rest of the suite if it fails. Everything below
 		// assumes the dispatcher makes progress under contention.
-		addTest("Liveness", flags.withStopOnFail(partest::FlagState::Enabled), [this]() { liveness(); });
-		addTest("Handoff", flags, [this]() { handoff(); });
-		addTest("Threads", flags, [this]() { threads(); });
-		addTest("Churn", flags, [this]() { churn(); });
+		addTest("Liveness", flags.withStopOnFail(partest::FlagState::Enabled), PARTEST_CTX(this) { liveness(ctx); });
+		addTest("Handoff", flags, PARTEST_CTX(this) { handoff(ctx); });
+		addTest("Threads", flags, PARTEST_CTX(this) { threads(ctx); });
+		addTest("Churn", flags, PARTEST_CTX(this) { churn(ctx); });
 	}
 
 	// Liveness, and nothing else. No payload is checked and no delivery is
@@ -67,7 +67,7 @@ namespace cge::test
 	// channels, listeners and threads, and on timeout the test abandons the lot
 	// and reports rather than hanging the executable. Nothing it can still reach
 	// belongs to this function.
-	void EventConcurrencyTest::liveness()
+	void EventConcurrencyTest::liveness(partest::TestContext &ctx)
 	{
 		const char *label = "EventConcurrencyTest.Liveness";
 
@@ -136,7 +136,7 @@ namespace cge::test
 	// the dispatcher has taken its current queue, while a handler keeps that
 	// drain open, still belongs to this dispatchEvents call. Semaphores make the
 	// boundary deliberate rather than hoping a load run happens to hit it.
-	void EventConcurrencyTest::handoff()
+	void EventConcurrencyTest::handoff(partest::TestContext &ctx)
 	{
 		const char *label = "EventConcurrencyTest.Handoff";
 
@@ -188,11 +188,11 @@ namespace cge::test
 		}
 	}
 
-	void EventConcurrencyTest::threads()
+	void EventConcurrencyTest::threads(partest::TestContext &ctx)
 	{
 		// Producers join before the drain, so this never overlaps push with
 		// dispatch; push-during-drain coverage lives in the load suite.
-		subtest("JoinedProducers", [&]() {
+		ctx.subtest("JoinedProducers", PARTEST_CTX(&) {
 			EventHarness harness(flavor(), "mt-dispatcher");
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("mt");
 			std::atomic<int> total(0);
@@ -227,9 +227,9 @@ namespace cge::test
 	// invariants are asserted: the stable listener sees every payload, and
 	// nothing crashes. What the churning listeners receive depends on drain
 	// timing and is deliberately unasserted.
-	void EventConcurrencyTest::churn()
+	void EventConcurrencyTest::churn(partest::TestContext &ctx)
 	{
-		subtest("ConcurrentChurn", [&]() {
+		ctx.subtest("ConcurrentChurn", PARTEST_CTX(&) {
 			EventHarness harness(flavor(), "churn-dispatcher");
 			const cge::event::EventChannel<LoadPayload> &channel = harness.registry.getChannel<LoadPayload>("churn");
 			PayloadLog sent;
@@ -295,7 +295,7 @@ namespace cge::test
 				harness.dispatcher().dispatchEvents();
 			}
 
-			assertPayloadsPreserved(sent.snapshot(), received.snapshot());
+			assertPayloadsPreserved(ctx, sent.snapshot(), received.snapshot());
 		});
 	}
 }
