@@ -99,9 +99,15 @@ namespace cge::test
 	// leave. Capture nothing from the calling function. Capturing the suite
 	// itself is fine; it outlives the whole run.
 	//
-	// The body must not assert. Assertions bind to a TestBase frame and belong
-	// to the test thread, and the body is not on it. It returns data instead,
-	// and the caller asserts once the data is back.
+	// The body must not assert, but not because assertions are thread-bound -
+	// they aren't. A subtest spawned from this thread, on its own ctx, could
+	// assert here just fine, even with stopOnFail set, since the exception
+	// boundary for that subtest would live on this same thread. The actual
+	// reason is abandonment: this body is handed no ctx, and on timeout it is
+	// detached and may keep running after the frame that would receive its
+	// result is gone. Nothing it does after that can reach back safely,
+	// whether by data or by assertion. It returns data instead, and the
+	// caller asserts once the data is back.
 	//
 	// The gate carries the result across and decides who cleans it up. Both
 	// sides check abandoned under the lock, so exactly one of them owns it: the
