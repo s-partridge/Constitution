@@ -13,11 +13,11 @@ namespace cge::test
 		explicit ListenerRegistrationTest(const DispatcherFlavor &flavor);
 
 	private:
-		void registrationLifecycle();
-		void unregister();
-		void batchedRequests();
-		void oneHandlerPerChannel();
-		void handlers();
+		void registrationLifecycle(partest::TestContext &ctx);
+		void unregister(partest::TestContext &ctx);
+		void batchedRequests(partest::TestContext &ctx);
+		void oneHandlerPerChannel(partest::TestContext &ctx);
+		void handlers(partest::TestContext &ctx);
 	};
 }
 
