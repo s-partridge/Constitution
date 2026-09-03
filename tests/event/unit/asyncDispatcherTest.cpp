@@ -42,27 +42,27 @@ namespace cge::test
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("StartsInactive", flags, [this]() { startsInactive(); });
-		addTest("SetUpActivates", flags, [this]() { setUpActivates(); });
-		addTest("TearDownDeactivates", flags, [this]() { tearDownDeactivates(); });
-		addTest("Reactivates", flags, [this]() { reactivates(); });
-		addTest("RepeatedSetUp", flags, [this]() { repeatedSetUp(); });
-		addTest("RepeatedTearDown", flags, [this]() { repeatedTearDown(); });
+		addTest("StartsInactive", flags, PARTEST_CTX(this) { startsInactive(ctx); });
+		addTest("SetUpActivates", flags, PARTEST_CTX(this) { setUpActivates(ctx); });
+		addTest("TearDownDeactivates", flags, PARTEST_CTX(this) { tearDownDeactivates(ctx); });
+		addTest("Reactivates", flags, PARTEST_CTX(this) { reactivates(ctx); });
+		addTest("RepeatedSetUp", flags, PARTEST_CTX(this) { repeatedSetUp(ctx); });
+		addTest("RepeatedTearDown", flags, PARTEST_CTX(this) { repeatedTearDown(ctx); });
 
-		addTest("InactiveRefused", flags, [this]() { inactiveRefused(); });
-		addTest("InactiveQueuesNothing", flags, [this]() { inactiveQueuesNothing(); });
-		addTest("InactiveUnregisterQueued", flags, [this]() { inactiveUnregisterQueued(); });
-		addTest("EventQueued", flags, [this]() { eventQueued(); });
-		addTest("CommandQueued", flags, [this]() { commandQueued(); });
-		addTest("EventNotInCommands", flags, [this]() { eventNotInCommands(); });
-		addTest("CommandNotInEvents", flags, [this]() { commandNotInEvents(); });
+		addTest("InactiveRefused", flags, PARTEST_CTX(this) { inactiveRefused(ctx); });
+		addTest("InactiveQueuesNothing", flags, PARTEST_CTX(this) { inactiveQueuesNothing(ctx); });
+		addTest("InactiveUnregisterQueued", flags, PARTEST_CTX(this) { inactiveUnregisterQueued(ctx); });
+		addTest("EventQueued", flags, PARTEST_CTX(this) { eventQueued(ctx); });
+		addTest("CommandQueued", flags, PARTEST_CTX(this) { commandQueued(ctx); });
+		addTest("EventNotInCommands", flags, PARTEST_CTX(this) { eventNotInCommands(ctx); });
+		addTest("CommandNotInEvents", flags, PARTEST_CTX(this) { commandNotInEvents(ctx); });
 
-		addTest("DrainEmpty", flags, [this]() { drainEmpty(); });
-		addTest("DrainNoListeners", flags, [this]() { drainNoListeners(); });
-		addTest("QueueSurvivesTearDown", flags, [this]() { queueSurvivesTearDown(); });
+		addTest("DrainEmpty", flags, PARTEST_CTX(this) { drainEmpty(ctx); });
+		addTest("DrainNoListeners", flags, PARTEST_CTX(this) { drainNoListeners(ctx); });
+		addTest("QueueSurvivesTearDown", flags, PARTEST_CTX(this) { queueSurvivesTearDown(ctx); });
 	}
 
-	void AsyncDispatcherUnitTest::startsInactive()
+	void AsyncDispatcherUnitTest::startsInactive(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("new", &registry);
@@ -70,7 +70,7 @@ namespace cge::test
 		ASSERT_FALSE(dispatcher.active());
 	}
 
-	void AsyncDispatcherUnitTest::setUpActivates()
+	void AsyncDispatcherUnitTest::setUpActivates(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("setup", &registry);
@@ -80,7 +80,7 @@ namespace cge::test
 		ASSERT_TRUE(dispatcher.active());
 	}
 
-	void AsyncDispatcherUnitTest::tearDownDeactivates()
+	void AsyncDispatcherUnitTest::tearDownDeactivates(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("teardown", &registry);
@@ -93,7 +93,7 @@ namespace cge::test
 
 	// The level transition path: a dispatcher torn down between levels has to
 	// come back when the next one starts.
-	void AsyncDispatcherUnitTest::reactivates()
+	void AsyncDispatcherUnitTest::reactivates(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("recycle", &registry);
@@ -107,7 +107,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.onPushEvent(channel, makeEvent(1)), cge::event::DispatchStatus::Pending);
 	}
 
-	void AsyncDispatcherUnitTest::repeatedSetUp()
+	void AsyncDispatcherUnitTest::repeatedSetUp(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("double-setup", &registry);
@@ -121,7 +121,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(1));
 	}
 
-	void AsyncDispatcherUnitTest::repeatedTearDown()
+	void AsyncDispatcherUnitTest::repeatedTearDown(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("double-teardown", &registry);
@@ -133,7 +133,7 @@ namespace cge::test
 		ASSERT_FALSE(dispatcher.active());
 	}
 
-	void AsyncDispatcherUnitTest::inactiveRefused()
+	void AsyncDispatcherUnitTest::inactiveRefused(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("inactive", &registry);
@@ -143,7 +143,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.onPushCommand(channel, makeEvent(1)), cge::event::DispatchStatus::NotReady);
 	}
 
-	void AsyncDispatcherUnitTest::inactiveQueuesNothing()
+	void AsyncDispatcherUnitTest::inactiveQueuesNothing(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("inactive-queue", &registry);
@@ -159,7 +159,7 @@ namespace cge::test
 	// Inactivity rejects new registrations but never traps a component in the
 	// dispatcher. A queued unregistration remains valid and can be drained
 	// before the next setup.
-	void AsyncDispatcherUnitTest::inactiveUnregisterQueued()
+	void AsyncDispatcherUnitTest::inactiveUnregisterQueued(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("inactive-unregister", &registry);
@@ -180,7 +180,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.queuedCommands(), static_cast<size_t>(0));
 	}
 
-	void AsyncDispatcherUnitTest::eventQueued()
+	void AsyncDispatcherUnitTest::eventQueued(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("event-push", &registry);
@@ -191,7 +191,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(1));
 	}
 
-	void AsyncDispatcherUnitTest::commandQueued()
+	void AsyncDispatcherUnitTest::commandQueued(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("command-push", &registry);
@@ -202,7 +202,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.queuedCommands(), static_cast<size_t>(1));
 	}
 
-	void AsyncDispatcherUnitTest::eventNotInCommands()
+	void AsyncDispatcherUnitTest::eventNotInCommands(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("event-only", &registry);
@@ -214,7 +214,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.queuedCommands(), static_cast<size_t>(0));
 	}
 
-	void AsyncDispatcherUnitTest::commandNotInEvents()
+	void AsyncDispatcherUnitTest::commandNotInEvents(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("command-only", &registry);
@@ -226,7 +226,7 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(0));
 	}
 
-	void AsyncDispatcherUnitTest::drainEmpty()
+	void AsyncDispatcherUnitTest::drainEmpty(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("empty-drain", &registry);
@@ -241,7 +241,7 @@ namespace cge::test
 
 	// Nobody is registered, so there is nowhere for the event to go. It still
 	// has to leave the queue rather than accumulating there.
-	void AsyncDispatcherUnitTest::drainNoListeners()
+	void AsyncDispatcherUnitTest::drainNoListeners(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("no-listeners", &registry);
@@ -258,7 +258,7 @@ namespace cge::test
 
 	// Once accepted, always delivered, at its smallest testable size: tearDown
 	// stops intake but must not discard what is already queued.
-	void AsyncDispatcherUnitTest::queueSurvivesTearDown()
+	void AsyncDispatcherUnitTest::queueSurvivesTearDown(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		TestableAsyncDispatcher dispatcher("survive", &registry);

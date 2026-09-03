@@ -14,24 +14,24 @@ namespace cge::test
 		AsyncDispatcherUnitTest();
 
 	private:
-		void startsInactive();
-		void setUpActivates();
-		void tearDownDeactivates();
-		void reactivates();
-		void repeatedSetUp();
-		void repeatedTearDown();
+		void startsInactive(partest::TestContext &ctx);
+		void setUpActivates(partest::TestContext &ctx);
+		void tearDownDeactivates(partest::TestContext &ctx);
+		void reactivates(partest::TestContext &ctx);
+		void repeatedSetUp(partest::TestContext &ctx);
+		void repeatedTearDown(partest::TestContext &ctx);
 
-		void inactiveRefused();
-		void inactiveQueuesNothing();
-		void inactiveUnregisterQueued();
-		void eventQueued();
-		void commandQueued();
-		void eventNotInCommands();
-		void commandNotInEvents();
+		void inactiveRefused(partest::TestContext &ctx);
+		void inactiveQueuesNothing(partest::TestContext &ctx);
+		void inactiveUnregisterQueued(partest::TestContext &ctx);
+		void eventQueued(partest::TestContext &ctx);
+		void commandQueued(partest::TestContext &ctx);
+		void eventNotInCommands(partest::TestContext &ctx);
+		void commandNotInEvents(partest::TestContext &ctx);
 
-		void drainEmpty();
-		void drainNoListeners();
-		void queueSurvivesTearDown();
+		void drainEmpty(partest::TestContext &ctx);
+		void drainNoListeners(partest::TestContext &ctx);
+		void queueSurvivesTearDown(partest::TestContext &ctx);
 	};
 }
 
