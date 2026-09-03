@@ -14,8 +14,8 @@ namespace cge::test
 		explicit PayloadTest(const DispatcherFlavor &flavor);
 
 	private:
-		void delivery();
-		void payloadTypes();
+		void delivery(partest::TestContext &ctx);
+		void payloadTypes(partest::TestContext &ctx);
 	};
 }
 

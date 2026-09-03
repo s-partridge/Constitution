@@ -14,18 +14,18 @@ namespace cge::test
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("Delivery", flags, [this]() { delivery(); });
-		addTest("PayloadTypes", flags, [this]() { payloadTypes(); });
+		addTest("Delivery", flags, PARTEST_CTX(this) { delivery(ctx); });
+		addTest("PayloadTypes", flags, PARTEST_CTX(this) { payloadTypes(ctx); });
 	}
 
 	// The dispatcher is shared, but each case brings its own channel and its own
 	// listener, so no case depends on what a previous one left in the log.
-	void PayloadTest::delivery()
+	void PayloadTest::delivery(partest::TestContext &ctx)
 	{
 		EventHarness harness(flavor(), "payload-delivery-dispatcher");
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 
-		subtest("TypedPayload", [&]() {
+		ctx.subtest("TypedPayload", PARTEST_CTX(&) {
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("bc-typed");
 			CountingListener listener(&harness.dispatcher());
 
@@ -39,7 +39,7 @@ namespace cge::test
 			ASSERT_EQUAL(listener.received[0], 123);
 		});
 
-		subtest("OrderPreserved", [&]() {
+		ctx.subtest("OrderPreserved", PARTEST_CTX(&) {
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("bc-order");
 			CountingListener listener(&harness.dispatcher());
 
@@ -60,7 +60,7 @@ namespace cge::test
 		// A channel nobody watches is not a refusal, so the push is accepted and
 		// the drain simply discards it. Nothing observes the event itself, so the
 		// proof that the drain handled it is that the next delivery still works.
-		subtest("NoListeners", [&]() {
+		ctx.subtest("NoListeners", PARTEST_CTX(&) {
 			const cge::event::EventChannel<int> &empty = harness.registry.getChannel<int>("bc-empty");
 			const cge::event::EventChannel<int> &watched = harness.registry.getChannel<int>("bc-after-empty");
 			CountingListener listener(&harness.dispatcher());
@@ -82,7 +82,7 @@ namespace cge::test
 		// identity as far as routing is concerned. Registering through the
 		// registry's reference and broadcasting through a stack copy is the reason
 		// that preservation matters.
-		subtest("CopiedChannelRoutes", [&]() {
+		ctx.subtest("CopiedChannelRoutes", PARTEST_CTX(&) {
 			const cge::event::EventChannel<int> &original = harness.registry.getChannel<int>("bc-copied");
 			CountingListener listener(&harness.dispatcher());
 
@@ -104,12 +104,12 @@ namespace cge::test
 	// cast at the delivery site, so each category is a separate path and each
 	// one is exercised end to end here. Event<T> holding a value correctly is a
 	// separate, unit-level concern and does not establish any of this.
-	void PayloadTest::payloadTypes()
+	void PayloadTest::payloadTypes(partest::TestContext &ctx)
 	{
 		EventHarness harness(flavor(), "payload-types-dispatcher");
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 
-		subtest("Enum", [&]() {
+		ctx.subtest("Enum", PARTEST_CTX(&) {
 			enum class GameState { Menu, Loading, Playing };
 
 			const cge::event::EventChannel<GameState> &channel = harness.registry.getChannel<GameState>("bc-enum");
@@ -126,7 +126,7 @@ namespace cge::test
 		});
 
 		// The address must arrive intact, not the pointee.
-		subtest("Pointer", [&]() {
+		ctx.subtest("Pointer", PARTEST_CTX(&) {
 			const cge::event::EventChannel<int *> &channel = harness.registry.getChannel<int *>("bc-ptr");
 			int target = 41;
 			int *got = nullptr;
@@ -143,7 +143,7 @@ namespace cge::test
 			ASSERT_EQUAL(target, 42);
 		});
 
-		subtest("TrivialStruct", [&]() {
+		ctx.subtest("TrivialStruct", PARTEST_CTX(&) {
 			struct DamagePayload
 			{
 				int amount;
@@ -175,7 +175,7 @@ namespace cge::test
 		});
 
 		// Source released before the drain, so a shallow copy dangles.
-		subtest("Class", [&]() {
+		ctx.subtest("Class", PARTEST_CTX(&) {
 			const cge::event::EventChannel<std::string> &channel = harness.registry.getChannel<std::string>("bc-str");
 			std::string got;
 
@@ -193,7 +193,7 @@ namespace cge::test
 		});
 
 		// Members own resources, so the copy is member-wise and non-trivial.
-		subtest("Aggregate", [&]() {
+		ctx.subtest("Aggregate", PARTEST_CTX(&) {
 			struct SpawnRequest
 			{
 				int unitType;
