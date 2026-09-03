@@ -43,24 +43,24 @@ namespace cge::test
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("StoresPayload", flags, [this]() { storesPayload(); });
-		addTest("CopiesPayload", flags, [this]() { copiesPayload(); });
-		addTest("OutlivesSource", flags, [this]() { outlivesSource(); });
-		addTest("PayloadCategories", flags, [this]() { payloadCategories(); });
-		addTest("PayloadsCopyable", flags, [this]() { payloadsCopyable(); });
-		addTest("MoveOnlyPayloadRejected", flags, [this]() { moveOnlyPayloadRejected(); });
+		addTest("StoresPayload", flags, PARTEST_CTX(this) { storesPayload(ctx); });
+		addTest("CopiesPayload", flags, PARTEST_CTX(this) { copiesPayload(ctx); });
+		addTest("OutlivesSource", flags, PARTEST_CTX(this) { outlivesSource(ctx); });
+		addTest("PayloadCategories", flags, PARTEST_CTX(this) { payloadCategories(ctx); });
+		addTest("PayloadsCopyable", flags, PARTEST_CTX(this) { payloadsCopyable(ctx); });
+		addTest("MoveOnlyPayloadRejected", flags, PARTEST_CTX(this) { moveOnlyPayloadRejected(ctx); });
 
-		addTest("TypeConflict", flags.withExpectFailure(), [this]() { typeConflict(); });
-		addTest("SameName", flags, [this]() { sameName(); });
-		addTest("DistinctNames", flags, [this]() { distinctNames(); });
-		addTest("DistinctRegistries", flags, [this]() { distinctRegistries(); });
-		addTest("NoDefaultConstruct", flags, [this]() { noDefaultConstruct(); });
-		addTest("CopyKeepsId", flags, [this]() { copyKeepsId(); });
-		addTest("NoMoveConstruct", flags, [this]() { noMoveConstruct(); });
-		addTest("RegistryMove", flags, [this]() { registryMove(); });
+		addTest("TypeConflict", flags.withExpectFailure(), PARTEST_CTX(this) { typeConflict(ctx); });
+		addTest("SameName", flags, PARTEST_CTX(this) { sameName(ctx); });
+		addTest("DistinctNames", flags, PARTEST_CTX(this) { distinctNames(ctx); });
+		addTest("DistinctRegistries", flags, PARTEST_CTX(this) { distinctRegistries(ctx); });
+		addTest("NoDefaultConstruct", flags, PARTEST_CTX(this) { noDefaultConstruct(ctx); });
+		addTest("CopyKeepsId", flags, PARTEST_CTX(this) { copyKeepsId(ctx); });
+		addTest("NoMoveConstruct", flags, PARTEST_CTX(this) { noMoveConstruct(ctx); });
+		addTest("RegistryMove", flags, PARTEST_CTX(this) { registryMove(ctx); });
 	}
 
-	void EventUnitTest::storesPayload()
+	void EventUnitTest::storesPayload(partest::TestContext &ctx)
 	{
 		cge::event::Event<int> event(42);
 
@@ -69,7 +69,7 @@ namespace cge::test
 
 	// The constructor takes a reference and stores a copy, so the caller owns
 	// his source for as long as he likes and may change it immediately.
-	void EventUnitTest::copiesPayload()
+	void EventUnitTest::copiesPayload(partest::TestContext &ctx)
 	{
 		std::string source = "original";
 		cge::event::Event<std::string> event(source);
@@ -81,7 +81,7 @@ namespace cge::test
 
 	// The async case in miniature: the source is a local in a worker function
 	// that returned long before anything reads the payload.
-	void EventUnitTest::outlivesSource()
+	void EventUnitTest::outlivesSource(partest::TestContext &ctx)
 	{
 		std::unique_ptr<cge::event::Event<std::string>> event;
 		{
@@ -94,16 +94,16 @@ namespace cge::test
 
 	// One behavior, five payload categories. Event<T> has to preserve each of
 	// them across construction whatever the copy costs.
-	void EventUnitTest::payloadCategories()
+	void EventUnitTest::payloadCategories(partest::TestContext &ctx)
 	{
-		subtest("Enum", [&]() {
+		ctx.subtest("Enum", PARTEST_CTX(&) {
 			cge::event::Event<GameState> event(GameState::Playing);
 
 			ASSERT_TRUE(event.payload == GameState::Playing);
 		});
 
 		// A pointer payload copies the address, not the pointee.
-		subtest("Pointer", [&]() {
+		ctx.subtest("Pointer", PARTEST_CTX(&) {
 			int target = 41;
 			cge::event::Event<int *> event(&target);
 
@@ -114,7 +114,7 @@ namespace cge::test
 		});
 
 		// The archetypal game payload.
-		subtest("TrivialStruct", [&]() {
+		ctx.subtest("TrivialStruct", PARTEST_CTX(&) {
 			static_assert(std::is_trivially_copyable<DamagePayload>::value,
 				"representative must actually belong to the trivially-copyable class");
 
@@ -131,14 +131,14 @@ namespace cge::test
 		});
 
 		// Copy allocates, so this proves a deep copy rather than a shared buffer.
-		subtest("Class", [&]() {
+		ctx.subtest("Class", PARTEST_CTX(&) {
 			cge::event::Event<std::string> event(std::string("hello-event"));
 
 			ASSERT_EQUAL(event.payload, std::string("hello-event"));
 		});
 
 		// Members own resources, so the copy is member-wise and non-trivial.
-		subtest("Aggregate", [&]() {
+		ctx.subtest("Aggregate", PARTEST_CTX(&) {
 			SpawnRequest source;
 			source.unitType = 3;
 			source.name = "archer";
@@ -160,7 +160,7 @@ namespace cge::test
 	// The payload is taken by const reference, which is what makes it a copy and
 	// leaves the caller's source his own. This fails if the signature is ever
 	// changed to require a move.
-	void EventUnitTest::payloadsCopyable()
+	void EventUnitTest::payloadsCopyable(partest::TestContext &ctx)
 	{
 		const bool fromConstInt =
 			std::is_constructible<cge::event::Event<int>, const int &>::value;
@@ -183,7 +183,7 @@ namespace cge::test
 	// compile inside Event<T> today rather than being diagnosed, which is an
 	// engine matter; what belongs here is which side of the line each type sits
 	// on, so lifting the exclusion has to be a deliberate edit to this test.
-	void EventUnitTest::moveOnlyPayloadRejected()
+	void EventUnitTest::moveOnlyPayloadRejected(partest::TestContext &ctx)
 	{
 		ASSERT_TRUE(std::is_copy_constructible<int>::value);
 		ASSERT_TRUE(std::is_copy_constructible<GameState>::value);
@@ -205,14 +205,14 @@ namespace cge::test
 	// current signature, and asserting the throw that stands in for it today
 	// would pin a mechanism that is being removed. This fails until getChannel
 	// can return a result.
-	void EventUnitTest::typeConflict()
+	void EventUnitTest::typeConflict(partest::TestContext &ctx)
 	{
 		const bool refused = false;
 
 		ASSERT_TRUE(refused);
 	}
 
-	void EventUnitTest::sameName()
+	void EventUnitTest::sameName(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		const cge::event::EventChannel<int> &first = registry.getChannel<int>("alpha");
@@ -222,7 +222,7 @@ namespace cge::test
 		ASSERT_TRUE(&first == &second);
 	}
 
-	void EventUnitTest::distinctNames()
+	void EventUnitTest::distinctNames(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		const cge::event::EventChannel<int> &a = registry.getChannel<int>("a");
@@ -233,7 +233,7 @@ namespace cge::test
 
 	// Channel ids come from a process-global counter, so the same tag in two
 	// registries is two different channels rather than a collision.
-	void EventUnitTest::distinctRegistries()
+	void EventUnitTest::distinctRegistries(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry first;
 		cge::event::EventChannelRegistry second;
@@ -245,13 +245,13 @@ namespace cge::test
 	}
 
 	// Protected default ctor: new channels must come from the registry.
-	void EventUnitTest::noDefaultConstruct()
+	void EventUnitTest::noDefaultConstruct(partest::TestContext &ctx)
 	{
 		ASSERT_FALSE(std::is_default_constructible<cge::event::EventChannel<int>>::value);
 		ASSERT_FALSE(std::is_default_constructible<cge::event::EventChannelBase>::value);
 	}
 
-	void EventUnitTest::copyKeepsId()
+	void EventUnitTest::copyKeepsId(partest::TestContext &ctx)
 	{
 		ASSERT_TRUE(std::is_copy_constructible<cge::event::EventChannel<int>>::value);
 
@@ -263,7 +263,7 @@ namespace cge::test
 	}
 
 	// Move is disabled so channel identities cannot be shuffled past the registry.
-	void EventUnitTest::noMoveConstruct()
+	void EventUnitTest::noMoveConstruct(partest::TestContext &ctx)
 	{
 		ASSERT_FALSE(std::is_move_constructible<cge::event::EventChannel<int>>::value);
 		ASSERT_FALSE(std::is_move_constructible<cge::event::EventChannelBase>::value);
@@ -273,9 +273,9 @@ namespace cge::test
 	// destructor, so a move has to hand that ownership over whole: the new owner
 	// resolves the same tags to the same ids, and the husk left behind frees
 	// nothing when it goes.
-	void EventUnitTest::registryMove()
+	void EventUnitTest::registryMove(partest::TestContext &ctx)
 	{
-		subtest("Construct", [&]() {
+		ctx.subtest("Construct", PARTEST_CTX(&) {
 			cge::event::EventChannelRegistry source;
 			const cge::event::ChannelId id = source.getChannel<int>("moved").id();
 
@@ -284,7 +284,7 @@ namespace cge::test
 			ASSERT_EQUAL(moved.getChannel<int>("moved").id(), id);
 		});
 
-		subtest("Assign", [&]() {
+		ctx.subtest("Assign", PARTEST_CTX(&) {
 			cge::event::EventChannelRegistry source;
 			const cge::event::ChannelId id = source.getChannel<int>("moved-assign").id();
 
@@ -297,7 +297,7 @@ namespace cge::test
 
 		// Both registries are destroyed at the end of this subtest. The moved-from
 		// one must hold nothing, or the channels get deleted twice.
-		subtest("MovedFromOwnsNothing", [&]() {
+		ctx.subtest("MovedFromOwnsNothing", PARTEST_CTX(&) {
 			cge::event::EventChannelRegistry source;
 			const cge::event::ChannelId id = source.getChannel<int>("before-move").id();
 

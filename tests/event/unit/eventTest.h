@@ -14,21 +14,21 @@ namespace cge::test
 		EventUnitTest();
 
 	private:
-		void storesPayload();
-		void copiesPayload();
-		void outlivesSource();
-		void payloadCategories();
-		void payloadsCopyable();
-		void moveOnlyPayloadRejected();
+		void storesPayload(partest::TestContext &ctx);
+		void copiesPayload(partest::TestContext &ctx);
+		void outlivesSource(partest::TestContext &ctx);
+		void payloadCategories(partest::TestContext &ctx);
+		void payloadsCopyable(partest::TestContext &ctx);
+		void moveOnlyPayloadRejected(partest::TestContext &ctx);
 
-		void typeConflict();
-		void sameName();
-		void distinctNames();
-		void distinctRegistries();
-		void noDefaultConstruct();
-		void copyKeepsId();
-		void noMoveConstruct();
-		void registryMove();
+		void typeConflict(partest::TestContext &ctx);
+		void sameName(partest::TestContext &ctx);
+		void distinctNames(partest::TestContext &ctx);
+		void distinctRegistries(partest::TestContext &ctx);
+		void noDefaultConstruct(partest::TestContext &ctx);
+		void copyKeepsId(partest::TestContext &ctx);
+		void noMoveConstruct(partest::TestContext &ctx);
+		void registryMove(partest::TestContext &ctx);
 	};
 }
 
