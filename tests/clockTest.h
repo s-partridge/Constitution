@@ -15,18 +15,18 @@ public:
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("ConstructionRegistersUpdateAndPhysics", flags, [this]() { return this->constructionRegistersUpdateAndPhysics(); });
-		addTest("RegisterChannelSucceedsForNewType", flags, [this]() { return this->registerChannelSucceedsForNewType(); });
-		addTest("RegisterChannelFailsForDuplicateType", flags, [this]() { return this->registerChannelFailsForDuplicateType(); });
-		addTest("RegisterChannelFailsForUpdateAfterConstruction", flags, [this]() { return this->registerChannelFailsForUpdateAfterConstruction(); });
-		addTest("RegisteredChannelHasExpectedInitialState", flags, [this]() { return this->registeredChannelHasExpectedInitialState(); });
-		addTest("TickIncrementsCount", flags, [this]() { return this->tickIncrementsCount(); });
-		addTest("RawTickIncrementsCount", flags, [this]() { return this->rawTickIncrementsCount(); });
-		addTest("SetIntervalUpdatesChannel", flags, [this]() { return this->setIntervalUpdatesChannel(); });
-		addTest("SetTimeScaleUpdatesChannel", flags, [this]() { return this->setTimeScaleUpdatesChannel(); });
-		addTest("TimeScaleAppliesToTick", flags, [this]() { return this->timeScaleAppliesToTick(); });
-		addTest("DedicatedUpdateAccessorsMatchGeneric", flags, [this]() { return this->dedicatedUpdateAccessorsMatchGeneric(); });
-		addTest("DedicatedPhysicsAccessorsMatchGeneric", flags, [this]() { return this->dedicatedPhysicsAccessorsMatchGeneric(); });
+		addTest("ConstructionRegistersUpdateAndPhysics", flags, PARTEST_CTX(this) { return this->constructionRegistersUpdateAndPhysics(ctx); });
+		addTest("RegisterChannelSucceedsForNewType", flags, PARTEST_CTX(this) { return this->registerChannelSucceedsForNewType(ctx); });
+		addTest("RegisterChannelFailsForDuplicateType", flags, PARTEST_CTX(this) { return this->registerChannelFailsForDuplicateType(ctx); });
+		addTest("RegisterChannelFailsForUpdateAfterConstruction", flags, PARTEST_CTX(this) { return this->registerChannelFailsForUpdateAfterConstruction(ctx); });
+		addTest("RegisteredChannelHasExpectedInitialState", flags, PARTEST_CTX(this) { return this->registeredChannelHasExpectedInitialState(ctx); });
+		addTest("TickIncrementsCount", flags, PARTEST_CTX(this) { return this->tickIncrementsCount(ctx); });
+		addTest("RawTickIncrementsCount", flags, PARTEST_CTX(this) { return this->rawTickIncrementsCount(ctx); });
+		addTest("SetIntervalUpdatesChannel", flags, PARTEST_CTX(this) { return this->setIntervalUpdatesChannel(ctx); });
+		addTest("SetTimeScaleUpdatesChannel", flags, PARTEST_CTX(this) { return this->setTimeScaleUpdatesChannel(ctx); });
+		addTest("TimeScaleAppliesToTick", flags, PARTEST_CTX(this) { return this->timeScaleAppliesToTick(ctx); });
+		addTest("DedicatedUpdateAccessorsMatchGeneric", flags, PARTEST_CTX(this) { return this->dedicatedUpdateAccessorsMatchGeneric(ctx); });
+		addTest("DedicatedPhysicsAccessorsMatchGeneric", flags, PARTEST_CTX(this) { return this->dedicatedPhysicsAccessorsMatchGeneric(ctx); });
 	}
 
 	void constructionRegistersUpdateAndPhysics()
