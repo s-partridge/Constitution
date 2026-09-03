@@ -50,17 +50,17 @@ namespace cge::test
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("Lifecycle", flags, [this]() { lifecycle(); });
-		addTest("Restoration", flags, [this]() { restoration(); });
-		addTest("Eviction", flags, [this]() { eviction(); });
-		addTest("Destruction", flags, [this]() { destruction(); });
-		addTest("BroadcastPushResult", flags, [this]() { broadcastPushResult(); });
-		addTest("CommandPushResult", flags, [this]() { commandPushResult(); });
+		addTest("Lifecycle", flags, PARTEST_CTX(this) { lifecycle(ctx); });
+		addTest("Restoration", flags, PARTEST_CTX(this) { restoration(ctx); });
+		addTest("Eviction", flags, PARTEST_CTX(this) { eviction(ctx); });
+		addTest("Destruction", flags, PARTEST_CTX(this) { destruction(ctx); });
+		addTest("BroadcastPushResult", flags, PARTEST_CTX(this) { broadcastPushResult(ctx); });
+		addTest("CommandPushResult", flags, PARTEST_CTX(this) { commandPushResult(ctx); });
 	}
 
 	// Each case needs a dispatcher at a different lifecycle point, so only the
 	// registry and its channel identity are shared.
-	void DispatcherLifecycleTest::lifecycle()
+	void DispatcherLifecycleTest::lifecycle(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("lifecycle");
@@ -69,7 +69,7 @@ namespace cge::test
 		// go green the moment the call started returning Success or Duplicate,
 		// which are equally wrong, so the placeholder comparison carries the
 		// actual requirement.
-		subtest("RegisterBeforeSetUp", [&]() {
+		ctx.subtest("RegisterBeforeSetUp", PARTEST_CTX(&) {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("pre-setup", &registry);
 			cge::event::ListenerBase listener(dispatcher.get());
 
@@ -79,7 +79,7 @@ namespace cge::test
 			ASSERT_EQUAL(result, cge::event::DispatchStatus::NotReady);
 		});
 
-		subtest("RegisterAfterTearDown", [&]() {
+		ctx.subtest("RegisterAfterTearDown", PARTEST_CTX(&) {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("post-teardown", &registry);
 			dispatcher->setUp();
 			dispatcher->tearDown();
@@ -93,7 +93,7 @@ namespace cge::test
 
 		// Unregistration stays valid while inactive: a listener must always be
 		// able to leave, whatever state the dispatcher is in.
-		subtest("UnregisterStaysValid", [&]() {
+		ctx.subtest("UnregisterStaysValid", PARTEST_CTX(&) {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("unreg-inactive", &registry);
 			dispatcher->setUp();
 
@@ -123,8 +123,8 @@ namespace cge::test
 		// listener may submit a new callback, and only that callback may become
 		// live. This is deliberately red until rejected registrations stop leaving
 		// a stale pending handler behind.
-		subtest("RefusedRegistrationLeavesNoState",
-			partest::TEST_FLAGS_INHERIT.withExpectFailure(), [&]() {
+		ctx.subtest("RefusedRegistrationLeavesNoState",
+			partest::TEST_FLAGS_INHERIT.withExpectFailure(), PARTEST_CTX(&) {
 				std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("refused-register", &registry);
 				int refusedCalls = 0;
 				int acceptedCalls = 0;
@@ -157,7 +157,7 @@ namespace cge::test
 
 		// Dispatch always drains, so a parked event would surface on the next
 		// drain. Nothing arriving therefore proves the push was refused outright.
-		subtest("InactivePushDiscarded", [&]() {
+		ctx.subtest("InactivePushDiscarded", PARTEST_CTX(&) {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("inactive-drop", &registry);
 			CountingListener listener(dispatcher.get());
 			cge::event::BroadcasterBase broadcaster(dispatcher.get());
@@ -178,7 +178,7 @@ namespace cge::test
 
 		// tearDown stops intake, not processing: the engine keeps driving dispatch
 		// on its own schedule, and work already queued still drains.
-		subtest("DrainAfterTearDown", [&]() {
+		ctx.subtest("DrainAfterTearDown", PARTEST_CTX(&) {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("drain-after-teardown", &registry);
 			dispatcher->setUp();
 
@@ -201,14 +201,14 @@ namespace cge::test
 	// The ordinary level transition: tear the dispatcher down, bring it back, and
 	// keep running. Nothing here is an edge case; it is what happens between any
 	// two levels.
-	void DispatcherLifecycleTest::restoration()
+	void DispatcherLifecycleTest::restoration(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("restore");
 
 		// The listener is registered up front so the only thing varying across the
 		// teardown is whether a push is taken at all.
-		subtest("SetUpRestoresIntake", [&]() {
+		ctx.subtest("SetUpRestoresIntake", PARTEST_CTX(&) {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("restore-intake", &registry);
 			dispatcher->setUp();
 
@@ -236,7 +236,7 @@ namespace cge::test
 		// Once accepted, always delivered. tearDown refuses new intake and never
 		// discards what is already queued, so an event that was accepted before
 		// the level ended is still there when the next one starts.
-		subtest("QueuedWorkSurvives", [&]() {
+		ctx.subtest("QueuedWorkSurvives", PARTEST_CTX(&) {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("restore-queue", &registry);
 			dispatcher->setUp();
 
@@ -261,7 +261,7 @@ namespace cge::test
 		// Listeners are never evicted from the map, so a registration made before
 		// the teardown is still live after the next setUp. Revisit when eviction
 		// lands: this is the case an unconditional flush would change.
-		subtest("RegistrationsSurvive", [&]() {
+		ctx.subtest("RegistrationsSurvive", PARTEST_CTX(&) {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("restore-reg", &registry);
 			dispatcher->setUp();
 
@@ -299,28 +299,28 @@ namespace cge::test
 	// processing thread, so it needs nothing carried across threads and has no
 	// queue position, which is what makes the orderings below well defined
 	// rather than timing dependent.
-	void DispatcherLifecycleTest::eviction()
+	void DispatcherLifecycleTest::eviction(partest::TestContext &ctx)
 	{
 		// TODO: the bad-event cleanup path. Queue several events, flush, drain,
 		// and assert nothing was delivered.
-		subtest("FlushEvents", partest::TEST_FLAGS_SKIP, [&]() {
+		ctx.subtest("FlushEvents", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
 		});
 
 		// TODO: discarding a queued unregistration leaves a listener in the map
 		// that is about to be destroyed, which breaks the lifetime law. Queue a
 		// registration and an unregistration, flush, drain, and assert both still
 		// applied. At most a flush may take non-registration commands.
-		subtest("FlushSparesRegistrations", partest::TEST_FLAGS_SKIP, [&]() {
+		ctx.subtest("FlushSparesRegistrations", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
 		});
 
 		// TODO: level teardown. Register several listeners across channels, evict
 		// all, then broadcast on each and assert nothing arrives.
-		subtest("EvictAll", partest::TEST_FLAGS_SKIP, [&]() {
+		ctx.subtest("EvictAll", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
 		});
 
 		// TODO: subsystem teardown. Evict one channel and assert the listeners on
 		// every other channel still receive.
-		subtest("EvictOneChannel", partest::TEST_FLAGS_SKIP, [&]() {
+		ctx.subtest("EvictOneChannel", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
 		});
 
 		// TODO: an evicted listener reads unregistered and can register again at
@@ -329,35 +329,35 @@ namespace cge::test
 		// never takes that path, so a listener evicted with a registration in
 		// flight keeps the stale pending entry and its next request returns
 		// Duplicate for ever.
-		subtest("EvictedCanReregister", partest::TEST_FLAGS_SKIP, [&]() {
+		ctx.subtest("EvictedCanReregister", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
 		});
 
 		// TODO: a flush is a point-in-time operation, not a mode. A registration
 		// pushed from another thread while one runs sits in the command queue and
 		// applies at the next drain, so it survives. A channel that must be empty
 		// and stay empty is a channel disable, which is a different feature.
-		subtest("RegistrationSurvivesFlush", partest::TEST_FLAGS_SKIP, [&]() {
+		ctx.subtest("RegistrationSurvivesFlush", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
 		});
 
 		// TODO: where a flush does discard a queued registration, the listener is
 		// told through finalizeRegistration. A registration that silently
 		// evaporates leaves a system quietly not receiving events, which is the
 		// same defect as a dropped command and harder to trace.
-		subtest("DiscardIsReported", partest::TEST_FLAGS_SKIP, [&]() {
+		ctx.subtest("DiscardIsReported", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
 		});
 
 		// TODO: under concurrent load assert only what is determinism-proof.
 		// Whichever way a flush and a concurrent registration land, the listener's
 		// view of its own state and the dispatcher's map must agree. Do not assert
 		// which one won. Same pattern concurrentChurn already uses.
-		subtest("ConcurrentFlushAgrees", partest::TEST_FLAGS_SKIP, [&]() {
+		ctx.subtest("ConcurrentFlushAgrees", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
 		});
 	}
 
 	// The dispatcher outlives its listeners by contract, so the ordering is a
 	// precondition rather than a case. What is left to prove is that going away
 	// with work still queued releases that work instead of leaking it.
-	void DispatcherLifecycleTest::destruction()
+	void DispatcherLifecycleTest::destruction(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		const cge::event::EventChannel<TrackedPayload> &channel =
@@ -388,19 +388,19 @@ namespace cge::test
 
 	// Each case builds its own dispatcher at the lifecycle point it needs, so a
 	// failure in one does not change what the next one is testing.
-	void DispatcherLifecycleTest::broadcastPushResult()
+	void DispatcherLifecycleTest::broadcastPushResult(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("bc-result-ch");
 
-		subtest("FailsBeforeSetUp", [&]() {
+		ctx.subtest("FailsBeforeSetUp", PARTEST_CTX(&) {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("bc-pre", &registry);
 			cge::event::BroadcasterBase broadcaster(dispatcher.get());
 
 			ASSERT_FALSE(broadcaster.broadcast(channel, 1));
 		});
 
-		subtest("SucceedsWhileActive", [&]() {
+		ctx.subtest("SucceedsWhileActive", PARTEST_CTX(&) {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("bc-active", &registry);
 			dispatcher->setUp();
 			cge::event::BroadcasterBase broadcaster(dispatcher.get());
@@ -408,7 +408,7 @@ namespace cge::test
 			ASSERT_TRUE(broadcaster.broadcast(channel, 2));
 		});
 
-		subtest("FailsAfterTearDown", [&]() {
+		ctx.subtest("FailsAfterTearDown", PARTEST_CTX(&) {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("bc-post", &registry);
 			dispatcher->setUp();
 			dispatcher->tearDown();
@@ -428,12 +428,12 @@ namespace cge::test
 	// Invalid today. They go green when a dispatcher can declare its own command
 	// channels and this one can be declared on it, at which point the assertion
 	// is about readiness alone. See docs/expected-failures.md.
-	void DispatcherLifecycleTest::commandPushResult()
+	void DispatcherLifecycleTest::commandPushResult(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("cmd-result-ch");
 
-		subtest("FailsBeforeSetUp", partest::TEST_FLAGS_INHERIT.withExpectFailure(), [&]() {
+		ctx.subtest("FailsBeforeSetUp", partest::TEST_FLAGS_INHERIT.withExpectFailure(), PARTEST_CTX(&) {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("cmd-pre", &registry);
 			cge::event::CommanderBase commander(dispatcher.get());
 
@@ -444,10 +444,10 @@ namespace cge::test
 		// time and the only ones accepted carry registration or unregistration,
 		// which come from ListenerBase and never through CommanderBase. Fill this
 		// in when a command vocabulary exists that a caller can legitimately send.
-		subtest("SucceedsWhileActive", partest::TEST_FLAGS_SKIP, [&]() {
+		ctx.subtest("SucceedsWhileActive", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
 		});
 
-		subtest("FailsAfterTearDown", partest::TEST_FLAGS_INHERIT.withExpectFailure(), [&]() {
+		ctx.subtest("FailsAfterTearDown", partest::TEST_FLAGS_INHERIT.withExpectFailure(), PARTEST_CTX(&) {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("cmd-post", &registry);
 			dispatcher->setUp();
 			dispatcher->tearDown();

@@ -14,12 +14,12 @@ namespace cge::test
 		explicit DispatcherLifecycleTest(const DispatcherFlavor &flavor);
 
 	private:
-		void lifecycle();
-		void restoration();
-		void eviction();
-		void destruction();
-		void broadcastPushResult();
-		void commandPushResult();
+		void lifecycle(partest::TestContext &ctx);
+		void restoration(partest::TestContext &ctx);
+		void eviction(partest::TestContext &ctx);
+		void destruction(partest::TestContext &ctx);
+		void broadcastPushResult(partest::TestContext &ctx);
+		void commandPushResult(partest::TestContext &ctx);
 	};
 }
 
