@@ -21,28 +21,28 @@ namespace cge::test
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("FrameGated", flags, [this]() { frameGated(); });
-		addTest("Continuous", flags, [this]() { continuous(); });
+		addTest("FrameGated", flags, PARTEST_CTX(this) { frameGated(ctx); });
+		addTest("Continuous", flags, PARTEST_CTX(this) { continuous(ctx); });
 	}
 
 	// Each case owns its own dispatcher, workers and payload logs. These are
 	// independent heavyweight runs, grouped only by production mode.
-	void EventLoadTest::frameGated()
+	void EventLoadTest::frameGated(partest::TestContext &ctx)
 	{
-		subtest("Workers", [&]() { frameGatedWorkers(); });
-		subtest("Cascade", [&]() { frameGatedCascade(); });
-		subtest("Churn", [&]() { frameGatedChurn(); });
+		ctx.subtest("Workers", PARTEST_CTX(&) { frameGatedWorkers(ctx); });
+		ctx.subtest("Cascade", PARTEST_CTX(&) { frameGatedCascade(ctx); });
+		ctx.subtest("Churn", PARTEST_CTX(&) { frameGatedChurn(ctx); });
 	}
 
-	void EventLoadTest::continuous()
+	void EventLoadTest::continuous(partest::TestContext &ctx)
 	{
-		subtest("Workers", [&]() { continuousWorkers(); });
-		subtest("Cascade", [&]() { continuousCascade(); });
+		ctx.subtest("Workers", PARTEST_CTX(&) { continuousWorkers(ctx); });
+		ctx.subtest("Cascade", PARTEST_CTX(&) { continuousCascade(ctx); });
 	}
 
 	// --- Frame-gated: persistent workers, semaphore between produce and drain ---
 
-	void EventLoadTest::frameGatedWorkers()
+	void EventLoadTest::frameGatedWorkers(partest::TestContext &ctx)
 	{
 		EventHarness harness(flavor(), "load-gated-dispatcher");
 		const cge::event::EventChannel<LoadPayload> &channel = harness.registry.getChannel<LoadPayload>("load-gated");
@@ -73,11 +73,11 @@ namespace cge::test
 		// Set equality is all cross-producer order requires. Per-producer order is
 		// a contract on top of that, checked per worker so the interleaving
 		// between workers stays irrelevant.
-		assertPayloadsPreserved(sent.snapshot(), received.snapshot());
-		assertProducerOrderPreserved(received.snapshot());
+		assertPayloadsPreserved(ctx, sent.snapshot(), received.snapshot());
+		assertProducerOrderPreserved(ctx, received.snapshot());
 	}
 
-	void EventLoadTest::frameGatedCascade()
+	void EventLoadTest::frameGatedCascade(partest::TestContext &ctx)
 	{
 		EventHarness harness(flavor(), "load-gated-casc-dispatcher");
 		const cge::event::EventChannel<LoadPayload> &primary = harness.registry.getChannel<LoadPayload>("load-gated-casc-a");
@@ -122,13 +122,13 @@ namespace cge::test
 			harness.dispatcher().dispatchEvents();
 
 		std::vector<LoadPayload> expected = sent.snapshot();
-		assertPayloadsPreserved(expected, receivedPrimary.snapshot());
-		assertPayloadsPreserved(expected, receivedSecondary.snapshot());
+		assertPayloadsPreserved(ctx, expected, receivedPrimary.snapshot());
+		assertPayloadsPreserved(ctx, expected, receivedSecondary.snapshot());
 
 		// The cascade re-broadcasts on delivery, so the secondary channel inherits
 		// the primary's order. Per-producer order has to survive that hop.
-		assertProducerOrderPreserved(receivedPrimary.snapshot());
-		assertProducerOrderPreserved(receivedSecondary.snapshot());
+		assertProducerOrderPreserved(ctx, receivedPrimary.snapshot());
+		assertProducerOrderPreserved(ctx, receivedSecondary.snapshot());
 	}
 
 	// Events and commands in the same frame. Registration traffic is the only
@@ -139,7 +139,7 @@ namespace cge::test
 	// command queued during a frame is drained in that frame, and a listener that
 	// never churns must still receive every event regardless of what the
 	// registration traffic is doing around it.
-	void EventLoadTest::frameGatedChurn()
+	void EventLoadTest::frameGatedChurn(partest::TestContext &ctx)
 	{
 		EventHarness harness(flavor(), "load-gated-churn-dispatcher");
 		const cge::event::EventChannel<LoadPayload> &channel = harness.registry.getChannel<LoadPayload>("load-gated-churn");
@@ -187,13 +187,13 @@ namespace cge::test
 		if(!completed)
 			return;
 
-		assertPayloadsPreserved(sent.snapshot(), received.snapshot());
-		assertProducerOrderPreserved(received.snapshot());
+		assertPayloadsPreserved(ctx, sent.snapshot(), received.snapshot());
+		assertProducerOrderPreserved(ctx, received.snapshot());
 	}
 
 	// --- Continuous: persistent workers fire the whole run; main steps frames ---
 
-	void EventLoadTest::continuousWorkers()
+	void EventLoadTest::continuousWorkers(partest::TestContext &ctx)
 	{
 		EventHarness harness(flavor(), "load-cont-dispatcher");
 		const cge::event::EventChannel<LoadPayload> &channel = harness.registry.getChannel<LoadPayload>("load-cont");
@@ -234,11 +234,11 @@ namespace cge::test
 		for(unsigned extra = 0; extra < 8; ++extra)
 			harness.dispatcher().dispatchEvents();
 
-		assertPayloadsPreserved(sent.snapshot(), received.snapshot());
-		assertProducerOrderPreserved(received.snapshot());
+		assertPayloadsPreserved(ctx, sent.snapshot(), received.snapshot());
+		assertProducerOrderPreserved(ctx, received.snapshot());
 	}
 
-	void EventLoadTest::continuousCascade()
+	void EventLoadTest::continuousCascade(partest::TestContext &ctx)
 	{
 		EventHarness harness(flavor(), "load-cont-casc-dispatcher");
 		const cge::event::EventChannel<LoadPayload> &primary = harness.registry.getChannel<LoadPayload>("load-cont-casc-a");
@@ -289,7 +289,7 @@ namespace cge::test
 			harness.dispatcher().dispatchEvents();
 
 		std::vector<LoadPayload> expected = sent.snapshot();
-		assertPayloadsPreserved(expected, receivedPrimary.snapshot());
-		assertPayloadsPreserved(expected, receivedSecondary.snapshot());
+		assertPayloadsPreserved(ctx, expected, receivedPrimary.snapshot());
+		assertPayloadsPreserved(ctx, expected, receivedSecondary.snapshot());
 	}
 }

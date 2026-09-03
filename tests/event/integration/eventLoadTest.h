@@ -19,15 +19,15 @@ namespace cge::test
 		explicit EventLoadTest(const DispatcherFlavor &flavor);
 
 	private:
-		void frameGated();
-		void continuous();
+		void frameGated(partest::TestContext &ctx);
+		void continuous(partest::TestContext &ctx);
 
-		void frameGatedWorkers();
-		void frameGatedCascade();
-		void frameGatedChurn();
+		void frameGatedWorkers(partest::TestContext &ctx);
+		void frameGatedCascade(partest::TestContext &ctx);
+		void frameGatedChurn(partest::TestContext &ctx);
 
-		void continuousWorkers();
-		void continuousCascade();
+		void continuousWorkers(partest::TestContext &ctx);
+		void continuousCascade(partest::TestContext &ctx);
 	};
 }
 
