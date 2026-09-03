@@ -29,7 +29,7 @@ public:
 		addTest("DedicatedPhysicsAccessorsMatchGeneric", flags, PARTEST_CTX(this) { return this->dedicatedPhysicsAccessorsMatchGeneric(ctx); });
 	}
 
-	void constructionRegistersUpdateAndPhysics()
+	void constructionRegistersUpdateAndPhysics(partest::TestContext &ctx)
 	{
 		cge::Clock clock;
 
@@ -40,7 +40,7 @@ public:
 		ASSERT_TRUE(physics.type == cge::TickTypes::Physics);
 	}
 
-	void registerChannelSucceedsForNewType()
+	void registerChannelSucceedsForNewType(partest::TestContext &ctx)
 	{
 		cge::Clock clock;
 		cge::TickType custom;
@@ -50,7 +50,7 @@ public:
 		ASSERT_TRUE(result);
 	}
 
-	void registerChannelFailsForDuplicateType()
+	void registerChannelFailsForDuplicateType(partest::TestContext &ctx)
 	{
 		cge::Clock clock;
 		cge::TickType custom;
@@ -61,7 +61,7 @@ public:
 		ASSERT_FALSE(result);
 	}
 
-	void registerChannelFailsForUpdateAfterConstruction()
+	void registerChannelFailsForUpdateAfterConstruction(partest::TestContext &ctx)
 	{
 		cge::Clock clock;
 
@@ -70,7 +70,7 @@ public:
 		ASSERT_FALSE(result);
 	}
 
-	void registeredChannelHasExpectedInitialState()
+	void registeredChannelHasExpectedInitialState(partest::TestContext &ctx)
 	{
 		cge::Clock clock;
 		cge::TickType custom;
@@ -86,7 +86,7 @@ public:
 		ASSERT_APPROX_EQUAL(channel.timeScale, 1.0, 0.0001);
 	}
 
-	void tickIncrementsCount()
+	void tickIncrementsCount(partest::TestContext &ctx)
 	{
 		cge::Clock clock;
 		cge::TickType custom;
@@ -98,7 +98,7 @@ public:
 		ASSERT_EQUAL(clock.getChannel(custom).count, static_cast<size_t>(2));
 	}
 
-	void rawTickIncrementsCount()
+	void rawTickIncrementsCount(partest::TestContext &ctx)
 	{
 		cge::Clock clock;
 		cge::TickType custom;
@@ -111,7 +111,7 @@ public:
 		ASSERT_EQUAL(clock.getChannel(custom).count, static_cast<size_t>(3));
 	}
 
-	void setIntervalUpdatesChannel()
+	void setIntervalUpdatesChannel(partest::TestContext &ctx)
 	{
 		cge::Clock clock;
 		cge::TickType custom;
@@ -122,7 +122,7 @@ public:
 		ASSERT_TRUE(clock.getChannel(custom).interval == std::chrono::milliseconds(50));
 	}
 
-	void setTimeScaleUpdatesChannel()
+	void setTimeScaleUpdatesChannel(partest::TestContext &ctx)
 	{
 		cge::Clock clock;
 		cge::TickType custom;
@@ -135,7 +135,7 @@ public:
 
 	// Sleeps for a real, known duration then checks that a doubled timeScale roughly
 	// doubles the reported delta. Generous threshold to absorb scheduler jitter.
-	void timeScaleAppliesToTick()
+	void timeScaleAppliesToTick(partest::TestContext &ctx)
 	{
 		cge::Clock clock;
 		cge::TickType custom;
@@ -150,7 +150,7 @@ public:
 		ASSERT_GREATER(scaledSeconds, 0.03);
 	}
 
-	void dedicatedUpdateAccessorsMatchGeneric()
+	void dedicatedUpdateAccessorsMatchGeneric(partest::TestContext &ctx)
 	{
 		cge::Clock clock;
 
@@ -160,7 +160,7 @@ public:
 		ASSERT_TRUE(clock.getChannel(cge::TickTypes::Update).type == cge::TickTypes::Update);
 	}
 
-	void dedicatedPhysicsAccessorsMatchGeneric()
+	void dedicatedPhysicsAccessorsMatchGeneric(partest::TestContext &ctx)
 	{
 		cge::Clock clock;
 
