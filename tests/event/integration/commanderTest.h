@@ -14,8 +14,8 @@ namespace cge::test
 		explicit CommanderTest(const DispatcherFlavor &flavor);
 
 	private:
-		void command();
-		void nonRegistrationChannel();
+		void command(partest::TestContext &ctx);
+		void nonRegistrationChannel(partest::TestContext &ctx);
 	};
 }
 

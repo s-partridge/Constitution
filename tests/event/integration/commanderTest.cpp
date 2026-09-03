@@ -14,13 +14,13 @@ namespace cge::test
 	{
 		partest::TestFlags flags = partest::TEST_FLAGS_INHERIT;
 
-		addTest("Command", flags, [this]() { command(); });
-		addTest("NonRegistrationChannel", flags, [this]() { nonRegistrationChannel(); });
+		addTest("Command", flags, PARTEST_CTX(this) { command(ctx); });
+		addTest("NonRegistrationChannel", flags, PARTEST_CTX(this) { nonRegistrationChannel(ctx); });
 	}
 
-	void CommanderTest::command()
+	void CommanderTest::command(partest::TestContext &ctx)
 	{
-		subtest("NotDelivered", [&]() {
+		ctx.subtest("NotDelivered", PARTEST_CTX(&) {
 			EventHarness harness(flavor(), "cmd-int-dispatcher");
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("cmd-int");
 			CountingListener listener(&harness.dispatcher());
@@ -38,7 +38,7 @@ namespace cge::test
 
 		// The command never reaches a queue at all, so the command drain has
 		// nothing to do and only the broadcast survives to the event drain.
-		subtest("NoCrossover", [&]() {
+		ctx.subtest("NoCrossover", PARTEST_CTX(&) {
 			EventHarness harness(flavor(), "cmd-vs-evt-dispatcher");
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("cmd-vs-evt");
 			CountingListener listener(&harness.dispatcher());
@@ -61,9 +61,9 @@ namespace cge::test
 	}
 
 	// Ensure invalid channels are rejects as commands.
-	void CommanderTest::nonRegistrationChannel()
+	void CommanderTest::nonRegistrationChannel(partest::TestContext &ctx)
 	{
-		subtest("Rejected", [&]() {
+		ctx.subtest("Rejected", PARTEST_CTX(&) {
 			EventHarness harness(flavor(), "cmd-only-dispatcher");
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("cmd-only");
 			CountingListener listener(&harness.dispatcher());
@@ -85,7 +85,7 @@ namespace cge::test
 		// calling code is wrong. The value assertions elsewhere stay correct
 		// under either signature, so the coarseness is only visible on the type.
 		// decltype leaves the call unevaluated, so nothing is pushed here.
-		subtest("ResultType", "Ensure Commander.command() does not return boolean type", [&]() {
+		ctx.subtest("ResultType", "Ensure Commander.command() does not return boolean type", PARTEST_CTX(&) {
 			EventHarness harness(flavor(), "cmd-result-type-dispatcher");
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("cmd-result-type");
 			cge::event::CommanderBase commander(&harness.dispatcher());
