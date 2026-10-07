@@ -18,14 +18,13 @@ namespace cge::test
 		addTest("PayloadTypes", flags, PARTEST_CTX(this) { payloadTypes(ctx); });
 	}
 
-	// The dispatcher is shared, but each case brings its own channel and its own
-	// listener, so no case depends on what a previous one left in the log.
+	// Each case brings its own dispatcher, channel and listener, so no case
+	// depends on what a previous one left behind.
 	void PayloadTest::delivery(partest::TestContext &ctx)
 	{
-		EventHarness harness(flavor(), "payload-delivery-dispatcher");
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
-
 		ctx.subtest("TypedPayload", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "payload-typed-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("bc-typed");
 			CountingListener listener(&harness.dispatcher());
 
@@ -40,6 +39,8 @@ namespace cge::test
 		});
 
 		ctx.subtest("OrderPreserved", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "payload-order-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("bc-order");
 			CountingListener listener(&harness.dispatcher());
 
@@ -61,6 +62,8 @@ namespace cge::test
 		// the drain simply discards it. Nothing observes the event itself, so the
 		// proof that the drain handled it is that the next delivery still works.
 		ctx.subtest("NoListeners", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "payload-empty-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &empty = harness.registry.getChannel<int>("bc-empty");
 			const cge::event::EventChannel<int> &watched = harness.registry.getChannel<int>("bc-after-empty");
 			CountingListener listener(&harness.dispatcher());
@@ -83,6 +86,8 @@ namespace cge::test
 		// registry's reference and broadcasting through a stack copy is the reason
 		// that preservation matters.
 		ctx.subtest("CopiedChannelRoutes", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "payload-copied-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &original = harness.registry.getChannel<int>("bc-copied");
 			CountingListener listener(&harness.dispatcher());
 
@@ -106,10 +111,9 @@ namespace cge::test
 	// separate, unit-level concern and does not establish any of this.
 	void PayloadTest::payloadTypes(partest::TestContext &ctx)
 	{
-		EventHarness harness(flavor(), "payload-types-dispatcher");
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
-
 		ctx.subtest("Enum", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "payload-enum-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			enum class GameState { Menu, Loading, Playing };
 
 			const cge::event::EventChannel<GameState> &channel = harness.registry.getChannel<GameState>("bc-enum");
@@ -127,6 +131,8 @@ namespace cge::test
 
 		// The address must arrive intact, not the pointee.
 		ctx.subtest("Pointer", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "payload-pointer-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int *> &channel = harness.registry.getChannel<int *>("bc-ptr");
 			int target = 41;
 			int *got = nullptr;
@@ -144,6 +150,8 @@ namespace cge::test
 		});
 
 		ctx.subtest("TrivialStruct", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "payload-struct-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			struct DamagePayload
 			{
 				int amount;
@@ -176,6 +184,8 @@ namespace cge::test
 
 		// Source released before the drain, so a shallow copy dangles.
 		ctx.subtest("Class", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "payload-class-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<std::string> &channel = harness.registry.getChannel<std::string>("bc-str");
 			std::string got;
 
@@ -194,6 +204,8 @@ namespace cge::test
 
 		// Members own resources, so the copy is member-wise and non-trivial.
 		ctx.subtest("Aggregate", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "payload-aggregate-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			struct SpawnRequest
 			{
 				int unitType;

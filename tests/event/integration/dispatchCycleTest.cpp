@@ -75,13 +75,12 @@ namespace cge::test
 		});
 	}
 
-	// Shared dispatcher; what varies is what the handler does during the drain.
+	// What varies is what the handler does during the drain.
 	void DispatchCycleTest::drain(partest::TestContext &ctx)
 	{
-		EventHarness harness(flavor(), "drain-dispatcher");
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
-
 		ctx.subtest("ReentryBroadcasts", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "reentry-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reentry");
 			CountingListener listener(&harness.dispatcher());
 
@@ -103,6 +102,8 @@ namespace cge::test
 		// Pending semantics: an unregistration requested mid-drain takes effect at
 		// the next command drain, so the rest of this drain still delivers.
 		ctx.subtest("UnregisterMidDrain", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "same-drain-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("same-drain");
 			CountingListener listener(&harness.dispatcher());
 

@@ -62,15 +62,14 @@ namespace cge::test
 		});
 	}
 
-	// Shared dispatcher; each case brings its own channels and listeners.
+	// Each case brings its own dispatcher, channels and listeners.
 	void ListenerRegistrationTest::unregister(partest::TestContext &ctx)
 	{
-		EventHarness harness(flavor(), "unreg-dispatcher");
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
-
 		// Cycle order: commands drain before events, so an unregistration
 		// requested after a broadcast still wins.
 		ctx.subtest("BeatsQueuedEvents", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "unreg-beats-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("unreg-beats");
 			CountingListener listener(&harness.dispatcher());
 
@@ -89,6 +88,8 @@ namespace cge::test
 		// Swap-and-pop removal must not disturb the remaining registrations.
 		// Delivery order among listeners is contract-free, so none is asserted.
 		ctx.subtest("OneOfSeveralListeners", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "multi-unreg-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("multi-unreg");
 			CountingListener a(&harness.dispatcher());
 			CountingListener b(&harness.dispatcher());
@@ -111,6 +112,8 @@ namespace cge::test
 		});
 
 		ctx.subtest("OneOfTwoChannels", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "two-ch-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &first = harness.registry.getChannel<int>("two-ch-a");
 			const cge::event::EventChannel<int> &second = harness.registry.getChannel<int>("two-ch-b");
 			CountingListener listener(&harness.dispatcher());
@@ -133,6 +136,8 @@ namespace cge::test
 		// Never registered: unregistering is a no-op that must leave the listener
 		// able to register and receive afterwards.
 		ctx.subtest("NotRegistered", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "reg-missing-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reg-missing");
 			CountingListener listener(&harness.dispatcher());
 
@@ -152,6 +157,8 @@ namespace cge::test
 		// unregistration has drained, the listener may be destroyed while the
 		// dispatcher continues to run without retaining a stale pointer.
 		ctx.subtest("DestroyedAfterCommandDrain", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "destroy-after-unregister-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("destroy-after-unregister");
 			int deliveries = 0;
 
@@ -176,12 +183,10 @@ namespace cge::test
 	// Several requests queued before any of them is applied, then drained in one
 	// command pass. The rule under test is that the last request in the batch
 	// decides the outcome, whatever the earlier ones asked for. Each case brings
-	// its own channel and listener so none of them inherits the last one's state.
+	// its own dispatcher, channel and listener so none of them inherits the last
+	// one's state.
 	void ListenerRegistrationTest::batchedRequests(partest::TestContext &ctx)
 	{
-		EventHarness harness(flavor(), "batch-dispatcher");
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
-
 		// The caller asked to end up registered, so it must end up registered and
 		// receiving.
 		//
@@ -195,6 +200,8 @@ namespace cge::test
 		// channel. See docs/expected-failures.md.
 		ctx.subtest("RegisterUnregisterRegister",
 			partest::TEST_FLAGS_INHERIT.withExpectFailure(), PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "batch-rur-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch-rur");
 			CountingListener listener(&harness.dispatcher());
 			auto handler = [&listener](const int &v) { listener.onInt(v); };
@@ -213,6 +220,8 @@ namespace cge::test
 		});
 
 		ctx.subtest("RegisterThenUnregister", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "batch-ru-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch-ru");
 			CountingListener listener(&harness.dispatcher());
 
@@ -229,6 +238,8 @@ namespace cge::test
 		// The leading unregistration is a no-op against a listener that was never
 		// registered, and must not poison the request that follows it.
 		ctx.subtest("UnregisterThenRegister", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "batch-ur-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch-ur");
 			CountingListener listener(&harness.dispatcher());
 
@@ -245,6 +256,8 @@ namespace cge::test
 		});
 
 		ctx.subtest("RegisterTwice", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "batch-rr-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch-rr");
 			CountingListener listener(&harness.dispatcher());
 			auto handler = [&listener](const int &v) { listener.onInt(v); };
@@ -260,6 +273,8 @@ namespace cge::test
 		});
 
 		ctx.subtest("UnregisterTwice", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "batch-uu-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch-uu");
 			CountingListener listener(&harness.dispatcher());
 			auto handler = [&listener](const int &v) { listener.onInt(v); };
@@ -312,13 +327,12 @@ namespace cge::test
 		ASSERT_EQUAL(secondCalls, 0);
 	}
 
-	// Shared dispatcher; the callback form and the listener count are what vary.
+	// The callback form and the listener count are what vary.
 	void ListenerRegistrationTest::handlers(partest::TestContext &ctx)
 	{
-		EventHarness harness(flavor(), "handlers-dispatcher");
-		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
-
 		ctx.subtest("MultipleListeners", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "reg-multi-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("reg-multi");
 			CountingListener a(&harness.dispatcher());
 			CountingListener b(&harness.dispatcher());
