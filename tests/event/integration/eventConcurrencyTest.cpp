@@ -180,7 +180,7 @@ namespace cge::test
 			return;
 
 		ASSERT_TRUE(outcome.result.accepted);
-		ASSERT_EQUAL(outcome.result.received.size(), static_cast<size_t>(2));
+		ASSERT_EQUAL(outcome.result.received.size(), 2u);
 		if(outcome.result.received.size() == 2)
 		{
 			ASSERT_EQUAL(outcome.result.received[0], 1);

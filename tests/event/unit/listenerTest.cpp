@@ -77,7 +77,7 @@ namespace cge::test
 
 		listener.requestRegister(channel, [](const int &) {});
 
-		ASSERT_EQUAL(dispatcher.commandCount(), static_cast<size_t>(1));
+		ASSERT_EQUAL(dispatcher.commandCount(), 1u);
 	}
 
 	void ListenerUnitTest::duplicateResult(partest::TestContext &ctx)
@@ -105,7 +105,7 @@ namespace cge::test
 		listener.requestRegister(channel, [](const int &) {});
 		listener.requestRegister(channel, [](const int &) {});
 
-		ASSERT_EQUAL(dispatcher.commandCount(), static_cast<size_t>(1));
+		ASSERT_EQUAL(dispatcher.commandCount(), 1u);
 	}
 
 	void ListenerUnitTest::refusedResult(partest::TestContext &ctx)

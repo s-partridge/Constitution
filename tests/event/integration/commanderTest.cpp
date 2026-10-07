@@ -33,7 +33,7 @@ namespace cge::test
 			harness.dispatcher().dispatchCommands();
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+			ASSERT_EQUAL(listener.received.size(), 0u);
 		});
 
 		// The command never reaches a queue at all, so the command drain has
@@ -54,7 +54,7 @@ namespace cge::test
 			harness.dispatcher().dispatchCommands();
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			ASSERT_EQUAL(listener.received[0], 2);
 		});
 
@@ -76,7 +76,7 @@ namespace cge::test
 
 			harness.dispatcher().dispatchCommands();
 			harness.dispatcher().dispatchEvents();
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+			ASSERT_EQUAL(listener.received.size(), 0u);
 		});
 
 		// TODO: bool collapses "the dispatcher is inactive" and "this channel is

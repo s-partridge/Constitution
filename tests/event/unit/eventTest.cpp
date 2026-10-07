@@ -151,7 +151,7 @@ namespace cge::test
 
 			ASSERT_EQUAL(event.payload.unitType, 3);
 			ASSERT_EQUAL(event.payload.name, std::string("archer"));
-			ASSERT_EQUAL(event.payload.inventory.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(event.payload.inventory.size(), 2u);
 			ASSERT_EQUAL(event.payload.inventory[0], 10);
 			ASSERT_EQUAL(event.payload.inventory[1], 20);
 		});

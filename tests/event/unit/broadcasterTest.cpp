@@ -51,7 +51,7 @@ namespace cge::test
 
 		broadcaster.broadcast(channel, 1);
 
-		ASSERT_EQUAL(dispatcher.eventCount(), static_cast<size_t>(1));
+		ASSERT_EQUAL(dispatcher.eventCount(), 1u);
 	}
 
 	void BroadcasterUnitTest::broadcastChannel(partest::TestContext &ctx)
@@ -127,7 +127,7 @@ namespace cge::test
 
 		broadcaster.broadcast(channel, 1);
 
-		ASSERT_EQUAL(dispatcher.eventCount(), static_cast<size_t>(0));
+		ASSERT_EQUAL(dispatcher.eventCount(), 0u);
 	}
 
 	void BroadcasterUnitTest::broadcastQueueOnly(partest::TestContext &ctx)
@@ -139,7 +139,7 @@ namespace cge::test
 
 		broadcaster.broadcast(channel, 1);
 
-		ASSERT_EQUAL(dispatcher.commandCount(), static_cast<size_t>(0));
+		ASSERT_EQUAL(dispatcher.commandCount(), 0u);
 	}
 
 	void BroadcasterUnitTest::commandQueuesOne(partest::TestContext &ctx)
@@ -151,7 +151,7 @@ namespace cge::test
 
 		commander.command(channel, 1);
 
-		ASSERT_EQUAL(dispatcher.commandCount(), static_cast<size_t>(1));
+		ASSERT_EQUAL(dispatcher.commandCount(), 1u);
 	}
 
 	void BroadcasterUnitTest::commandChannel(partest::TestContext &ctx)
@@ -211,7 +211,7 @@ namespace cge::test
 
 		commander.command(channel, 1);
 
-		ASSERT_EQUAL(dispatcher.commandCount(), static_cast<size_t>(0));
+		ASSERT_EQUAL(dispatcher.commandCount(), 0u);
 	}
 
 	void BroadcasterUnitTest::commandQueueOnly(partest::TestContext &ctx)
@@ -223,6 +223,6 @@ namespace cge::test
 
 		commander.command(channel, 1);
 
-		ASSERT_EQUAL(dispatcher.eventCount(), static_cast<size_t>(0));
+		ASSERT_EQUAL(dispatcher.eventCount(), 0u);
 	}
 }

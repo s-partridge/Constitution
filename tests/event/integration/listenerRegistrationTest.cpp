@@ -34,7 +34,7 @@ namespace cge::test
 			broadcaster.broadcast(channel, 1);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			ASSERT_EQUAL(listener.received[0], 1);
 		});
 
@@ -47,7 +47,7 @@ namespace cge::test
 			broadcaster.broadcast(channel, 2);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(listener.received.size(), 2u);
 			ASSERT_EQUAL(listener.received[1], 2);
 		});
 
@@ -58,7 +58,7 @@ namespace cge::test
 			broadcaster.broadcast(channel, 3);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(listener.received.size(), 2u);
 		});
 	}
 
@@ -82,7 +82,7 @@ namespace cge::test
 			harness.dispatcher().dispatchCommands();
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+			ASSERT_EQUAL(listener.received.size(), 0u);
 		});
 
 		// Swap-and-pop removal must not disturb the remaining registrations.
@@ -106,9 +106,9 @@ namespace cge::test
 			broadcaster.broadcast(channel, 7);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(a.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(b.received.size(), static_cast<size_t>(0));
-			ASSERT_EQUAL(c.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(a.received.size(), 1u);
+			ASSERT_EQUAL(b.received.size(), 0u);
+			ASSERT_EQUAL(c.received.size(), 1u);
 		});
 
 		ctx.subtest("OneOfTwoChannels", PARTEST_CTX(&) {
@@ -129,7 +129,7 @@ namespace cge::test
 			broadcaster.broadcast(second, 2);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			ASSERT_EQUAL(listener.received[0], 2);
 		});
 
@@ -149,7 +149,7 @@ namespace cge::test
 
 			broadcaster.broadcast(channel, 3);
 			harness.dispatcher().dispatchEvents();
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			ASSERT_EQUAL(listener.received[0], 3);
 		});
 
@@ -214,7 +214,7 @@ namespace cge::test
 			broadcaster.broadcast(channel, 1);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			if(listener.received.size() == 1)
 				ASSERT_EQUAL(listener.received[0], 1);
 		});
@@ -232,7 +232,7 @@ namespace cge::test
 			broadcaster.broadcast(channel, 1);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+			ASSERT_EQUAL(listener.received.size(), 0u);
 		});
 
 		// The leading unregistration is a no-op against a listener that was never
@@ -250,7 +250,7 @@ namespace cge::test
 			broadcaster.broadcast(channel, 1);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			if(listener.received.size() == 1)
 				ASSERT_EQUAL(listener.received[0], 1);
 		});
@@ -269,7 +269,7 @@ namespace cge::test
 			broadcaster.broadcast(channel, 1);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 		});
 
 		ctx.subtest("UnregisterTwice", PARTEST_CTX(&) {
@@ -288,7 +288,7 @@ namespace cge::test
 
 			broadcaster.broadcast(channel, 1);
 			harness.dispatcher().dispatchEvents();
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+			ASSERT_EQUAL(listener.received.size(), 0u);
 
 			// The redundant second request must not leave the listener stuck.
 			listener.requestRegister(channel, handler);
@@ -296,7 +296,7 @@ namespace cge::test
 			broadcaster.broadcast(channel, 2);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			if(listener.received.size() == 1)
 				ASSERT_EQUAL(listener.received[0], 2);
 		});
@@ -344,8 +344,8 @@ namespace cge::test
 			broadcaster.broadcast(channel, 9);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(a.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(b.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(a.received.size(), 1u);
+			ASSERT_EQUAL(b.received.size(), 1u);
 			ASSERT_EQUAL(a.received[0], 9);
 			ASSERT_EQUAL(b.received[0], 9);
 		});

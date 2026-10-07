@@ -60,17 +60,17 @@ namespace cge::test
 			// Listener map not updated yet, so this event drains to nobody.
 			broadcaster.broadcast(channel, 7);
 			harness.dispatcher().dispatchEvents();
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+			ASSERT_EQUAL(listener.received.size(), 0u);
 		});
 
 		ctx.subtest("Events", PARTEST_CTX(&) {
 			harness.dispatcher().dispatchCommands();
 
 			broadcaster.broadcast(channel, 42);
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+			ASSERT_EQUAL(listener.received.size(), 0u);
 
 			harness.dispatcher().dispatchEvents();
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			ASSERT_EQUAL(listener.received[0], 42);
 		});
 	}
@@ -94,7 +94,7 @@ namespace cge::test
 			broadcaster.broadcast(channel, 1);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(listener.received.size(), 2u);
 			ASSERT_EQUAL(listener.received[0], 1);
 			ASSERT_EQUAL(listener.received[1], 2);
 		});
@@ -121,7 +121,7 @@ namespace cge::test
 
 			// A count alone passes on a re-delivery bug producing 1, 1, 2, so the
 			// values are what the contract is actually stated against.
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(3));
+			ASSERT_EQUAL(listener.received.size(), 3u);
 			if(listener.received.size() == 3)
 			{
 				ASSERT_EQUAL(listener.received[0], 1);
@@ -132,7 +132,7 @@ namespace cge::test
 			harness.dispatcher().dispatchCommands();
 			broadcaster.broadcast(channel, 4);
 			harness.dispatcher().dispatchEvents();
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(3));
+			ASSERT_EQUAL(listener.received.size(), 3u);
 		});
 	}
 
@@ -194,13 +194,13 @@ namespace cge::test
 			broadcaster.broadcast(channel, 1);
 			broadcaster.broadcast(channel, 2);
 			frame(harness.dispatcher());
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(listener.received.size(), 2u);
 
 			// No leading command drain, so a delivery here would mean the
 			// unregistration was still sitting in the queue when the frame ended.
 			broadcaster.broadcast(channel, 3);
 			harness.dispatcher().dispatchEvents();
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(listener.received.size(), 2u);
 		});
 
 		ctx.subtest("RegisterApplies", PARTEST_CTX(&) {
@@ -229,7 +229,7 @@ namespace cge::test
 			broadcaster.broadcast(late, 99);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(lateListener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(lateListener.received.size(), 1u);
 			if(lateListener.received.size() == 1)
 				ASSERT_EQUAL(lateListener.received[0], 99);
 		});
@@ -249,7 +249,7 @@ namespace cge::test
 			listener.requestUnregister(channel);
 			frame(harness.dispatcher());
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+			ASSERT_EQUAL(listener.received.size(), 0u);
 		});
 
 		// tearDown stops intake, not processing. A frame run after it still
@@ -268,7 +268,7 @@ namespace cge::test
 			harness.dispatcher().tearDown();
 			frame(harness.dispatcher());
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			if(listener.received.size() == 1)
 				ASSERT_EQUAL(listener.received[0], 1);
 		});
@@ -330,7 +330,7 @@ namespace cge::test
 		harness.dispatcher().dispatchEvents();
 
 		// One drain, five hops, each exactly once and in order.
-		ASSERT_EQUAL(hops.size(), static_cast<size_t>(5));
+		ASSERT_EQUAL(hops.size(), 5u);
 		if(hops.size() == 5)
 		{
 			for(size_t hop = 0; hop < hops.size(); ++hop)
@@ -420,7 +420,7 @@ namespace cge::test
 		combat.broadcaster.broadcast(damage, 11);
 		harness.dispatcher().dispatchEvents();
 
-		ASSERT_EQUAL(hops.size(), static_cast<size_t>(4));
+		ASSERT_EQUAL(hops.size(), 4u);
 		if(hops.size() == 4)
 		{
 			for(size_t hop = 0; hop < hops.size(); ++hop)
@@ -467,22 +467,22 @@ namespace cge::test
 
 			// Deferral means d is still registered for the whole of this drain,
 			// whether the handler on a ran before or after it.
-			ASSERT_EQUAL(a.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(b.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(c.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(d.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(e.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(a.received.size(), 1u);
+			ASSERT_EQUAL(b.received.size(), 1u);
+			ASSERT_EQUAL(c.received.size(), 1u);
+			ASSERT_EQUAL(d.received.size(), 1u);
+			ASSERT_EQUAL(e.received.size(), 1u);
 
 			harness.dispatcher().dispatchCommands();
 			broadcaster.broadcast(channel, 2);
 			harness.dispatcher().dispatchEvents();
 
 			// The removal lands now, and the survivors are all still reachable.
-			ASSERT_EQUAL(a.received.size(), static_cast<size_t>(2));
-			ASSERT_EQUAL(b.received.size(), static_cast<size_t>(2));
-			ASSERT_EQUAL(c.received.size(), static_cast<size_t>(2));
-			ASSERT_EQUAL(d.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(e.received.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(a.received.size(), 2u);
+			ASSERT_EQUAL(b.received.size(), 2u);
+			ASSERT_EQUAL(c.received.size(), 2u);
+			ASSERT_EQUAL(d.received.size(), 1u);
+			ASSERT_EQUAL(e.received.size(), 2u);
 		});
 
 		ctx.subtest("RegisterAnother", PARTEST_CTX(&) {
@@ -516,17 +516,17 @@ namespace cge::test
 			harness.dispatcher().dispatchEvents();
 
 			// The list being drained is not extended underneath the drain.
-			ASSERT_EQUAL(newcomer.received.size(), static_cast<size_t>(0));
-			ASSERT_EQUAL(a.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(b.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(c.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(d.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(newcomer.received.size(), 0u);
+			ASSERT_EQUAL(a.received.size(), 1u);
+			ASSERT_EQUAL(b.received.size(), 1u);
+			ASSERT_EQUAL(c.received.size(), 1u);
+			ASSERT_EQUAL(d.received.size(), 1u);
 
 			harness.dispatcher().dispatchCommands();
 			broadcaster.broadcast(channel, 2);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(newcomer.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(newcomer.received.size(), 1u);
 			if(newcomer.received.size() == 1)
 				ASSERT_EQUAL(newcomer.received[0], 2);
 		});
@@ -570,24 +570,24 @@ namespace cge::test
 
 			// Neither request has been applied: the drained list is the one that
 			// existed when the drain began.
-			ASSERT_EQUAL(a.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(b.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(c.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(d.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(e.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(newcomer.received.size(), static_cast<size_t>(0));
+			ASSERT_EQUAL(a.received.size(), 1u);
+			ASSERT_EQUAL(b.received.size(), 1u);
+			ASSERT_EQUAL(c.received.size(), 1u);
+			ASSERT_EQUAL(d.received.size(), 1u);
+			ASSERT_EQUAL(e.received.size(), 1u);
+			ASSERT_EQUAL(newcomer.received.size(), 0u);
 
 			harness.dispatcher().dispatchCommands();
 			broadcaster.broadcast(channel, 2);
 			harness.dispatcher().dispatchEvents();
 
 			// Both applied, and every survivor is still reachable exactly once.
-			ASSERT_EQUAL(a.received.size(), static_cast<size_t>(2));
-			ASSERT_EQUAL(b.received.size(), static_cast<size_t>(2));
-			ASSERT_EQUAL(c.received.size(), static_cast<size_t>(2));
-			ASSERT_EQUAL(d.received.size(), static_cast<size_t>(1));
-			ASSERT_EQUAL(e.received.size(), static_cast<size_t>(2));
-			ASSERT_EQUAL(newcomer.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(a.received.size(), 2u);
+			ASSERT_EQUAL(b.received.size(), 2u);
+			ASSERT_EQUAL(c.received.size(), 2u);
+			ASSERT_EQUAL(d.received.size(), 1u);
+			ASSERT_EQUAL(e.received.size(), 2u);
+			ASSERT_EQUAL(newcomer.received.size(), 1u);
 			if(newcomer.received.size() == 1)
 				ASSERT_EQUAL(newcomer.received[0], 2);
 		});

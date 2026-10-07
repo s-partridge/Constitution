@@ -81,7 +81,7 @@ public:
 
 		ASSERT_TRUE(channel.type == custom);
 		ASSERT_EQUAL(channel.name, "Custom");
-		ASSERT_EQUAL(channel.count, static_cast<size_t>(0));
+		ASSERT_EQUAL(channel.count, 0u);
 		ASSERT_TRUE(channel.interval == interval);
 		ASSERT_APPROX_EQUAL(channel.timeScale, 1.0, 0.0001);
 	}
@@ -95,7 +95,7 @@ public:
 		clock.tick(custom);
 		clock.tick(custom);
 
-		ASSERT_EQUAL(clock.getChannel(custom).count, static_cast<size_t>(2));
+		ASSERT_EQUAL(clock.getChannel(custom).count, 2u);
 	}
 
 	void rawTickIncrementsCount(partest::TestContext &ctx)
@@ -108,7 +108,7 @@ public:
 		clock.rawTick(custom);
 		clock.rawTick(custom);
 
-		ASSERT_EQUAL(clock.getChannel(custom).count, static_cast<size_t>(3));
+		ASSERT_EQUAL(clock.getChannel(custom).count, 3u);
 	}
 
 	void setIntervalUpdatesChannel(partest::TestContext &ctx)
@@ -156,7 +156,7 @@ public:
 
 		clock.tickUpdate();
 
-		ASSERT_EQUAL(clock.getUpdateChannel().count, static_cast<size_t>(1));
+		ASSERT_EQUAL(clock.getUpdateChannel().count, 1u);
 		ASSERT_TRUE(clock.getChannel(cge::TickTypes::Update).type == cge::TickTypes::Update);
 	}
 
@@ -166,7 +166,7 @@ public:
 
 		clock.rawTickPhysics();
 
-		ASSERT_EQUAL(clock.getPhysicsChannel().count, static_cast<size_t>(1));
+		ASSERT_EQUAL(clock.getPhysicsChannel().count, 1u);
 		ASSERT_TRUE(clock.getChannel(cge::TickTypes::Physics).type == cge::TickTypes::Physics);
 	}
 };

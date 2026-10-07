@@ -118,7 +118,7 @@ namespace cge::test
 
 		ASSERT_TRUE(dispatcher.active());
 		ASSERT_EQUAL(dispatcher.onPushEvent(channel, makeEvent(1)), cge::event::DispatchStatus::Pending);
-		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(1));
+		ASSERT_EQUAL(dispatcher.queuedEvents(), 1u);
 	}
 
 	void AsyncDispatcherUnitTest::repeatedTearDown(partest::TestContext &ctx)
@@ -152,8 +152,8 @@ namespace cge::test
 		dispatcher.onPushEvent(channel, makeEvent(1));
 		dispatcher.onPushCommand(channel, makeEvent(1));
 
-		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(0));
-		ASSERT_EQUAL(dispatcher.queuedCommands(), static_cast<size_t>(0));
+		ASSERT_EQUAL(dispatcher.queuedEvents(), 0u);
+		ASSERT_EQUAL(dispatcher.queuedCommands(), 0u);
 	}
 
 	// Inactivity rejects new registrations but never traps a component in the
@@ -174,10 +174,10 @@ namespace cge::test
 
 		ASSERT_EQUAL(listener.requestUnregister(channel),
 			cge::event::DispatchStatus::Pending);
-		ASSERT_EQUAL(dispatcher.queuedCommands(), static_cast<size_t>(1));
+		ASSERT_EQUAL(dispatcher.queuedCommands(), 1u);
 
 		dispatcher.dispatchCommands();
-		ASSERT_EQUAL(dispatcher.queuedCommands(), static_cast<size_t>(0));
+		ASSERT_EQUAL(dispatcher.queuedCommands(), 0u);
 	}
 
 	void AsyncDispatcherUnitTest::eventQueued(partest::TestContext &ctx)
@@ -188,7 +188,7 @@ namespace cge::test
 		dispatcher.setUp();
 
 		ASSERT_EQUAL(dispatcher.onPushEvent(channel, makeEvent(1)), cge::event::DispatchStatus::Pending);
-		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(1));
+		ASSERT_EQUAL(dispatcher.queuedEvents(), 1u);
 	}
 
 	void AsyncDispatcherUnitTest::commandQueued(partest::TestContext &ctx)
@@ -199,7 +199,7 @@ namespace cge::test
 		dispatcher.setUp();
 
 		ASSERT_EQUAL(dispatcher.onPushCommand(channel, makeEvent(1)), cge::event::DispatchStatus::Pending);
-		ASSERT_EQUAL(dispatcher.queuedCommands(), static_cast<size_t>(1));
+		ASSERT_EQUAL(dispatcher.queuedCommands(), 1u);
 	}
 
 	void AsyncDispatcherUnitTest::eventNotInCommands(partest::TestContext &ctx)
@@ -211,7 +211,7 @@ namespace cge::test
 
 		dispatcher.onPushEvent(channel, makeEvent(1));
 
-		ASSERT_EQUAL(dispatcher.queuedCommands(), static_cast<size_t>(0));
+		ASSERT_EQUAL(dispatcher.queuedCommands(), 0u);
 	}
 
 	void AsyncDispatcherUnitTest::commandNotInEvents(partest::TestContext &ctx)
@@ -223,7 +223,7 @@ namespace cge::test
 
 		dispatcher.onPushCommand(channel, makeEvent(1));
 
-		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(0));
+		ASSERT_EQUAL(dispatcher.queuedEvents(), 0u);
 	}
 
 	void AsyncDispatcherUnitTest::drainEmpty(partest::TestContext &ctx)
@@ -235,8 +235,8 @@ namespace cge::test
 		dispatcher.dispatchCommands();
 		dispatcher.dispatchEvents();
 
-		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(0));
-		ASSERT_EQUAL(dispatcher.queuedCommands(), static_cast<size_t>(0));
+		ASSERT_EQUAL(dispatcher.queuedEvents(), 0u);
+		ASSERT_EQUAL(dispatcher.queuedCommands(), 0u);
 	}
 
 	// Nobody is registered, so there is nowhere for the event to go. It still
@@ -249,11 +249,11 @@ namespace cge::test
 		dispatcher.setUp();
 
 		dispatcher.onPushEvent(channel, makeEvent(1));
-		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(1));
+		ASSERT_EQUAL(dispatcher.queuedEvents(), 1u);
 
 		dispatcher.dispatchEvents();
 
-		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(0));
+		ASSERT_EQUAL(dispatcher.queuedEvents(), 0u);
 	}
 
 	// Once accepted, always delivered, at its smallest testable size: tearDown
@@ -268,10 +268,10 @@ namespace cge::test
 		dispatcher.onPushEvent(channel, makeEvent(1));
 		dispatcher.tearDown();
 
-		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(1));
+		ASSERT_EQUAL(dispatcher.queuedEvents(), 1u);
 
 		dispatcher.dispatchEvents();
 
-		ASSERT_EQUAL(dispatcher.queuedEvents(), static_cast<size_t>(0));
+		ASSERT_EQUAL(dispatcher.queuedEvents(), 0u);
 	}
 }

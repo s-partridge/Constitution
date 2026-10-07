@@ -183,7 +183,7 @@ namespace cge::test
 		broadcaster.broadcast(empty, 1);
 		dispatcher.dispatchEvents();
 
-		ASSERT_EQUAL(dispatcher.eventCount(), static_cast<size_t>(0));
+		ASSERT_EQUAL(dispatcher.eventCount(), 0u);
 	}
 
 	void DispatcherUnitTest::carriesPayload(partest::TestContext &ctx)
@@ -214,11 +214,11 @@ namespace cge::test
 
 		broadcaster.broadcast(channel, 1);
 		broadcaster.broadcast(channel, 2);
-		ASSERT_EQUAL(dispatcher.eventCount(), static_cast<size_t>(2));
+		ASSERT_EQUAL(dispatcher.eventCount(), 2u);
 
 		dispatcher.dispatchEvents();
 
-		ASSERT_EQUAL(dispatcher.eventCount(), static_cast<size_t>(0));
+		ASSERT_EQUAL(dispatcher.eventCount(), 0u);
 	}
 
 	void DispatcherUnitTest::commandDrainEmpties(partest::TestContext &ctx)
@@ -230,10 +230,10 @@ namespace cge::test
 		Counter listener(&dispatcher);
 
 		listener.requestRegister(channel, [&listener](const int &v) { listener.record(v); });
-		ASSERT_EQUAL(dispatcher.commandCount(), static_cast<size_t>(1));
+		ASSERT_EQUAL(dispatcher.commandCount(), 1u);
 
 		dispatcher.dispatchCommands();
 
-		ASSERT_EQUAL(dispatcher.commandCount(), static_cast<size_t>(0));
+		ASSERT_EQUAL(dispatcher.commandCount(), 0u);
 	}
 }

@@ -43,9 +43,9 @@ namespace cge::test
 			first->dispatchEvents();
 			second->dispatchEvents();
 
-			ASSERT_EQUAL(firstListener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(firstListener.received.size(), 1u);
 			ASSERT_EQUAL(firstListener.received[0], 1);
-			ASSERT_EQUAL(secondListener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(secondListener.received.size(), 1u);
 			ASSERT_EQUAL(secondListener.received[0], 2);
 
 			first->tearDown();
@@ -75,14 +75,14 @@ namespace cge::test
 			second->dispatchEvents();
 			first->dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+			ASSERT_EQUAL(listener.received.size(), 0u);
 
 			// Same channel, same listener, the dispatcher it actually belongs to.
 			cge::event::BroadcasterBase ownerBroadcaster(first.get());
 			ownerBroadcaster.broadcast(channel, 2);
 			first->dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			if(listener.received.size() == 1)
 				ASSERT_EQUAL(listener.received[0], 2);
 
@@ -118,7 +118,7 @@ namespace cge::test
 			ASSERT_TRUE(broadcaster.broadcast(retained, 17));
 			dispatcher->dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			if(listener.received.size() == 1)
 				ASSERT_EQUAL(listener.received[0], 17);
 

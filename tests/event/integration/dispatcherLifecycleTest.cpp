@@ -114,7 +114,7 @@ namespace cge::test
 			cge::event::BroadcasterBase broadcaster(dispatcher.get());
 			ASSERT_TRUE(broadcaster.broadcast(channel, 1));
 			dispatcher->dispatchEvents();
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+			ASSERT_EQUAL(listener.received.size(), 0u);
 
 			dispatcher->tearDown();
 		});
@@ -168,12 +168,12 @@ namespace cge::test
 			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
 			dispatcher->dispatchCommands();
 			dispatcher->dispatchEvents();
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+			ASSERT_EQUAL(listener.received.size(), 0u);
 
 			dispatcher->tearDown();
 			broadcaster.broadcast(channel, 2);
 			dispatcher->dispatchEvents();
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
+			ASSERT_EQUAL(listener.received.size(), 0u);
 		});
 
 		// tearDown stops intake, not processing: the engine keeps driving dispatch
@@ -191,7 +191,7 @@ namespace cge::test
 			dispatcher->tearDown();
 
 			dispatcher->dispatchEvents();
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			ASSERT_EQUAL(listener.received[0], 5);
 		});
 	}
@@ -226,7 +226,7 @@ namespace cge::test
 
 			// The refused push left nothing queued behind it, so the drain that
 			// delivers 2 is the proof that 1 never entered.
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			if(listener.received.size() == 1)
 				ASSERT_EQUAL(listener.received[0], 2);
 
@@ -251,7 +251,7 @@ namespace cge::test
 			dispatcher->setUp();
 			dispatcher->dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			if(listener.received.size() == 1)
 				ASSERT_EQUAL(listener.received[0], 5);
 
@@ -276,7 +276,7 @@ namespace cge::test
 			broadcaster.broadcast(channel, 9);
 			dispatcher->dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			if(listener.received.size() == 1)
 				ASSERT_EQUAL(listener.received[0], 9);
 

@@ -34,7 +34,7 @@ namespace cge::test
 			broadcaster.broadcast(channel, 123);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			ASSERT_EQUAL(listener.received[0], 123);
 		});
 
@@ -52,7 +52,7 @@ namespace cge::test
 			broadcaster.broadcast(channel, 3);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(3));
+			ASSERT_EQUAL(listener.received.size(), 3u);
 			ASSERT_EQUAL(listener.received[0], 1);
 			ASSERT_EQUAL(listener.received[1], 2);
 			ASSERT_EQUAL(listener.received[2], 3);
@@ -77,7 +77,7 @@ namespace cge::test
 			broadcaster.broadcast(watched, 55);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			ASSERT_EQUAL(listener.received[0], 55);
 		});
 
@@ -98,7 +98,7 @@ namespace cge::test
 			broadcaster.broadcast(copy, 77);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(listener.received.size(), 1u);
 			if(listener.received.size() == 1)
 				ASSERT_EQUAL(listener.received[0], 77);
 		});
@@ -235,7 +235,7 @@ namespace cge::test
 
 			ASSERT_EQUAL(got.unitType, 3);
 			ASSERT_EQUAL(got.name, std::string("archer"));
-			ASSERT_EQUAL(got.inventory.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(got.inventory.size(), 2u);
 			ASSERT_EQUAL(got.inventory[0], 10);
 			ASSERT_EQUAL(got.inventory[1], 20);
 		});
