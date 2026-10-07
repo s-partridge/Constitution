@@ -530,5 +530,66 @@ namespace cge::test
 			if(newcomer.received.size() == 1)
 				ASSERT_EQUAL(newcomer.received[0], 2);
 		});
+
+		// Both mutations from one handler in one drain. Applied together, the
+		// removal relocates a survivor into the vacated slot and the addition
+		// extends the list, so a leak into the live list would show as a skipped,
+		// doubled, or premature delivery.
+		ctx.subtest("RegisterAndUnregister", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "mutate-both-dispatcher");
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("mutate-both");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
+
+			CountingListener a(&harness.dispatcher());
+			CountingListener b(&harness.dispatcher());
+			CountingListener c(&harness.dispatcher());
+			CountingListener d(&harness.dispatcher());
+			CountingListener e(&harness.dispatcher());
+			CountingListener newcomer(&harness.dispatcher());
+			bool requested = false;
+
+			a.requestRegister(channel, [&](const int &v) {
+				a.onInt(v);
+				if(requested)
+					return;
+
+				requested = true;
+				d.requestUnregister(channel);
+				newcomer.requestRegister(channel, [&newcomer](const int &value) {
+					newcomer.onInt(value);
+				});
+			});
+			b.requestRegister(channel, [&b](const int &v) { b.onInt(v); });
+			c.requestRegister(channel, [&c](const int &v) { c.onInt(v); });
+			d.requestRegister(channel, [&d](const int &v) { d.onInt(v); });
+			e.requestRegister(channel, [&e](const int &v) { e.onInt(v); });
+			harness.dispatcher().dispatchCommands();
+
+			broadcaster.broadcast(channel, 1);
+			harness.dispatcher().dispatchEvents();
+
+			// Neither request has been applied: the drained list is the one that
+			// existed when the drain began.
+			ASSERT_EQUAL(a.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(b.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(c.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(d.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(e.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(newcomer.received.size(), static_cast<size_t>(0));
+
+			harness.dispatcher().dispatchCommands();
+			broadcaster.broadcast(channel, 2);
+			harness.dispatcher().dispatchEvents();
+
+			// Both applied, and every survivor is still reachable exactly once.
+			ASSERT_EQUAL(a.received.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(b.received.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(c.received.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(d.received.size(), static_cast<size_t>(1));
+			ASSERT_EQUAL(e.received.size(), static_cast<size_t>(2));
+			ASSERT_EQUAL(newcomer.received.size(), static_cast<size_t>(1));
+			if(newcomer.received.size() == 1)
+				ASSERT_EQUAL(newcomer.received[0], 2);
+		});
 	}
 }
