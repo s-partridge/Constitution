@@ -308,5 +308,22 @@ namespace cge::test
 			ASSERT_NOT_EQUAL(source.getChannel<int>("before-move").id(), id);
 			ASSERT_EQUAL(moved.getChannel<int>("before-move").id(), id);
 		});
+
+		// Move assignment destroys the target's channels before taking the
+		// source's, so assigning a registry to itself would delete everything it
+		// owns. The alias keeps the self-move from being obvious to the compiler,
+		// which is also how it happens in real code.
+		ctx.subtest("SelfAssign", PARTEST_CTX(&) {
+			cge::event::EventChannelRegistry registry;
+			const cge::event::EventChannel<int> &channel = registry.getChannel<int>("self-assign");
+			const cge::event::ChannelId id = channel.id();
+			cge::event::EventChannelRegistry &alias = registry;
+
+			registry = std::move(alias);
+
+			const cge::event::EventChannel<int> &after = registry.getChannel<int>("self-assign");
+			ASSERT_EQUAL(after.id(), id);
+			ASSERT_TRUE(&after == &channel);
+		});
 	}
 }
