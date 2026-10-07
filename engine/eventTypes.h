@@ -43,7 +43,7 @@ namespace cge::event
 			os << "BadInput";
 			break;
 		case DispatchStatus::WrongThread:
-			os << "BadInput";
+			os << "WrongThread";
 			break;
 		default:
 			os << "BadValue";
