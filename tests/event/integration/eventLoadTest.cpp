@@ -291,5 +291,10 @@ namespace cge::test
 		std::vector<LoadPayload> expected = sent.snapshot();
 		assertPayloadsPreserved(ctx, expected, receivedPrimary.snapshot());
 		assertPayloadsPreserved(ctx, expected, receivedSecondary.snapshot());
+
+		// As in the frame-gated cascade, the secondary channel inherits the
+		// primary's order, here with pushes arriving while the drain runs.
+		assertProducerOrderPreserved(ctx, receivedPrimary.snapshot());
+		assertProducerOrderPreserved(ctx, receivedSecondary.snapshot());
 	}
 }
