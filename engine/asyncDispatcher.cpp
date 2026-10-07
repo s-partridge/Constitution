@@ -9,12 +9,23 @@ namespace cge::event
 		std::lock_guard<std::mutex> commandLock(m_commandQueueMutex);
 		m_active = true;
 	}
+	
 	void AsyncDispatcher::onTearDown()
 	{
 		// Hold both queue mutexes so no push can check m_active and enqueue mid-shutdown
 		std::lock_guard<std::mutex> eventLock(m_eventQueueMutex);
 		std::lock_guard<std::mutex> commandLock(m_commandQueueMutex);
 		m_active = false;
+	}
+
+	// TODO: Maybe change visibility on the dispatch functions if they never need to be called outside of the dispatcher itself.
+	void AsyncDispatcher::update(std::chrono::steady_clock::duration dt)
+	{
+		// Early commands need to be processed before the event stream is read.
+		dispatchCommands();
+		dispatchEvents();
+		// Events themselves may result in commands that should be processed before the end of the current frame.
+		dispatchCommands();
 	}
 
 	void AsyncDispatcher::dispatchEvents()

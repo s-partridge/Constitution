@@ -14,6 +14,8 @@ namespace cge::event
 		AsyncDispatcher(const std::string &name, EventChannelRegistry *registry) : DispatcherBase(name, registry) {}
 		~AsyncDispatcher() = default;
 
+		void update(std::chrono::steady_clock::duration dt) override;
+
 		void onSetUp() override;
 		void onTearDown() override;
 
