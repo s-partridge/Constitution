@@ -360,30 +360,60 @@ namespace cge::test
 	void DispatcherLifecycleTest::destruction(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
-		const cge::event::EventChannel<TrackedPayload> &channel =
-			registry.getChannel<TrackedPayload>("destroy-queued");
 
-		TrackedPayload::live = 0;
-		{
-			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("destroy-queued", &registry);
-			dispatcher->setUp();
+		ctx.subtest("QueuedEvents", PARTEST_CTX(&) {
+			const cge::event::EventChannel<TrackedPayload> &channel =
+				registry.getChannel<TrackedPayload>("destroy-queued");
 
-			// The listener goes first, as the lifetime law requires.
+			TrackedPayload::live = 0;
 			{
-				cge::event::ListenerBase listener(dispatcher.get());
-				listener.requestRegister(channel, [](const TrackedPayload &) {});
-				dispatcher->dispatchCommands();
+				std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("destroy-queued", &registry);
+				dispatcher->setUp();
 
-				cge::event::BroadcasterBase broadcaster(dispatcher.get());
-				for(int value = 0; value < 4; ++value)
-					broadcaster.broadcast(channel, TrackedPayload(value));
+				// The listener goes first, as the lifetime law requires.
+				{
+					cge::event::ListenerBase listener(dispatcher.get());
+					listener.requestRegister(channel, [](const TrackedPayload &) {});
+					dispatcher->dispatchCommands();
+
+					cge::event::BroadcasterBase broadcaster(dispatcher.get());
+					for(int value = 0; value < 4; ++value)
+						broadcaster.broadcast(channel, TrackedPayload(value));
+				}
+
+				// Four events accepted and never drained.
+				ASSERT_EQUAL(TrackedPayload::live, 4);
 			}
 
-			// Four events accepted and never drained.
-			ASSERT_EQUAL(TrackedPayload::live, 4);
-		}
+			ASSERT_EQUAL(TrackedPayload::live, 0);
+		});
 
-		ASSERT_EQUAL(TrackedPayload::live, 0);
+		// The command queue owns its entries the same way the event queue does.
+		// Registration requests are the only commands that can be queued today and
+		// their payload type is private, so the only countable command is one on a
+		// channel of the test's own. Expected to fail: no dispatcher can declare a
+		// command channel yet, so the command is refused as Invalid and nothing is
+		// queued to count. Once declaration exists, declare this channel on the
+		// dispatcher before commanding. See docs/expected-failures.md.
+		ctx.subtest("QueuedCommands", partest::TEST_FLAGS_INHERIT.withExpectFailure(), PARTEST_CTX(&) {
+			const cge::event::EventChannel<TrackedPayload> &channel =
+				registry.getChannel<TrackedPayload>("destroy-queued-commands");
+
+			TrackedPayload::live = 0;
+			{
+				std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("destroy-queued-commands", &registry);
+				dispatcher->setUp();
+
+				cge::event::CommanderBase commander(dispatcher.get());
+				for(int value = 0; value < 4; ++value)
+					commander.command(channel, TrackedPayload(value));
+
+				// Four commands accepted and never drained.
+				ASSERT_EQUAL(TrackedPayload::live, 4);
+			}
+
+			ASSERT_EQUAL(TrackedPayload::live, 0);
+		});
 	}
 
 	// Each case builds its own dispatcher at the lifecycle point it needs, so a
