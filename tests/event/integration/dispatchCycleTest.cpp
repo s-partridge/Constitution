@@ -172,10 +172,10 @@ namespace cge::test
 	}
 
 	// What a whole frame settles, rather than what half of one does. Every case
-	// here runs commands, events, commands, and then asks its question with an
-	// event drain alone: anything a handler requested during the drain has to
-	// have been applied by the trailing command pass, not be waiting on the next
-	// frame's leading one.
+	// here runs frames through the dispatcher's update and then asks its question
+	// with an event drain alone: anything a handler requested during the drain
+	// has to have been applied by the trailing command pass, not be waiting on
+	// the next frame's leading one.
 	void DispatchCycleTest::frameCycle(partest::TestContext &ctx)
 	{
 		ctx.subtest("UnregisterApplies", PARTEST_CTX(&) {
