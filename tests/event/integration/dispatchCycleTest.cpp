@@ -251,6 +251,27 @@ namespace cge::test
 
 			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(0));
 		});
+
+		// tearDown stops intake, not processing. A frame run after it still
+		// delivers what was accepted before it, so the frame must not gate on the
+		// active state.
+		ctx.subtest("AfterTearDown", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "frame-teardown-dispatcher");
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("frame-teardown");
+			CountingListener listener(&harness.dispatcher());
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
+
+			listener.requestRegister(channel, [&listener](const int &v) { listener.onInt(v); });
+			frame(harness.dispatcher());
+
+			broadcaster.broadcast(channel, 1);
+			harness.dispatcher().tearDown();
+			frame(harness.dispatcher());
+
+			ASSERT_EQUAL(listener.received.size(), static_cast<size_t>(1));
+			if(listener.received.size() == 1)
+				ASSERT_EQUAL(listener.received[0], 1);
+		});
 	}
 
 	// The shape ordinary game code produces: damage kills something, the death
