@@ -30,6 +30,9 @@
     <ClCompile Include="event\unit\eventTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="event\unit\eventTypesTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="event\unit\dispatcherTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -78,6 +81,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="event\unit\eventTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="event\unit\eventTypesTest.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="event\unit\dispatcherTest.h">
