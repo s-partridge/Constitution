@@ -1,3 +1,6 @@
 [submodule "extern/partest"]
 	path = extern/partest
 	url = git@github.com:s-partridge/partest.git
+[submodule "extern/glfw"]
+	path = extern/glfw
+	url = https://github.com/glfw/glfw.git
