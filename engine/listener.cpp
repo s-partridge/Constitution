@@ -4,77 +4,96 @@ namespace cge::event
 {
 	void ListenerBase::onEvent(ChannelId channelId, const EventBase &event)
 	{
-		HandlerPairIter it = std::find_if(
-			m_handlers.begin(), m_handlers.end(),
+		m_inFlightEvents++;
+		for(size_t idx = 0; idx < m_pendingRegistrations.size(); ++idx)
+		{
+			if(m_pendingRegistrations[idx].first == channelId)
+			{
+				m_pendingRegistrations[idx].second(event);
+				break;
+			}
+		}
+		m_inFlightEvents--;
+
+		if(m_inFlightEvents == 0)
+			resolvePendingChanges();
+	}
+
+	void ListenerBase::registerChannel(HandlerPair &&handlerPair)
+	{
+		if(m_inFlightEvents > 0)
+		{
+			m_pendingRegistrations.push_back(std::move(handlerPair));
+		}
+		else
+		{
+			m_handlers.push_back(std::move(handlerPair));
+		}
+	}
+
+	void ListenerBase::unregisterChannel(ChannelId channelId)
+	{
+		//  Check pending first, don't use auto
+		for(size_t idx = 0; idx < m_pendingRegistrations.size(); ++idx)
+		{
+			if(m_pendingRegistrations[idx].first == channelId)
+			{
+				m_pendingRegistrations.erase(m_pendingRegistrations.begin() + idx);
+				return;
+			}
+		}
+
+		if(m_inFlightEvents > 0)
+		{
+			m_pendingUnregistrations.push_back(channelId);
+		}
+		else
+		{
+			// Don't use auto
+			for(size_t idx = 0; idx < m_handlers.size(); ++idx)
+			{
+				if(m_handlers[idx].first == channelId)
+				{
+					m_handlers.erase(m_handlers.begin() + idx);
+					return;
+				}
+			}
+
+		}
+	}
+
+	bool ListenerBase::isRegistered(ChannelId channelId) const
+	{
+		// Check pending registrations first, then check active handlers
+		bool found = !m_pendingRegistrations.empty() && std::any_of(m_pendingRegistrations.begin(), m_pendingRegistrations.end(),
+			[&channelId](const HandlerPair &pair) {
+				return pair.first == channelId;
+		});
+
+		return found || std::any_of(m_handlers.begin(), m_handlers.end(),
 			[&channelId](const HandlerPair &pair) {
 				return pair.first == channelId;
 			});
-		if(it != m_handlers.end())
-		{
-			it->second(event);
-		}
 	}
 
-	void ListenerBase::finalizeRegistration(ChannelId channelId, DispatchStatus result)
+	void ListenerBase::resolvePendingChanges()
 	{
-		HandlerPairIter it;
-		HandlerFunction handler;
-
-		bool found = false;
-			
+		if(!m_pendingRegistrations.empty())
 		{
-			std::lock_guard<std::mutex> lock(m_pendingMutex);
-			it = std::find_if(
-				m_pendingHandlers.begin(), m_pendingHandlers.end(),
-				[&channelId](const HandlerPair &pair) {
-					return pair.first == channelId;
-				});
-			if(it != m_pendingHandlers.end())
+			for(size_t idx = 0; idx < m_pendingRegistrations.size(); ++idx)
 			{
-				handler = std::move(it->second);
-				m_pendingHandlers.erase(it);
-				found = true;
+				m_handlers.push_back(std::move(m_pendingRegistrations[idx]));
 			}
+			m_pendingRegistrations.clear();
 		}
-		switch(result)
-		{
-		case DispatchStatus::Success:
-			if(found)
-				m_handlers.emplace_back(channelId, std::move(handler));
-			break;
-		case DispatchStatus::Duplicate:
-			// Handle duplicate registration if needed
-			break;
-		case DispatchStatus::Failure:
-			// Handle failure if needed
-			break;
-		default:
-			break;
-		}
-	}
 
-	void ListenerBase::finalizeUnregistration(ChannelId channelId, DispatchStatus result)
-	{
-		HandlerPairIter it;
-
-		switch(result)
+		if(!m_pendingUnregistrations.empty())
 		{
-		case DispatchStatus::Success:
-			it = std::remove_if(m_handlers.begin(), m_handlers.end(),
-				[&channelId](const HandlerPair &pair) {
-					return pair.first == channelId;
-				});
-			if(it != m_handlers.end())
-				m_handlers.erase(it, m_handlers.end());
-			break;
-		case DispatchStatus::BadInput:
-			// Handle not found if needed
-			break;
-		case DispatchStatus::Failure:
-			// Handle failure if needed
-			break;
-		default:
-			break;
+			for(size_t idx = 0; idx < m_pendingUnregistrations.size(); ++idx)
+			{
+				unregisterChannel(m_pendingUnregistrations[idx]);
+			}
+			m_pendingUnregistrations.clear();
 		}
 	}
 }

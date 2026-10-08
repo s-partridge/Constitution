@@ -113,11 +113,6 @@ namespace cge::event
 		if(!contains)
 		{
 			m_listeners[channelId].push_back(listener);
-			listener->finalizeRegistration(channelId, DispatchStatus::Success);
-		}
-		else
-		{
-			listener->finalizeRegistration(channelId, DispatchStatus::Duplicate);
 		}
 	}
 
@@ -132,16 +127,7 @@ namespace cge::event
 				// Swap and pop_back to remove the listener efficiently
 				*listenerIt = channelIt->second.back();
 				channelIt->second.pop_back();
-				listener->finalizeUnregistration(channelId, DispatchStatus::Success);
 			}
-			else
-			{
-				listener->finalizeUnregistration(channelId, DispatchStatus::BadInput);
-			}
-		}
-		else
-		{
-			listener->finalizeUnregistration(channelId, DispatchStatus::BadInput);
 		}
 	}
 }

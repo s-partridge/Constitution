@@ -26,34 +26,30 @@ namespace cge::event
 		using HandlerPair = std::pair<ChannelId, HandlerFunction>;
 		using HandlerPairIter = std::vector<HandlerPair>::iterator;
 
-		ListenerBase(DispatcherBase *dispatcher) : m_dispatcher(dispatcher) {}
+		ListenerBase(DispatcherBase *dispatcher) : m_dispatcher(dispatcher), m_inFlightEvents(0) {}
 		virtual ~ListenerBase() = default;
 
 		template <typename PayloadType, std::invocable<const PayloadType &> CallbackType>
 		DispatchStatus requestRegister(const EventChannel<PayloadType> &channel, CallbackType callback)
 		{
 			ChannelId id = channel.id();
-			{
-				std::lock_guard<std::mutex> lock(m_pendingMutex);
-				// Check pending handlers to see if this channel is already waiting for registration
-				HandlerPairIter it = std::find_if(
-					m_pendingHandlers.begin(), m_pendingHandlers.end(),
-					[&id](const HandlerPair &pair) {
-						return pair.first == id;
-					});
 
-				if(it != m_pendingHandlers.end())
-				{
-					return DispatchStatus::Duplicate;
-				}
+			// Don't re-register on the same channel.
+			if(isRegistered(id))
+				return DispatchStatus::Duplicate;
 
-				HandlerPair handlerPair(id, [callback](const EventBase &event) {
-					const Event<PayloadType> &typedEvent = static_cast<const Event<PayloadType> &>(event);
-					std::invoke(callback, typedEvent.payload);
-				});
-				m_pendingHandlers.push_back(std::move(handlerPair));
-			}
-			return m_dispatcher->requestRegisterListener(this, channel);
+			// Wrap the callback in a lambda that takes an EventBase reference, casts it to the correct type, and invokes the callback with the payload.
+			HandlerPair handlerPair(id, [callback](const EventBase &event) {
+				const Event<PayloadType> &typedEvent = static_cast<const Event<PayloadType> &>(event);
+				std::invoke(callback, typedEvent.payload);
+			});
+			
+			DispatchStatus status = m_dispatcher->requestRegisterListener(this, channel);
+
+			if(status == DispatchStatus::Success || status == DispatchStatus::Pending)
+				registerChannel(std::move(handlerPair));
+
+			return status;
 		}
 
 		// Version of subscribe that requires channel, source object, and raw function pointer
@@ -61,43 +57,30 @@ namespace cge::event
 		DispatchStatus requestRegister(const EventChannel<PayloadType> &channel, SourceType *self, CallbackType callback)
 		{
 			ChannelId id = channel.id();
-			{
-				std::lock_guard<std::mutex> lock(m_pendingMutex);
-				// Check pending handlers to see if this channel is already waiting for registration
-				HandlerPairIter it = std::find_if(
-					m_pendingHandlers.begin(), m_pendingHandlers.end(),
-					[&id](const HandlerPair &pair) {
-						return pair.first == id;
-					});
-				if(it != m_pendingHandlers.end())
-				{
-					return DispatchStatus::Duplicate;
-				}
-				HandlerPair handlerPair(id, [self, callback](const EventBase &event) {
-					const Event<PayloadType> &typedEvent = static_cast<const Event<PayloadType> &>(event);
-					std::invoke(callback, self, typedEvent.payload);
-				});
-				m_pendingHandlers.push_back(std::move(handlerPair));
-			}
-			return m_dispatcher->requestRegisterListener(this, channel);
+
+			// Don't re-register on the same channel.
+			if(isRegistered(id))
+				return DispatchStatus::Duplicate;
+			
+			// Wrap the callback in a lambda that captures the source object and invokes the member function.
+			HandlerPair handlerPair(id, [self, callback](const EventBase &event) {
+				const Event<PayloadType> &typedEvent = static_cast<const Event<PayloadType> &>(event);
+				std::invoke(callback, self, typedEvent.payload);
+			});
+
+
+			DispatchStatus status = m_dispatcher->requestRegisterListener(this, channel);
+
+			if(status == DispatchStatus::Success || status == DispatchStatus::Pending)
+				registerChannel(std::move(handlerPair));
+
+			return status;
 		}
 
 		template<typename PayloadType>
 		DispatchStatus requestUnregister(const EventChannel<PayloadType>& channel)
 		{
-			ChannelId id = channel.id();
-			{
-				std::lock_guard<std::mutex> lock(m_pendingMutex);
-				HandlerPairIter it = std::find_if(
-					m_pendingHandlers.begin(), m_pendingHandlers.end(),
-					[&id](const HandlerPair &pair) {
-						return pair.first == id;
-					});
-				if(it != m_pendingHandlers.end())
-				{
-					m_pendingHandlers.erase(it);
-				}
-			}
+			unregisterChannel(channel.id());
 			return m_dispatcher->requestUnregisterListener(this, channel);
 		}
 
@@ -107,13 +90,19 @@ namespace cge::event
 		friend class DispatcherBase;
 
 		std::vector<HandlerPair> m_handlers;
-		std::vector<HandlerPair> m_pendingHandlers;
-		std::mutex m_pendingMutex;
+		
+		std::vector<HandlerPair> m_pendingRegistrations;
+		std::vector<ChannelId> m_pendingUnregistrations;
+
+		size_t m_inFlightEvents;
 
 		DispatcherBase *m_dispatcher;
 
-		void finalizeRegistration(ChannelId channelId, DispatchStatus result);
-		void finalizeUnregistration(ChannelId channelId, DispatchStatus result);
+		void registerChannel(HandlerPair &&handlerPair);
+		void unregisterChannel(ChannelId channelId);
+
+		bool isRegistered(ChannelId channelId) const;
+		void resolvePendingChanges();
 	};
 }
 
