@@ -27,6 +27,7 @@ namespace cge::test
 		CountingListener listener(&harness.dispatcher());
 		cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 		auto handler = [&listener](const int &v) { listener.onInt(v); };
+		std::vector<int> secondReceived;
 
 		ctx.subtest("Delivers", PARTEST_CTX(&) {
 			listener.requestRegister(channel, handler);
@@ -38,17 +39,21 @@ namespace cge::test
 			ASSERT_EQUAL(listener.received[0], 1);
 		});
 
-		// Whatever the second request returns, it must not double the delivery.
-		// The return value itself is asserted in the listener unit tests.
+		// A second request on a live channel must neither double the delivery nor
+		// replace the live handler. It uses a different handler so that a
+		// replacement is distinguishable from a refusal. The return value itself
+		// is asserted in the listener unit tests.
 		ctx.subtest("RequestAgain", PARTEST_CTX(&) {
-			listener.requestRegister(channel, handler);
+			listener.requestRegister(channel, [&secondReceived](const int &v) { secondReceived.push_back(v); });
 			harness.dispatcher().dispatchCommands();
 
 			broadcaster.broadcast(channel, 2);
 			harness.dispatcher().dispatchEvents();
 
+			ASSERT_EQUAL(secondReceived.size(), 0u);
 			ASSERT_EQUAL(listener.received.size(), 2u);
-			ASSERT_EQUAL(listener.received[1], 2);
+			if(listener.received.size() == 2)
+				ASSERT_EQUAL(listener.received[1], 2);
 		});
 
 		ctx.subtest("UnregisterStops", PARTEST_CTX(&) {
@@ -281,21 +286,25 @@ namespace cge::test
 				ASSERT_EQUAL(listener.received[0], 1);
 		});
 
+		// Two registers in one batch: the first is applied and the second is
+		// discarded as a duplicate, so only the first handler is live.
 		ctx.subtest("RegisterTwice", PARTEST_CTX(&) {
 			EventHarness harness(flavor(), "batch-rr-dispatcher");
 			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch-rr");
-			CountingListener listener(&harness.dispatcher());
-			auto handler = [&listener](const int &v) { listener.onInt(v); };
+			cge::event::ListenerBase listener(&harness.dispatcher());
+			std::vector<int> firstReceived;
+			std::vector<int> secondReceived;
 
-			listener.requestRegister(channel, handler);
-			listener.requestRegister(channel, handler);
+			listener.requestRegister(channel, [&firstReceived](const int &v) { firstReceived.push_back(v); });
+			listener.requestRegister(channel, [&secondReceived](const int &v) { secondReceived.push_back(v); });
 
 			harness.dispatcher().dispatchCommands();
 			broadcaster.broadcast(channel, 1);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), 1u);
+			ASSERT_EQUAL(firstReceived.size(), 1u);
+			ASSERT_EQUAL(secondReceived.size(), 0u);
 		});
 
 		ctx.subtest("UnregisterTwice", PARTEST_CTX(&) {

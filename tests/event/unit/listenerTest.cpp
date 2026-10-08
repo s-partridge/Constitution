@@ -44,6 +44,7 @@ namespace cge::test
 		addTest("DuplicateKeepsFirst", flags, PARTEST_CTX(this) { duplicateKeepsFirst(ctx); });
 		addTest("RefusedResult", flags, PARTEST_CTX(this) { refusedResult(ctx); });
 		addTest("RefusedRetry", flags, PARTEST_CTX(this) { refusedRetry(ctx); });
+		addTest("RefusedUnregister", flags, PARTEST_CTX(this) { refusedUnregister(ctx); });
 		addTest("RegisterAfterUnregister", flags, PARTEST_CTX(this) { registerAfterUnregister(ctx); });
 		addTest("UnregisterUnknown", flags, PARTEST_CTX(this) { unregisterUnknown(ctx); });
 		addTest("ReregisterAfterDrain", flags, PARTEST_CTX(this) { reregisterAfterDrain(ctx); });
@@ -161,6 +162,30 @@ namespace cge::test
 		dispatcher.setAcceptPushes(true);
 
 		ASSERT_EQUAL(listener.requestRegister(channel, [](const int &) {}), cge::event::DispatchStatus::Pending);
+	}
+
+	// A refused unregistration changes nothing: the handler stays live.
+	void ListenerUnitTest::refusedUnregister(partest::TestContext &ctx)
+	{
+		cge::event::EventChannelRegistry registry;
+		MockDispatcher dispatcher(&registry);
+		dispatcher.setUp();
+		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("ch");
+		cge::event::ListenerBase listener(&dispatcher);
+		int calls = 0;
+
+		listener.requestRegister(channel, [&calls](const int &) { ++calls; });
+		dispatcher.dispatchCommands();
+
+		dispatcher.setAcceptPushes(false);
+		ASSERT_EQUAL(listener.requestUnregister(channel), cge::event::DispatchStatus::Failure);
+		dispatcher.setAcceptPushes(true);
+		dispatcher.dispatchCommands();
+
+		cge::event::Event<int> event(1);
+		listener.onEvent(channel.id(), event);
+
+		ASSERT_EQUAL(calls, 1);
 	}
 
 	void ListenerUnitTest::registerAfterUnregister(partest::TestContext &ctx)

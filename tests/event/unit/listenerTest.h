@@ -22,6 +22,7 @@ namespace cge::test
 		void duplicateKeepsFirst(partest::TestContext &ctx);
 		void refusedResult(partest::TestContext &ctx);
 		void refusedRetry(partest::TestContext &ctx);
+		void refusedUnregister(partest::TestContext &ctx);
 		void registerAfterUnregister(partest::TestContext &ctx);
 		void unregisterUnknown(partest::TestContext &ctx);
 		void reregisterAfterDrain(partest::TestContext &ctx);

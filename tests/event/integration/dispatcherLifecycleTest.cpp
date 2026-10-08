@@ -322,11 +322,11 @@ namespace cge::test
 		});
 
 		// TODO: an evicted listener reads unregistered and can register again at
-		// once. Same wart as A1 by another route: requestUnregister clears
-		// m_pendingHandlers before forwarding, and a dispatcher-initiated eviction
-		// never takes that path, so a listener evicted with a registration in
-		// flight keeps the stale pending entry and its next request returns
-		// Duplicate for ever.
+		// once. Eviction never passes through requestUnregister, so the dispatcher
+		// has to drop the listener's handler through the same callback the
+		// unregister drain uses. Otherwise the listener keeps a handler for a
+		// channel the dispatcher no longer delivers on. Evict, register again,
+		// drain, broadcast, and assert the new handler receives.
 		ctx.subtest("EvictedCanReregister", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
 		});
 
