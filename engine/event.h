@@ -93,8 +93,8 @@ namespace cge::event
 		EventChannelRegistry(EventChannelRegistry &&other) noexcept : m_channels(std::move(other.m_channels)) {}
 		EventChannelRegistry &operator=(EventChannelRegistry &&other) noexcept;
 
-		// Raise if the channel already exists with unmatched payload type.
 		// Returns a const handle; the registry owns the channel object.
+		// Halts with assert if the payload type does not match an existing channel name.
 		template<typename PayloadType>
 		const EventChannel<PayloadType> &getChannel(const ChannelTag &name)
 		{
@@ -114,6 +114,24 @@ namespace cge::event
 			EventChannel<PayloadType> *newChannel = new EventChannel<PayloadType>();
 			m_channels[name] = newChannel;
 			return *newChannel;
+		}
+
+		// Returns a const handle to the channel, or nullptr if the payload type is incorrect
+		template<typename PayloadType>
+		const EventChannel<PayloadType> *tryGetChannel(const ChannelTag &name)
+		{
+			ChannelMapIter it = m_channels.find(name);
+			if(it != m_channels.end())
+			{
+				EventChannelBase *existingChannel = it->second;
+				if(existingChannel->getTypeId() != getTypeId<EventChannel<PayloadType>>())
+					return nullptr;
+
+				return static_cast<const EventChannel<PayloadType> *>(existingChannel);
+			}
+			EventChannel<PayloadType> *newChannel = new EventChannel<PayloadType>();
+			m_channels[name] = newChannel;
+			return newChannel;
 		}
 
 	private:
