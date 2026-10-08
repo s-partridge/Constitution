@@ -39,7 +39,7 @@ namespace cge::event
 
 	public:
 		DispatcherBase(std::string name, EventChannelRegistry *registry);
-		virtual ~DispatcherBase() = default;
+		virtual ~DispatcherBase();
 
 		void onSetUp() override;
 		void onTearDown() override;

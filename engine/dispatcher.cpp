@@ -2,6 +2,7 @@
 #include "listener.h"
 
 #include <algorithm>
+//#include <iostream>
 
 namespace cge::event
 {
@@ -15,6 +16,28 @@ namespace cge::event
 
 		m_validCommandChannels.push_back(m_registrationChannel->id());
 		m_validCommandChannels.push_back(m_unregistrationChannel->id());
+	}
+
+	DispatcherBase::~DispatcherBase()
+	{
+		// TODO: Replace with an error log once the logging system is in place.
+		// Using cerr is way too noisy. This can't be left uncommented for now.
+		/*
+		for(auto &listenerList : m_listeners)
+		{
+			if(listenerList.second.size() > 0)
+			{
+				std::cerr << "Warning: Dispatcher was destroyed with " << listenerList.second.size() << " listeners still registered for channel " << listenerList.first << "." << std::endl;
+			}
+		}
+		if(m_events.size() > 0)
+		{
+			std::cerr << "Warning: Dispatcher was destroyed with " << m_events.size() << " events still queued." << std::endl;
+		}
+		if(m_commands.size() > 0)
+		{
+			std::cerr << "Warning: Dispatcher was destroyed with " << m_commands.size() << " commands still queued." << std::endl;
+		}*/
 	}
 
 	void DispatcherBase::onSetUp()
