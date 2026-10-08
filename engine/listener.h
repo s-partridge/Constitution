@@ -2,7 +2,6 @@
 #define CGE_LISTENER_H
 
 #include <functional>
-#include <mutex>
 #include <algorithm>
 #include <vector>
 
@@ -22,10 +21,6 @@ namespace cge::event
 	class ListenerBase
 	{
 	public:
-		using HandlerFunction = std::function<void(const EventBase &)>;
-		using HandlerPair = std::pair<ChannelId, HandlerFunction>;
-		using HandlerPairIter = std::vector<HandlerPair>::iterator;
-
 		ListenerBase(DispatcherBase *dispatcher) : m_dispatcher(dispatcher), m_inFlightEvents(0) {}
 		virtual ~ListenerBase() = default;
 
@@ -44,11 +39,8 @@ namespace cge::event
 				std::invoke(callback, typedEvent.payload);
 			});
 			
-			DispatchStatus status = m_dispatcher->requestRegisterListener(this, channel);
-
-			if(status == DispatchStatus::Success || status == DispatchStatus::Pending)
-				registerChannel(std::move(handlerPair));
-
+			// Pass the handler pair to the dispatcher for registration.
+			DispatchStatus status = m_dispatcher->requestRegisterListener(this, channel, std::move(handlerPair));
 			return status;
 		}
 
@@ -68,40 +60,44 @@ namespace cge::event
 				std::invoke(callback, self, typedEvent.payload);
 			});
 
-
-			DispatchStatus status = m_dispatcher->requestRegisterListener(this, channel);
-
-			if(status == DispatchStatus::Success || status == DispatchStatus::Pending)
-				registerChannel(std::move(handlerPair));
-
+			// Pass the handler pair to the dispatcher for registration.
+			DispatchStatus status = m_dispatcher->requestRegisterListener(this, channel, std::move(handlerPair));
 			return status;
 		}
 
 		template<typename PayloadType>
 		DispatchStatus requestUnregister(const EventChannel<PayloadType>& channel)
 		{
-			unregisterChannel(channel.id());
+			// Pass the request to the dispatcher to unregister this listener from the specified channel.
 			return m_dispatcher->requestUnregisterListener(this, channel);
 		}
 
 		void onEvent(ChannelId channelId, const EventBase &event);
+
+	protected:
+		virtual void onRegisterFailed(HandlerPair &&handlerPair, DispatchStatus status) {}
+		virtual void onUnregisterFailed(ChannelId channelId, DispatchStatus status) {}
 
 	private:
 		friend class DispatcherBase;
 
 		std::vector<HandlerPair> m_handlers;
 		
+		// This mechanism protects handlers from reentrant calls during event dispatch.
 		std::vector<HandlerPair> m_pendingRegistrations;
 		std::vector<ChannelId> m_pendingUnregistrations;
-
 		size_t m_inFlightEvents;
 
 		DispatcherBase *m_dispatcher;
 
+		// Called by the dispatcher when a registration request is processed.
 		void registerChannel(HandlerPair &&handlerPair);
+		// Called by the dispatcher when an unregistration request is processed.
 		void unregisterChannel(ChannelId channelId);
 
+		// Check if the listener is already registered for a given channel, returns true whether it is pending or fully registered.
 		bool isRegistered(ChannelId channelId) const;
+		// Apply any pending registration changes. This is called after all in-flight events have been processed to ensure that the listener's state is consistent.
 		void resolvePendingChanges();
 	};
 }

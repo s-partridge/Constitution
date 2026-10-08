@@ -5,11 +5,11 @@ namespace cge::event
 	void ListenerBase::onEvent(ChannelId channelId, const EventBase &event)
 	{
 		m_inFlightEvents++;
-		for(size_t idx = 0; idx < m_pendingRegistrations.size(); ++idx)
+		for(size_t idx = 0; idx < m_handlers.size(); ++idx)
 		{
-			if(m_pendingRegistrations[idx].first == channelId)
+			if(m_handlers[idx].first == channelId)
 			{
-				m_pendingRegistrations[idx].second(event);
+				m_handlers[idx].second(event);
 				break;
 			}
 		}

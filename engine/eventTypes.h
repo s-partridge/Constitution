@@ -8,7 +8,7 @@ namespace cge::event
 	enum class DispatchStatus
 	{
 		Success,	// Event/Command executed successfully
-		Failure,	// Event/Command failed due to an unknonw error
+		Failure,	// Event/Command failed due to an unknown error
 		Duplicate,	// Illegal submission of a duplicate command, not used by events
 		Pending,	// Event/Command was successfully queued and will be completed later
 		NotReady,	// Event/Command was rejected because the dispatcher was not ready to receive it

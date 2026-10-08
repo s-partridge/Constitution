@@ -2,6 +2,7 @@
 #define CGE_DISPATCHER_H
 
 #include <unordered_map>
+#include <functional>
 #include <memory>
 #include <queue>
 #include <vector>
@@ -13,6 +14,11 @@
 namespace cge::event
 {
 	class ListenerBase;
+
+	// TODO: Move these somewhere else, maybe to a new namespace. They're specific to listeners, but Dispatcher requires them for the registration command channels.
+	using HandlerFunction = std::function<void(const EventBase &)>;
+	using HandlerPair = std::pair<ChannelId, HandlerFunction>;
+	using HandlerPairIter = std::vector<HandlerPair>::iterator;
 
 	using ChannelId = size_t;
 	using ListenerList = std::vector<ListenerBase *>;
@@ -73,8 +79,15 @@ namespace cge::event
 		struct RegistrationRequest
 		{
 			ListenerBase *listener;
+			HandlerPair handlerPair;
+			RegistrationRequest(ListenerBase *listenerBase, HandlerPair &&handlerPair) : listener(listenerBase), handlerPair(std::move(handlerPair)) {}
+		};
+
+		struct UnregistrationRequest
+		{
+			ListenerBase *listener;
 			ChannelId channelId;
-			RegistrationRequest(ListenerBase *listenerBase, ChannelId channelId) : listener(listenerBase), channelId(channelId) {}
+			UnregistrationRequest(ListenerBase *listenerBase, ChannelId channel) : listener(listenerBase), channelId(channel) {}
 		};
 
 	protected:
@@ -91,9 +104,9 @@ namespace cge::event
 		DispatchStatus pushEvent(const EventChannelBase &channel, std::unique_ptr<EventBase> event);
 		DispatchStatus pushCommand(const EventChannelBase &channel, std::unique_ptr<EventBase> event);
 
-		DispatchStatus requestRegisterListener(ListenerBase *listener, const EventChannelBase &channel);
+		DispatchStatus requestRegisterListener(ListenerBase *listener, const EventChannelBase &channel, HandlerPair &&handlerPair);
 		DispatchStatus requestUnregisterListener(ListenerBase *listener, const EventChannelBase &channel);
-		void registerListener(ListenerBase *listener, ChannelId channelId);
+		void registerListener(ListenerBase *listener, HandlerPair &&handlerPair);
 		void unregisterListener(ListenerBase *listener, ChannelId channelId);
 	};
 }
