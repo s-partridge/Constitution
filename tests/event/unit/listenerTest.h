@@ -25,6 +25,9 @@ namespace cge::test
 		void refusedUnregister(partest::TestContext &ctx);
 		void registerAfterUnregister(partest::TestContext &ctx);
 		void unregisterUnknown(partest::TestContext &ctx);
+		void duplicateReported(partest::TestContext &ctx);
+		void unregisterUnknownReported(partest::TestContext &ctx);
+		void successNotReported(partest::TestContext &ctx);
 		void reregisterAfterDrain(partest::TestContext &ctx);
 
 		void handlerNotLiveYet(partest::TestContext &ctx);

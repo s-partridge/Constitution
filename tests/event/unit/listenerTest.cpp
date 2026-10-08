@@ -30,6 +30,42 @@ namespace cge::test
 				++calls;
 			}
 		};
+
+		// Records every rejection the dispatcher reports back after a request was
+		// accepted, so the hooks themselves can be asserted.
+		struct FailureRecorder : public cge::event::ListenerBase
+		{
+			int registerFailures;
+			int unregisterFailures;
+			cge::event::DispatchStatus lastStatus;
+			cge::event::ChannelId lastChannel;
+			cge::event::HandlerFunction lastRejectedHandler;
+
+			explicit FailureRecorder(cge::event::DispatcherBase *dispatcher)
+				: ListenerBase(dispatcher)
+				, registerFailures(0)
+				, unregisterFailures(0)
+				, lastStatus(cge::event::DispatchStatus::Success)
+				, lastChannel(cge::event::InvalidChannelId)
+			{
+			}
+
+		protected:
+			void onRegisterFailed(cge::event::HandlerPair &&handlerPair, cge::event::DispatchStatus status) override
+			{
+				++registerFailures;
+				lastStatus = status;
+				lastChannel = handlerPair.first;
+				lastRejectedHandler = std::move(handlerPair.second);
+			}
+
+			void onUnregisterFailed(cge::event::ChannelId channelId, cge::event::DispatchStatus status) override
+			{
+				++unregisterFailures;
+				lastStatus = status;
+				lastChannel = channelId;
+			}
+		};
 	}
 
 	ListenerUnitTest::ListenerUnitTest()
@@ -47,6 +83,9 @@ namespace cge::test
 		addTest("RefusedUnregister", flags, PARTEST_CTX(this) { refusedUnregister(ctx); });
 		addTest("RegisterAfterUnregister", flags, PARTEST_CTX(this) { registerAfterUnregister(ctx); });
 		addTest("UnregisterUnknown", flags, PARTEST_CTX(this) { unregisterUnknown(ctx); });
+		addTest("DuplicateReported", flags, PARTEST_CTX(this) { duplicateReported(ctx); });
+		addTest("UnregisterUnknownReported", flags, PARTEST_CTX(this) { unregisterUnknownReported(ctx); });
+		addTest("SuccessNotReported", flags, PARTEST_CTX(this) { successNotReported(ctx); });
 		addTest("ReregisterAfterDrain", flags, PARTEST_CTX(this) { reregisterAfterDrain(ctx); });
 
 		addTest("HandlerNotLiveYet", flags, PARTEST_CTX(this) { handlerNotLiveYet(ctx); });
@@ -210,11 +249,78 @@ namespace cge::test
 		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("ch");
 		cge::event::ListenerBase listener(&dispatcher);
 
-		listener.requestUnregister(channel);
+		// The listener does not judge the request; the dispatcher does, when it
+		// is applied, and reports the outcome through onUnregisterFailed.
+		ASSERT_EQUAL(listener.requestUnregister(channel), cge::event::DispatchStatus::Pending);
+		dispatcher.dispatchCommands();
 
-		// What the call returns is unsettled, see D1 in docs/test-refactor.md.
-		// What is settled is that it must not poison the listener.
+		// It must not poison the listener.
 		ASSERT_EQUAL(listener.requestRegister(channel, [](const int &) {}), cge::event::DispatchStatus::Pending);
+	}
+
+	// A duplicate registration is reported through onRegisterFailed when the
+	// dispatcher applies it, and the handler handed back is the rejected one,
+	// not the live one.
+	void ListenerUnitTest::duplicateReported(partest::TestContext &ctx)
+	{
+		cge::event::EventChannelRegistry registry;
+		MockDispatcher dispatcher(&registry);
+		dispatcher.setUp();
+		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("ch");
+		FailureRecorder listener(&dispatcher);
+		int firstCalls = 0;
+		int secondCalls = 0;
+
+		listener.requestRegister(channel, [&firstCalls](const int &) { ++firstCalls; });
+		listener.requestRegister(channel, [&secondCalls](const int &) { ++secondCalls; });
+		dispatcher.dispatchCommands();
+
+		ASSERT_EQUAL(listener.registerFailures, 1);
+		ASSERT_EQUAL(listener.lastStatus, cge::event::DispatchStatus::Duplicate);
+		ASSERT_EQUAL(listener.lastChannel, channel.id());
+
+		ASSERT_TRUE(static_cast<bool>(listener.lastRejectedHandler));
+		if(listener.lastRejectedHandler)
+		{
+			cge::event::Event<int> event(1);
+			listener.lastRejectedHandler(event);
+			ASSERT_EQUAL(firstCalls, 0);
+			ASSERT_EQUAL(secondCalls, 1);
+		}
+	}
+
+	void ListenerUnitTest::unregisterUnknownReported(partest::TestContext &ctx)
+	{
+		cge::event::EventChannelRegistry registry;
+		MockDispatcher dispatcher(&registry);
+		dispatcher.setUp();
+		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("ch");
+		FailureRecorder listener(&dispatcher);
+
+		listener.requestUnregister(channel);
+		dispatcher.dispatchCommands();
+
+		ASSERT_EQUAL(listener.unregisterFailures, 1);
+		ASSERT_EQUAL(listener.lastStatus, cge::event::DispatchStatus::BadInput);
+		ASSERT_EQUAL(listener.lastChannel, channel.id());
+	}
+
+	// Requests the dispatcher applies successfully report nothing.
+	void ListenerUnitTest::successNotReported(partest::TestContext &ctx)
+	{
+		cge::event::EventChannelRegistry registry;
+		MockDispatcher dispatcher(&registry);
+		dispatcher.setUp();
+		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("ch");
+		FailureRecorder listener(&dispatcher);
+
+		listener.requestRegister(channel, [](const int &) {});
+		dispatcher.dispatchCommands();
+		listener.requestUnregister(channel);
+		dispatcher.dispatchCommands();
+
+		ASSERT_EQUAL(listener.registerFailures, 0);
+		ASSERT_EQUAL(listener.unregisterFailures, 0);
 	}
 
 	// Re-registering a listener that is already live is queued like any other
