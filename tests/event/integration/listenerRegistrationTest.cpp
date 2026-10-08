@@ -213,6 +213,38 @@ namespace cge::test
 				ASSERT_EQUAL(lastReceived[0], 1);
 		});
 
+		// A live listener swapping its handler: unregister and register again in
+		// one batch. The old handler stays live until the batch is applied, and
+		// the new one replaces it afterwards. A duplicate check made at request
+		// time sees the old handler still live and wrongly refuses the register.
+		ctx.subtest("SwapLiveHandler", PARTEST_CTX(&) {
+			EventHarness harness(flavor(), "batch-swap-dispatcher");
+			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
+			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch-swap");
+			cge::event::ListenerBase listener(&harness.dispatcher());
+			std::vector<int> oldReceived;
+			std::vector<int> newReceived;
+
+			listener.requestRegister(channel, [&oldReceived](const int &v) { oldReceived.push_back(v); });
+			harness.dispatcher().dispatchCommands();
+
+			broadcaster.broadcast(channel, 1);
+			harness.dispatcher().dispatchEvents();
+
+			listener.requestUnregister(channel);
+			ASSERT_EQUAL(listener.requestRegister(channel, [&newReceived](const int &v) { newReceived.push_back(v); }),
+				cge::event::DispatchStatus::Pending);
+
+			harness.dispatcher().dispatchCommands();
+			broadcaster.broadcast(channel, 2);
+			harness.dispatcher().dispatchEvents();
+
+			ASSERT_EQUAL(oldReceived.size(), 1u);
+			ASSERT_EQUAL(newReceived.size(), 1u);
+			if(newReceived.size() == 1)
+				ASSERT_EQUAL(newReceived[0], 2);
+		});
+
 		ctx.subtest("RegisterThenUnregister", PARTEST_CTX(&) {
 			EventHarness harness(flavor(), "batch-ru-dispatcher");
 			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());

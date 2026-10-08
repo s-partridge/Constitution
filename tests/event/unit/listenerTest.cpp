@@ -39,13 +39,14 @@ namespace cge::test
 
 		addTest("ReturnsPending", flags, PARTEST_CTX(this) { returnsPending(ctx); });
 		addTest("QueuesOneCommand", flags, PARTEST_CTX(this) { queuesOneCommand(ctx); });
-		addTest("DuplicateResult", flags, PARTEST_CTX(this) { duplicateResult(ctx); });
-		addTest("DuplicateQueuesNothing", flags, PARTEST_CTX(this) { duplicateQueuesNothing(ctx); });
+		addTest("DuplicatePending", flags, PARTEST_CTX(this) { duplicatePending(ctx); });
+		addTest("DuplicateQueuesCommand", flags, PARTEST_CTX(this) { duplicateQueuesCommand(ctx); });
+		addTest("DuplicateKeepsFirst", flags, PARTEST_CTX(this) { duplicateKeepsFirst(ctx); });
 		addTest("RefusedResult", flags, PARTEST_CTX(this) { refusedResult(ctx); });
 		addTest("RefusedRetry", flags, PARTEST_CTX(this) { refusedRetry(ctx); });
-		addTest("UnregisterClearsPending", flags, PARTEST_CTX(this) { unregisterClearsPending(ctx); });
+		addTest("RegisterAfterUnregister", flags, PARTEST_CTX(this) { registerAfterUnregister(ctx); });
 		addTest("UnregisterUnknown", flags, PARTEST_CTX(this) { unregisterUnknown(ctx); });
-		addTest("ReregisterAfterDrain", flags, PARTEST_CTX(this) { reregisterAfterDispatch(ctx); });
+		addTest("ReregisterAfterDrain", flags, PARTEST_CTX(this) { reregisterAfterDrain(ctx); });
 
 		addTest("HandlerNotLiveYet", flags, PARTEST_CTX(this) { handlerNotLiveYet(ctx); });
 		addTest("InvokesHandler", flags, PARTEST_CTX(this) { invokesHandler(ctx); });
@@ -80,7 +81,10 @@ namespace cge::test
 		ASSERT_EQUAL(dispatcher.commandCount(), 1u);
 	}
 
-	void ListenerUnitTest::duplicateResult(partest::TestContext &ctx)
+	// The listener does not judge duplicates at request time. Its own state only
+	// changes when the dispatcher applies a request, so anything it checked here
+	// could already be stale. A second request is queued like any other.
+	void ListenerUnitTest::duplicatePending(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -90,11 +94,10 @@ namespace cge::test
 
 		listener.requestRegister(channel, [](const int &) {});
 
-		ASSERT_TRUE(listener.requestRegister(channel, [](const int &) {})
-			== cge::event::DispatchStatus::Duplicate);
+		ASSERT_EQUAL(listener.requestRegister(channel, [](const int &) {}), cge::event::DispatchStatus::Pending);
 	}
 
-	void ListenerUnitTest::duplicateQueuesNothing(partest::TestContext &ctx)
+	void ListenerUnitTest::duplicateQueuesCommand(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -105,7 +108,30 @@ namespace cge::test
 		listener.requestRegister(channel, [](const int &) {});
 		listener.requestRegister(channel, [](const int &) {});
 
-		ASSERT_EQUAL(dispatcher.commandCount(), 1u);
+		ASSERT_EQUAL(dispatcher.commandCount(), 2u);
+	}
+
+	// The duplicate is resolved when the dispatcher applies it: the first handler
+	// stays live and the second is discarded.
+	void ListenerUnitTest::duplicateKeepsFirst(partest::TestContext &ctx)
+	{
+		cge::event::EventChannelRegistry registry;
+		MockDispatcher dispatcher(&registry);
+		dispatcher.setUp();
+		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("ch");
+		cge::event::ListenerBase listener(&dispatcher);
+		int firstCalls = 0;
+		int secondCalls = 0;
+
+		listener.requestRegister(channel, [&firstCalls](const int &) { ++firstCalls; });
+		listener.requestRegister(channel, [&secondCalls](const int &) { ++secondCalls; });
+		dispatcher.dispatchCommands();
+
+		cge::event::Event<int> event(1);
+		listener.onEvent(channel.id(), event);
+
+		ASSERT_EQUAL(firstCalls, 1);
+		ASSERT_EQUAL(secondCalls, 0);
 	}
 
 	void ListenerUnitTest::refusedResult(partest::TestContext &ctx)
@@ -137,7 +163,7 @@ namespace cge::test
 		ASSERT_EQUAL(listener.requestRegister(channel, [](const int &) {}), cge::event::DispatchStatus::Pending);
 	}
 
-	void ListenerUnitTest::unregisterClearsPending(partest::TestContext &ctx)
+	void ListenerUnitTest::registerAfterUnregister(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
@@ -148,7 +174,6 @@ namespace cge::test
 		listener.requestRegister(channel, [](const int &) {});
 		listener.requestUnregister(channel);
 
-		// The pending entry is gone, so this is a fresh request rather than a duplicate.
 		ASSERT_EQUAL(listener.requestRegister(channel, [](const int &) {}), cge::event::DispatchStatus::Pending);
 	}
 
@@ -167,19 +192,30 @@ namespace cge::test
 		ASSERT_EQUAL(listener.requestRegister(channel, [](const int &) {}), cge::event::DispatchStatus::Pending);
 	}
 
-	// Re-registering a listener that is already registered is the same caller
-	// error as re-registering a pending one.
-	void ListenerUnitTest::reregisterAfterDispatch(partest::TestContext &ctx)
+	// Re-registering a listener that is already live is queued like any other
+	// request, and the dispatcher discards it, so the live handler is unaffected.
+	void ListenerUnitTest::reregisterAfterDrain(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
 		MockDispatcher dispatcher(&registry);
 		dispatcher.setUp();
 		const cge::event::EventChannel<int> &channel = registry.getChannel<int>("ch");
 		cge::event::ListenerBase listener(&dispatcher);
+		int firstCalls = 0;
+		int secondCalls = 0;
 
-		listener.requestRegister(channel, [](const int &) {});
+		listener.requestRegister(channel, [&firstCalls](const int &) { ++firstCalls; });
 		dispatcher.dispatchCommands();
-		ASSERT_EQUAL(listener.requestRegister(channel, [](const int &) {}), cge::event::DispatchStatus::Duplicate);
+
+		ASSERT_EQUAL(listener.requestRegister(channel, [&secondCalls](const int &) { ++secondCalls; }),
+			cge::event::DispatchStatus::Pending);
+		dispatcher.dispatchCommands();
+
+		cge::event::Event<int> event(1);
+		listener.onEvent(channel.id(), event);
+
+		ASSERT_EQUAL(firstCalls, 1);
+		ASSERT_EQUAL(secondCalls, 0);
 	}
 
 	void ListenerUnitTest::handlerNotLiveYet(partest::TestContext &ctx)

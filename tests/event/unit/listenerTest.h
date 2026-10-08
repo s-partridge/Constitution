@@ -17,13 +17,14 @@ namespace cge::test
 	private:
 		void returnsPending(partest::TestContext &ctx);
 		void queuesOneCommand(partest::TestContext &ctx);
-		void duplicateResult(partest::TestContext &ctx);
-		void duplicateQueuesNothing(partest::TestContext &ctx);
+		void duplicatePending(partest::TestContext &ctx);
+		void duplicateQueuesCommand(partest::TestContext &ctx);
+		void duplicateKeepsFirst(partest::TestContext &ctx);
 		void refusedResult(partest::TestContext &ctx);
 		void refusedRetry(partest::TestContext &ctx);
-		void unregisterClearsPending(partest::TestContext &ctx);
+		void registerAfterUnregister(partest::TestContext &ctx);
 		void unregisterUnknown(partest::TestContext &ctx);
-		void reregisterAfterDispatch(partest::TestContext &ctx);
+		void reregisterAfterDrain(partest::TestContext &ctx);
 
 		void handlerNotLiveYet(partest::TestContext &ctx);
 		void invokesHandler(partest::TestContext &ctx);
