@@ -52,7 +52,6 @@ namespace cge::test
 
 		addTest("Lifecycle", flags, PARTEST_CTX(this) { lifecycle(ctx); });
 		addTest("Restoration", flags, PARTEST_CTX(this) { restoration(ctx); });
-		addTest("Eviction", flags, PARTEST_CTX(this) { eviction(ctx); });
 		addTest("Destruction", flags, PARTEST_CTX(this) { destruction(ctx); });
 		addTest("BroadcastPushResult", flags, PARTEST_CTX(this) { broadcastPushResult(ctx); });
 		addTest("CommandPushResult", flags, PARTEST_CTX(this) { commandPushResult(ctx); });
@@ -256,9 +255,8 @@ namespace cge::test
 			dispatcher->tearDown();
 		});
 
-		// Listeners are never evicted from the map, so a registration made before
-		// the teardown is still live after the next setUp. Revisit when eviction
-		// lands: this is the case an unconditional flush would change.
+		// Teardown does not remove listeners, so a registration made before the
+		// teardown is still live after the next setUp.
 		ctx.subtest("RegistrationsSurvive", PARTEST_CTX(&) {
 			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("restore-reg", &registry);
 			dispatcher->setUp();
@@ -279,76 +277,6 @@ namespace cge::test
 				ASSERT_EQUAL(listener.received[0], 9);
 
 			dispatcher->tearDown();
-		});
-	}
-
-	// Eviction and flush have no API yet, so every case here is a stub. They are
-	// present rather than deferred to a document because the contract is settled
-	// and this is where someone implementing the API will look for it. Each one
-	// says what it will assert; none of them can be written until there is a
-	// function to call.
-	//
-	// The four operations do not warrant the same treatment. Clearing the event
-	// queue is safe wholesale, clearing the command queue is not, and evicting
-	// listeners comes in an all variant for level teardown and a per-channel
-	// variant for subsystem teardown.
-	//
-	// Flush is a method rather than a command. It already originates on the
-	// processing thread, so it needs nothing carried across threads and has no
-	// queue position, which is what makes the orderings below well defined
-	// rather than timing dependent.
-	void DispatcherLifecycleTest::eviction(partest::TestContext &ctx)
-	{
-		// TODO: the bad-event cleanup path. Queue several events, flush, drain,
-		// and assert nothing was delivered.
-		ctx.subtest("FlushEvents", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
-		});
-
-		// TODO: discarding a queued unregistration leaves a listener in the map
-		// that is about to be destroyed, which breaks the lifetime law. Queue a
-		// registration and an unregistration, flush, drain, and assert both still
-		// applied. At most a flush may take non-registration commands.
-		ctx.subtest("FlushSparesRegistrations", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
-		});
-
-		// TODO: level teardown. Register several listeners across channels, evict
-		// all, then broadcast on each and assert nothing arrives.
-		ctx.subtest("EvictAll", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
-		});
-
-		// TODO: subsystem teardown. Evict one channel and assert the listeners on
-		// every other channel still receive.
-		ctx.subtest("EvictOneChannel", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
-		});
-
-		// TODO: an evicted listener reads unregistered and can register again at
-		// once. Eviction never passes through requestUnregister, so the dispatcher
-		// has to drop the listener's handler through the same callback the
-		// unregister drain uses. Otherwise the listener keeps a handler for a
-		// channel the dispatcher no longer delivers on. Evict, register again,
-		// drain, broadcast, and assert the new handler receives.
-		ctx.subtest("EvictedCanReregister", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
-		});
-
-		// TODO: a flush is a point-in-time operation, not a mode. A registration
-		// pushed from another thread while one runs sits in the command queue and
-		// applies at the next drain, so it survives. A channel that must be empty
-		// and stay empty is a channel disable, which is a different feature.
-		ctx.subtest("RegistrationSurvivesFlush", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
-		});
-
-		// TODO: where a flush does discard a queued registration, the listener is
-		// told through finalizeRegistration. A registration that silently
-		// evaporates leaves a system quietly not receiving events, which is the
-		// same defect as a dropped command and harder to trace.
-		ctx.subtest("DiscardIsReported", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
-		});
-
-		// TODO: under concurrent load assert only what is determinism-proof.
-		// Whichever way a flush and a concurrent registration land, the listener's
-		// view of its own state and the dispatcher's map must agree. Do not assert
-		// which one won. Same pattern concurrentChurn already uses.
-		ctx.subtest("ConcurrentFlushAgrees", partest::TEST_FLAGS_SKIP, PARTEST_CTX(&) {
 		});
 	}
 

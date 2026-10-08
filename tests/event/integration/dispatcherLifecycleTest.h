@@ -16,7 +16,6 @@ namespace cge::test
 	private:
 		void lifecycle(partest::TestContext &ctx);
 		void restoration(partest::TestContext &ctx);
-		void eviction(partest::TestContext &ctx);
 		void destruction(partest::TestContext &ctx);
 		void broadcastPushResult(partest::TestContext &ctx);
 		void commandPushResult(partest::TestContext &ctx);
