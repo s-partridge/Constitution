@@ -188,35 +188,34 @@ namespace cge::test
 	void ListenerRegistrationTest::batchedRequests(partest::TestContext &ctx)
 	{
 		// The caller asked to end up registered, so it must end up registered and
-		// receiving.
+		// receiving through the handler of the last request. The two registers use
+		// different handlers so that installing the first request's handler is
+		// distinguishable from installing the last one's.
 		//
-		// Currently fails, and not for the reason it looks like: all three
-		// requests are accepted and queued, because requestUnregister clears the
-		// pending entry before forwarding. The defect is that the listener holds
-		// one pending slot per channel while the queue holds three requests. The
-		// first Reg command consumes the slot, the Unreg strips the handler back
-		// out, and the second Reg finds no pending entry and installs nothing -
-		// leaving the listener in the dispatcher's map with no handler for the
-		// channel. See docs/expected-failures.md.
+		// Expected to fail until the listener keeps one pending handler per
+		// queued request rather than one per channel. See
+		// docs/expected-failures.md.
 		ctx.subtest("RegisterUnregisterRegister",
 			partest::TEST_FLAGS_INHERIT.withExpectFailure(), PARTEST_CTX(&) {
 			EventHarness harness(flavor(), "batch-rur-dispatcher");
 			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch-rur");
-			CountingListener listener(&harness.dispatcher());
-			auto handler = [&listener](const int &v) { listener.onInt(v); };
+			cge::event::ListenerBase listener(&harness.dispatcher());
+			std::vector<int> firstReceived;
+			std::vector<int> lastReceived;
 
-			listener.requestRegister(channel, handler);
+			listener.requestRegister(channel, [&firstReceived](const int &v) { firstReceived.push_back(v); });
 			listener.requestUnregister(channel);
-			listener.requestRegister(channel, handler);
+			listener.requestRegister(channel, [&lastReceived](const int &v) { lastReceived.push_back(v); });
 
 			harness.dispatcher().dispatchCommands();
 			broadcaster.broadcast(channel, 1);
 			harness.dispatcher().dispatchEvents();
 
-			ASSERT_EQUAL(listener.received.size(), 1u);
-			if(listener.received.size() == 1)
-				ASSERT_EQUAL(listener.received[0], 1);
+			ASSERT_EQUAL(firstReceived.size(), 0u);
+			ASSERT_EQUAL(lastReceived.size(), 1u);
+			if(lastReceived.size() == 1)
+				ASSERT_EQUAL(lastReceived[0], 1);
 		});
 
 		ctx.subtest("RegisterThenUnregister", PARTEST_CTX(&) {
