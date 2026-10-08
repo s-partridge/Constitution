@@ -50,7 +50,9 @@ namespace cge::test
 		addTest("PayloadsCopyable", flags, PARTEST_CTX(this) { payloadsCopyable(ctx); });
 		addTest("MoveOnlyPayloadRejected", flags, PARTEST_CTX(this) { moveOnlyPayloadRejected(ctx); });
 
-		addTest("TypeConflict", flags.withExpectFailure(), PARTEST_CTX(this) { typeConflict(ctx); });
+		addTest("TypeConflict", flags, PARTEST_CTX(this) { typeConflict(ctx); });
+		addTest("TryGetCreates", flags, PARTEST_CTX(this) { tryGetCreates(ctx); });
+		addTest("TryGetMatchesGet", flags, PARTEST_CTX(this) { tryGetMatchesGet(ctx); });
 		addTest("SameName", flags, PARTEST_CTX(this) { sameName(ctx); });
 		addTest("DistinctNames", flags, PARTEST_CTX(this) { distinctNames(ctx); });
 		addTest("DistinctRegistries", flags, PARTEST_CTX(this) { distinctRegistries(ctx); });
@@ -196,20 +198,55 @@ namespace cge::test
 
 	// The single guard the whole system rests on. Delivery casts an EventBase
 	// straight to Event<T> with no runtime check, and the only thing making that
-	// sound is that a channel id is bound to one payload type for life. If a tag
-	// could be re-requested under a different type, the cast becomes undefined
-	// behavior on the first event through it.
+	// sound is that a channel id is bound to one payload type for life. A tag
+	// re-requested under a different type is refused, and the channel that
+	// already holds the tag is left exactly as it was.
 	//
-	// TODO: getChannel returns a reference and so has no way to report a
-	// rejection to the caller. The contract cannot be written against the
-	// current signature, and asserting the throw that stands in for it today
-	// would pin a mechanism that is being removed. This fails until getChannel
-	// can return a result.
+	// Only tryGetChannel is testable here. getChannel stops the program on a
+	// conflict, which Partest has no way to observe.
 	void EventUnitTest::typeConflict(partest::TestContext &ctx)
 	{
-		const bool refused = false;
+		cge::event::EventChannelRegistry registry;
 
-		ASSERT_TRUE(refused);
+		const cge::event::EventChannel<int> *original = registry.tryGetChannel<int>("conflict");
+		ASSERT_TRUE(original != nullptr);
+		if(original == nullptr)
+			return;
+		const cge::event::ChannelId originalId = original->id();
+
+		const cge::event::EventChannel<float> *conflicting = registry.tryGetChannel<float>("conflict");
+		ASSERT_TRUE(conflicting == nullptr);
+
+		const cge::event::EventChannel<int> *after = registry.tryGetChannel<int>("conflict");
+		ASSERT_TRUE(after == original);
+		if(after != nullptr)
+			ASSERT_EQUAL(after->id(), originalId);
+	}
+
+	// A tag never seen before is created on lookup, the same as getChannel.
+	void EventUnitTest::tryGetCreates(partest::TestContext &ctx)
+	{
+		cge::event::EventChannelRegistry registry;
+
+		const cge::event::EventChannel<int> *channel = registry.tryGetChannel<int>("fresh");
+		ASSERT_TRUE(channel != nullptr);
+		if(channel != nullptr)
+			ASSERT_NOT_EQUAL(channel->id(), cge::event::InvalidChannelId);
+	}
+
+	// Both entry points read the same registry, so whichever one creates a tag,
+	// the other finds the same channel rather than a second one.
+	void EventUnitTest::tryGetMatchesGet(partest::TestContext &ctx)
+	{
+		cge::event::EventChannelRegistry registry;
+
+		const cge::event::EventChannel<int> &gotFirst = registry.getChannel<int>("get-first");
+		const cge::event::EventChannel<int> *triedSecond = registry.tryGetChannel<int>("get-first");
+		ASSERT_TRUE(triedSecond == &gotFirst);
+
+		const cge::event::EventChannel<int> *triedFirst = registry.tryGetChannel<int>("try-first");
+		const cge::event::EventChannel<int> &gotSecond = registry.getChannel<int>("try-first");
+		ASSERT_TRUE(triedFirst == &gotSecond);
 	}
 
 	void EventUnitTest::sameName(partest::TestContext &ctx)

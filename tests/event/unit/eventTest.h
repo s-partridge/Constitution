@@ -22,6 +22,8 @@ namespace cge::test
 		void moveOnlyPayloadRejected(partest::TestContext &ctx);
 
 		void typeConflict(partest::TestContext &ctx);
+		void tryGetCreates(partest::TestContext &ctx);
+		void tryGetMatchesGet(partest::TestContext &ctx);
 		void sameName(partest::TestContext &ctx);
 		void distinctNames(partest::TestContext &ctx);
 		void distinctRegistries(partest::TestContext &ctx);
