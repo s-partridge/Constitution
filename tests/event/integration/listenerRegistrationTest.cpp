@@ -191,12 +191,7 @@ namespace cge::test
 		// receiving through the handler of the last request. The two registers use
 		// different handlers so that installing the first request's handler is
 		// distinguishable from installing the last one's.
-		//
-		// Expected to fail until the listener keeps one pending handler per
-		// queued request rather than one per channel. See
-		// docs/expected-failures.md.
-		ctx.subtest("RegisterUnregisterRegister",
-			partest::TEST_FLAGS_INHERIT.withExpectFailure(), PARTEST_CTX(&) {
+		ctx.subtest("RegisterUnregisterRegister", PARTEST_CTX(&) {
 			EventHarness harness(flavor(), "batch-rur-dispatcher");
 			cge::event::BroadcasterBase broadcaster(&harness.dispatcher());
 			const cge::event::EventChannel<int> &channel = harness.registry.getChannel<int>("batch-rur");

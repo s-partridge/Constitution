@@ -121,39 +121,37 @@ namespace cge::test
 
 		// Refusal is not a deferred registration. Once the next level begins the
 		// listener may submit a new callback, and only that callback may become
-		// live. This is deliberately red until rejected registrations stop leaving
-		// a stale pending handler behind.
-		ctx.subtest("RefusedRegistrationLeavesNoState",
-			partest::TEST_FLAGS_INHERIT.withExpectFailure(), PARTEST_CTX(&) {
-				std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("refused-register", &registry);
-				int refusedCalls = 0;
-				int acceptedCalls = 0;
-				cge::event::ListenerBase listener(dispatcher.get());
+		// live.
+		ctx.subtest("RefusedRegistrationLeavesNoState", PARTEST_CTX(&) {
+			std::unique_ptr<cge::event::DispatcherBase> dispatcher = flavor().create("refused-register", &registry);
+			int refusedCalls = 0;
+			int acceptedCalls = 0;
+			cge::event::ListenerBase listener(dispatcher.get());
 
-				ASSERT_EQUAL(listener.requestRegister(channel, [&refusedCalls](const int &) {
-					++refusedCalls;
-				}), cge::event::DispatchStatus::NotReady);
+			ASSERT_EQUAL(listener.requestRegister(channel, [&refusedCalls](const int &) {
+				++refusedCalls;
+			}), cge::event::DispatchStatus::NotReady);
 
-				dispatcher->setUp();
-				const cge::event::DispatchStatus retry = listener.requestRegister(channel, [&acceptedCalls](const int &) {
-					++acceptedCalls;
-				});
-				ASSERT_EQUAL(retry, cge::event::DispatchStatus::Pending);
-				if(retry != cge::event::DispatchStatus::Pending)
-				{
-					dispatcher->tearDown();
-					return;
-				}
-				dispatcher->dispatchCommands();
-
-				cge::event::BroadcasterBase broadcaster(dispatcher.get());
-				ASSERT_TRUE(broadcaster.broadcast(channel, 1));
-				dispatcher->dispatchEvents();
-
-				ASSERT_EQUAL(refusedCalls, 0);
-				ASSERT_EQUAL(acceptedCalls, 1);
-				dispatcher->tearDown();
+			dispatcher->setUp();
+			const cge::event::DispatchStatus retry = listener.requestRegister(channel, [&acceptedCalls](const int &) {
+				++acceptedCalls;
 			});
+			ASSERT_EQUAL(retry, cge::event::DispatchStatus::Pending);
+			if(retry != cge::event::DispatchStatus::Pending)
+			{
+				dispatcher->tearDown();
+				return;
+			}
+			dispatcher->dispatchCommands();
+
+			cge::event::BroadcasterBase broadcaster(dispatcher.get());
+			ASSERT_TRUE(broadcaster.broadcast(channel, 1));
+			dispatcher->dispatchEvents();
+
+			ASSERT_EQUAL(refusedCalls, 0);
+			ASSERT_EQUAL(acceptedCalls, 1);
+			dispatcher->tearDown();
+		});
 
 		// Dispatch always drains, so a parked event would surface on the next
 		// drain. Nothing arriving therefore proves the push was refused outright.

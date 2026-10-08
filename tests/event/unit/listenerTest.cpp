@@ -42,10 +42,10 @@ namespace cge::test
 		addTest("DuplicateResult", flags, PARTEST_CTX(this) { duplicateResult(ctx); });
 		addTest("DuplicateQueuesNothing", flags, PARTEST_CTX(this) { duplicateQueuesNothing(ctx); });
 		addTest("RefusedResult", flags, PARTEST_CTX(this) { refusedResult(ctx); });
-		addTest("RefusedRetry", flags.withExpectFailure(), PARTEST_CTX(this) { refusedRetry(ctx); });
+		addTest("RefusedRetry", flags, PARTEST_CTX(this) { refusedRetry(ctx); });
 		addTest("UnregisterClearsPending", flags, PARTEST_CTX(this) { unregisterClearsPending(ctx); });
 		addTest("UnregisterUnknown", flags, PARTEST_CTX(this) { unregisterUnknown(ctx); });
-		addTest("ReregisterAfterDrain", flags.withExpectFailure(), PARTEST_CTX(this) { reregisterAfterDispatch(ctx); });
+		addTest("ReregisterAfterDrain", flags, PARTEST_CTX(this) { reregisterAfterDispatch(ctx); });
 
 		addTest("HandlerNotLiveYet", flags, PARTEST_CTX(this) { handlerNotLiveYet(ctx); });
 		addTest("InvokesHandler", flags, PARTEST_CTX(this) { invokesHandler(ctx); });
@@ -121,10 +121,7 @@ namespace cge::test
 			== cge::event::DispatchStatus::Failure);
 	}
 
-	// A refused registration must leave the listener able to try again. Expected
-	// to fail: the handler is committed to the pending list before the dispatcher
-	// is asked, so a refusal leaves a stale entry and the retry reads as a
-	// duplicate. See docs/open-items.md.
+	// A refused registration must leave the listener able to try again.
 	void ListenerUnitTest::refusedRetry(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
@@ -171,9 +168,7 @@ namespace cge::test
 	}
 
 	// Re-registering a listener that is already registered is the same caller
-	// error as re-registering a pending one. Expected to fail: the pending list
-	// is cleared on finalize, so the guard no longer sees anything. See A1 in
-	// docs/test-refactor.md.
+	// error as re-registering a pending one.
 	void ListenerUnitTest::reregisterAfterDispatch(partest::TestContext &ctx)
 	{
 		cge::event::EventChannelRegistry registry;
