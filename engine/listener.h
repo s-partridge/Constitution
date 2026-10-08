@@ -29,10 +29,6 @@ namespace cge::event
 		{
 			ChannelId id = channel.id();
 
-			// Don't re-register on the same channel.
-			if(isRegistered(id))
-				return DispatchStatus::Duplicate;
-
 			// Wrap the callback in a lambda that takes an EventBase reference, casts it to the correct type, and invokes the callback with the payload.
 			HandlerPair handlerPair(id, [callback](const EventBase &event) {
 				const Event<PayloadType> &typedEvent = static_cast<const Event<PayloadType> &>(event);
@@ -49,10 +45,6 @@ namespace cge::event
 		DispatchStatus requestRegister(const EventChannel<PayloadType> &channel, SourceType *self, CallbackType callback)
 		{
 			ChannelId id = channel.id();
-
-			// Don't re-register on the same channel.
-			if(isRegistered(id))
-				return DispatchStatus::Duplicate;
 			
 			// Wrap the callback in a lambda that captures the source object and invokes the member function.
 			HandlerPair handlerPair(id, [self, callback](const EventBase &event) {
