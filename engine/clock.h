@@ -4,7 +4,7 @@
 #include <atomic>
 #include <chrono>
 #include <string>
-#include <unordered_map>
+#include <vector>
 
 namespace cge
 {
@@ -36,6 +36,14 @@ struct std::hash<cge::TickType>
 
 namespace cge
 {
+	namespace TickTime
+	{
+		using Duration = std::chrono::steady_clock::duration;
+		using Instant = std::chrono::steady_clock::time_point;
+
+		inline constexpr Duration Zero = std::chrono::steady_clock::duration::zero();
+	}
+
 	namespace TickTypes
 	{
 		namespace detail
@@ -53,14 +61,13 @@ namespace cge
 		TickType type; // redundant copy of the owning key, sanity check only
 		std::string name;
 		size_t count;
-		std::chrono::steady_clock::time_point lastAccess;
-		std::chrono::steady_clock::duration interval; // preferred spacing; zero = uncapped
+		TickTime::Instant lastAccess;
+		TickTime::Duration interval; // preferred spacing; zero = uncapped
 		double timeScale; // per-channel slow-motion / fast-forward multiplier
 
-		TickChannel(const TickType &type, const std::string &name, std::chrono::steady_clock::duration interval)
+		TickChannel(const TickType &type, const std::string &name, TickTime::Duration interval)
 			: type(type), name(name), count(0), lastAccess(std::chrono::steady_clock::now()), interval(interval), timeScale(1.0)
-		{
-		}
+		{ }
 	};
 
 	class Clock
@@ -68,24 +75,36 @@ namespace cge
 	public:
 		Clock(); // registers the Update and Physics channels
 
-		bool registerChannel(const TickType &type, const std::string &name, std::chrono::steady_clock::duration interval); // false if a channel for this type already exists
+		bool registerChannel(const TickType &type, const std::string &name, TickTime::Duration interval); // false if a channel for this type already exists
 
-		std::chrono::steady_clock::duration tick(const TickType &type);       // scaled by the channel's timeScale
-		std::chrono::steady_clock::duration rawTick(const TickType &type);    // unscaled, real elapsed time
-		const TickChannel &getChannel(const TickType &type) const;
-		void setInterval(const TickType &type, std::chrono::steady_clock::duration interval);
+		TickTime::Duration tick(const TickType &type);       // scaled by the channel's timeScale
+		TickTime::Duration rawTick(const TickType &type);    // unscaled, real elapsed time
+
+		TickTime::Duration getInterval(const TickType &type) const;
+		void setInterval(const TickType &type, TickTime::Duration interval);
+		
+		double getTimeScale(const TickType &type) const;
 		void setTimeScale(const TickType &type, double timeScale);
 
+		std::string getChannelName(const TickType &type) const;
+		size_t getTickCount(const TickType &type) const;
+
 		// Dedicated accessors for the two universal, always-present channels
-		std::chrono::steady_clock::duration tickUpdate();
-		std::chrono::steady_clock::duration tickPhysics();
-		std::chrono::steady_clock::duration rawTickUpdate();
-		std::chrono::steady_clock::duration rawTickPhysics();
-		const TickChannel &getUpdateChannel() const;
-		const TickChannel &getPhysicsChannel() const;
+		TickTime::Duration tickUpdate();
+		TickTime::Duration tickPhysics();
+		TickTime::Duration rawTickUpdate();
+		TickTime::Duration rawTickPhysics();
+
+		void resetDurations(); // resets the lastAccess time for all channels to now, effectively zeroing out the elapsed time
 
 	private:
-		std::unordered_map<TickType, TickChannel> m_channels;
+		std::vector<TickChannel> m_channels;
+
+		size_t getChannelIndex(const TickType &type) const;
+
+		TickChannel &getChannel(const TickType &type);
+		TickChannel &getUpdateChannel();
+		TickChannel &getPhysicsChannel();
 	};
 }
 
