@@ -38,6 +38,9 @@ namespace cge
 
 		constexpr void setMaxPhysicsSubsteps(unsigned maxSubsteps);
 
+		cge::event::DispatcherBase *getDispatcher() { return m_dispatcher; }
+		cge::event::EventChannelRegistry &getEventRegistry() { return m_eventRegistry; }
+
 	private:
 		Engine();
 		~Engine();
