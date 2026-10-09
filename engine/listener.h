@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "dispatcher.h"
+#include "component.h"
 #include "event.h"
 
 namespace cge::event
@@ -18,7 +19,7 @@ namespace cge::event
 		PendingUnregistration
 	};
 
-	class ListenerBase
+	class ListenerBase : public ComponentBase
 	{
 	public:
 		ListenerBase(DispatcherBase *dispatcher) : m_dispatcher(dispatcher), m_inFlightEvents(0) {}

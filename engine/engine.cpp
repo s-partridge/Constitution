@@ -8,6 +8,8 @@ namespace cge
 	{
 		m_dispatcher = new cge::event::AsyncDispatcher("EngineDispatcher", &m_eventRegistry);
 		addSystem(m_dispatcher);
+
+		addComponent(new Engine::EngineListener(*this, m_dispatcher));
 	}
 
 	Engine::~Engine()
@@ -17,6 +19,11 @@ namespace cge
 		{
 			delete m_systems[idx - 1];
 		}
+
+		for(size_t idx = m_components.size(); idx > 0; --idx)
+		{
+			delete m_components[idx - 1];
+		}
 	}
 
 	bool Engine::addSystem(SystemBase *system)
@@ -25,11 +32,22 @@ namespace cge
 		return true;
 	}
 
+	bool Engine::addComponent(ComponentBase *component)
+	{
+		m_components.push_back(component);
+		return true;
+	}
+
 	void Engine::setUp()
 	{
 		for(size_t idx = 0; idx < m_systems.size(); ++idx)
 		{
 			m_systems[idx]->setUp();
+		}
+
+		for(size_t idx = 0; idx < m_components.size(); ++idx)
+		{
+			m_components[idx]->setUp();
 		}
 	}
 
@@ -48,16 +66,23 @@ namespace cge
 			TickTime::Duration dt = m_clock.tickUpdate();
 			//Handle user input once the system exists
 
+			// Should become part of earlyUpdate loop
+			m_dispatcher->dispatchCommands();
 			update(dt);
 
+			//Should become part of lateUpdate loop
+			m_dispatcher->dispatchCommands();
+
 			physicsUpdate(m_clock.tickPhysics());
-			//phyiscs update with fixed timestep
+			//physics update with fixed timestep
 			//fixedUpdate(pdt);
 
 			// Get current frame delta
 
 			render();
 		}
+
+		tearDown();
 	}
 
 	void Engine::update(TickTime::Duration dt)
@@ -113,9 +138,37 @@ namespace cge
 	void Engine::tearDown()
 	{
 		// Tear down in reverse order of setup to avoid dependency issues
-		for(size_t idx = m_systems.size(); idx > 0; --idx)
+		for(size_t idx = m_components.size(); idx > 0; --idx)
 		{
-			m_systems[idx - 1]->tearDown();
+			 m_components[idx - 1]->tearDown();
 		}
+
+		// From last to second, skipping first system (the dispatcher).
+		for(size_t idx = m_systems.size() - 1; idx > 0; --idx)
+		{
+			m_systems[idx]->tearDown();
+		}
+
+		// The dispatcher is always the first system added, so it will be the last to tear down. Ensure all commands are processed before shutdown.
+		m_dispatcher->dispatchCommands();
+		m_dispatcher->tearDown();
+	}
+
+	Engine::EngineListener::EngineListener(Engine &engine, cge::event::DispatcherBase *dispatcher) : m_engine(engine), ListenerBase(dispatcher)
+	{
+		// TODO: Currently every event requires a payload of some kind. This may not always be necessary, but for the moment bool is used as a workaround here.
+		// Possible solution: could use a std::monostate or a custom empty struct as the payload type for events that don't need to carry data.
+		// This still requires callers to have a useless parameter, though, so it might be worth overloading listener to allow a parameter-free callback where the payload is ignored.
+		 m_shutdownChannel = &m_engine.m_eventRegistry.getChannel<bool>(EngineEvent::EngineShutdown);
+	}
+
+	void Engine::EngineListener::setUp()
+	{
+		requestRegister(*m_shutdownChannel, &m_engine, &Engine::stopRunning);
+	}
+
+	void Engine::EngineListener::tearDown()
+	{
+		requestUnregister(*m_shutdownChannel);
 	}
 }

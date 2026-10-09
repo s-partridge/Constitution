@@ -21,11 +21,7 @@ namespace cge::event
 	// TODO: Maybe change visibility on the dispatch functions if they never need to be called outside of the dispatcher itself.
 	void AsyncDispatcher::update(std::chrono::steady_clock::duration dt)
 	{
-		// Early commands need to be processed before the event stream is read.
-		dispatchCommands();
 		dispatchEvents();
-		// Events themselves may result in commands that should be processed before the end of the current frame.
-		dispatchCommands();
 	}
 
 	void AsyncDispatcher::dispatchEvents()

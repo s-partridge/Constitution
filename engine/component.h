@@ -15,7 +15,7 @@ namespace cge
 		* Override to perform initialization that requires access to the
 		* owner or other components. Called once after add_component().
 		*/
-		virtual void setUp() = 0;
+		virtual void setUp() {}
 
 		/**
 		* Release resources before owner destruction.
@@ -23,7 +23,7 @@ namespace cge
 		* Override to release resources, unsubscribe from events, etc.
 		* Called once before the owner is destroyed.
 		*/
-		virtual void tearDown() = 0;
+		virtual void tearDown() {}
 	};
 }
 
