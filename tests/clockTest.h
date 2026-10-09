@@ -55,7 +55,8 @@ public:
 	}
 
 	// Registering a type that already has a channel replaces its name and
-	// interval rather than refusing.
+	// interval rather than refusing, and returns false to say no channel was
+	// created.
 	void registerChannelUpdatesExistingType(partest::TestContext &ctx)
 	{
 		cge::Clock clock;
@@ -64,7 +65,7 @@ public:
 		clock.registerChannel(custom, "First", std::chrono::milliseconds(10));
 		bool result = clock.registerChannel(custom, "Second", std::chrono::milliseconds(50));
 
-		ASSERT_TRUE(result);
+		ASSERT_FALSE(result);
 		ASSERT_EQUAL(clock.getChannelName(custom), std::string("Second"));
 		ASSERT_TRUE(clock.getInterval(custom) == std::chrono::milliseconds(50));
 	}
