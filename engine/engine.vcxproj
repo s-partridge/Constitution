@@ -175,6 +175,7 @@
     <ClCompile Include="event.cpp" />
     <ClCompile Include="listener.cpp" />
     <ClCompile Include="scaffold.cpp" />
+    <ClCompile Include="windowSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="asyncDispatcher.h" />
@@ -189,6 +190,7 @@
     <ClInclude Include="scaffold.h" />
     <ClInclude Include="system.h" />
     <ClInclude Include="utilities.h" />
+    <ClInclude Include="windowSystem.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
