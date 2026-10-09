@@ -127,6 +127,14 @@ namespace cge
 		}
 	}
 
+	void Engine::render()
+	{
+		for(size_t idx = 0; idx < m_systems.size(); ++idx)
+		{
+			m_systems[idx]->render();
+		}
+	}
+
 	constexpr void Engine::setMaxPhysicsSubsteps(unsigned maxSubsteps)
 	{
 		if(maxSubsteps > 0)
