@@ -17,7 +17,7 @@ namespace cge
 			{
 				m_channels[idx].name = name;
 				m_channels[idx].interval = interval;
-				return true;
+				return false;
 			}
 		}
 		
@@ -51,9 +51,11 @@ namespace cge
 		size_t idx = getChannelIndex(type);
 		// Ensure that channel acquisition never fails. If the channel doesn't exist, create it with a default name and zero interval.
 		if(idx >= m_channels.size())
+		{
 			registerChannel(type, "Tick " + std::to_string(type.id()), std::chrono::steady_clock::duration::zero());
-		
-		return m_channels.back();
+			return m_channels.back();
+		}
+		return m_channels[idx];
 	}
 
 	// Return the index of the channel with the given type, or m_channels.size() if not found.
@@ -99,7 +101,7 @@ namespace cge
 		size_t idx = getChannelIndex(type);
 		if(idx < m_channels.size())
 			return m_channels[idx].name;
-		return "Tick" + std::to_string(type.id());
+		return "Tick " + std::to_string(type.id());
 	}
 
 	size_t Clock::getTickCount(const TickType &type) const
