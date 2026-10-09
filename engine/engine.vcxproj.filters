@@ -80,5 +80,8 @@
     <ClInclude Include="windowSystem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="renderPrimitives.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

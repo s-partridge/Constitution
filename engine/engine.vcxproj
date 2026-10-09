@@ -187,6 +187,7 @@
     <ClInclude Include="event.h" />
     <ClInclude Include="eventTypes.h" />
     <ClInclude Include="listener.h" />
+    <ClInclude Include="renderPrimitives.h" />
     <ClInclude Include="scaffold.h" />
     <ClInclude Include="system.h" />
     <ClInclude Include="utilities.h" />
