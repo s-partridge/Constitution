@@ -193,18 +193,21 @@ namespace cge::test
 		return outcome;
 	}
 
-	// One engine frame, driven through the dispatcher's own update. For the async
-	// flavor that is commands, events, commands: a request made last frame is
-	// live for this frame's traffic, and anything a handler asked for during the
-	// drain applies within the frame it was asked in rather than sitting queued
-	// until the next one.
+	// One engine frame as the engine drives it: a command drain, the update pass
+	// (where the dispatcher's own update drains events), then a second command
+	// drain after the update loop. A request made last frame is live for this
+	// frame's traffic, and anything a handler asked for during the drain applies
+	// within the frame it was asked in rather than sitting queued until the next
+	// one.
 	//
 	// Tests whose subject is deferral itself still call the halves separately:
 	// proving that a registration waits for the command drain means running the
 	// event drain without one.
 	inline void frame(cge::event::DispatcherBase &dispatcher)
 	{
+		dispatcher.dispatchCommands();
 		dispatcher.update(std::chrono::steady_clock::duration::zero());
+		dispatcher.dispatchCommands();
 	}
 
 	struct CountingListener : public cge::event::ListenerBase
