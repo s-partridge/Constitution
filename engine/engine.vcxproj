@@ -175,6 +175,7 @@
     <ClCompile Include="event.cpp" />
     <ClCompile Include="listener.cpp" />
     <ClCompile Include="scaffold.cpp" />
+    <ClCompile Include="vulkanBootstrapper.cpp" />
     <ClCompile Include="windowSystem.cpp" />
     <ClCompile Include="..\extern\volk\volk.c" />
   </ItemGroup>
@@ -192,6 +193,7 @@
     <ClInclude Include="scaffold.h" />
     <ClInclude Include="system.h" />
     <ClInclude Include="utilities.h" />
+    <ClInclude Include="vulkanBootstrapper.h" />
     <ClInclude Include="windowSystem.h" />
     <ClInclude Include="..\extern\volk\volk.h" />
   </ItemGroup>

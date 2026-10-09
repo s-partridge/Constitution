@@ -42,6 +42,9 @@
     <ClCompile Include="..\extern\volk\volk.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="vulkanBootstrapper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine.h">
@@ -87,6 +90,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="renderPrimitives.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vulkanBootstrapper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
