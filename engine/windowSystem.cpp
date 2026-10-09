@@ -11,7 +11,7 @@ namespace cge
 		: SystemBase(name), m_windowSystemBroadcaster(Engine::Instance().getDispatcher()),
 		  m_windowTitle(windowTitle)
 	{
-		m_shutdownChannel = &Engine::Instance().getEventRegistry().getChannel<bool>("WindowSystemShutdown");
+		m_shutdownChannel = &Engine::Instance().getEventRegistry().getChannel<bool>(EngineEvent::EngineShutdown);
 	}
 
 	void WindowSystem::onSetUp()
