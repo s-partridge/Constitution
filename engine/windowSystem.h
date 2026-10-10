@@ -12,10 +12,13 @@ struct GLFWwindow;
 struct VkInstance_T;
 struct VkSurfaceKHR_T;
 struct VkPhysicalDevice_T;
+struct VkDevice_T;
+struct VkQueue_T;
 
 namespace cge::vulkan
 {
-	struct InstanceFunctions;
+	struct VulkanFunctions;
+	struct DeviceFunctions;
 }
 
 namespace cge
@@ -38,23 +41,32 @@ namespace cge
 		// Handle to the GLFW window
 		GLFWwindow *m_window = nullptr;
 
-		// Handle for Vulkan instance functions
-		vulkan::InstanceFunctions *m_vulkan = nullptr;
+		// Handle for Vulkan global and instance functions
+		vulkan::VulkanFunctions *m_vulkan = nullptr;
 		// Handle to the Vulkan instance itself
 		VkInstance_T *m_vkInstance = nullptr;
+
 		// Handle to the Vulkan surface. This is used to present rendered images to the window.
 		VkSurfaceKHR_T *m_surface = nullptr;
-		// Handle to the chosen GPU for rendering
-		VkPhysicalDevice_T *m_activeDevice = nullptr;
+		// Handle to the chosen physical GPU
+		VkPhysicalDevice_T *m_physicalDevice = nullptr;
+
+		// Handle to the logical Vulkan device. This is used to submit rendering commands to the GPU.
+		VkDevice_T *m_device = nullptr;
+		// Handle for Vulkan device functions. These are tied to the logical device and are used to submit commands to the GPU.
+		vulkan::DeviceFunctions *m_deviceFunctions = nullptr;
+		// Queue used to submit rendering commands to the GPU.
+		VkQueue_T *m_queue = nullptr;
 
 		// Queue family index for the chosen GPU. This is used to submit rendering commands to the GPU.
 		// A queue family is a group of queues that can execute commands on the GPU. Different queue families may support different types of operations (graphics, compute, transfer, etc.).
 		uint32_t m_activeQueueFamilyIndex = 0;
 
 		// NOTE:
-		// m_vulkan is created and owned by WindowSystem, and is deleted in tearDown.
-		// m_vkInstance and m_surface require cleanup in tearDown, but are not deleted.
-		// m_activeDevice requires no cleanup; it is managed by the Vulkan loader.
+		// m_vulkan and m_deviceFunctions are created and owned by WindowSystem, and are deleted in tearDown.
+		// m_window, m_vkInstance, m_surface, and m_device require cleanup in tearDown, but are not deleted.
+		// m_queue is created and destroyed along with m_device, and does not require explicit cleanup.
+		// m_physicalDevice requires no cleanup; it is managed by the Vulkan loader.
 		
 		int m_windowWidth = 1280;
 		int m_windowHeight = 720;

@@ -2,7 +2,7 @@
 
 namespace cge::vulkan
 {
-	bool loadGlobalfunctions(InstanceFunctions &instanceFunctions, PFN_vkGetInstanceProcAddr getInstanceProcAddr)
+	bool loadGlobalfunctions(VulkanFunctions &instanceFunctions, PFN_vkGetInstanceProcAddr getInstanceProcAddr)
 	{
 		instanceFunctions.vkGetInstanceProcAddr = getInstanceProcAddr;
 		instanceFunctions.vkEnumerateInstanceLayerProperties = reinterpret_cast<PFN_vkEnumerateInstanceLayerProperties>(getInstanceProcAddr(nullptr, "vkEnumerateInstanceLayerProperties"));
@@ -11,7 +11,7 @@ namespace cge::vulkan
 			instanceFunctions.vkCreateInstance != nullptr;
 	}
 
-	bool loadInstanceFunctions(InstanceFunctions &instanceFunctions, VkInstance instance)
+	bool loadInstanceFunctions(VulkanFunctions &instanceFunctions, VkInstance instance)
 	{
 		instanceFunctions.vkDestroyInstance = reinterpret_cast<PFN_vkDestroyInstance>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkDestroyInstance"));
 		instanceFunctions.vkDestroySurfaceKHR = reinterpret_cast<PFN_vkDestroySurfaceKHR>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkDestroySurfaceKHR"));
@@ -33,7 +33,7 @@ namespace cge::vulkan
 			instanceFunctions.vkGetPhysicalDeviceSurfaceSupportKHR != nullptr;
 	}
 
-	bool loadDeviceFunctions(DeviceFunctions &deviceFunctions, InstanceFunctions &instanceFunctions, VkDevice device)
+	bool loadDeviceFunctions(DeviceFunctions &deviceFunctions, VulkanFunctions &instanceFunctions, VkDevice device)
 	{
 		deviceFunctions.vkDestroyDevice = reinterpret_cast<PFN_vkDestroyDevice>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyDevice"));
 		deviceFunctions.vkGetDeviceQueue = reinterpret_cast<PFN_vkGetDeviceQueue>(instanceFunctions.vkGetDeviceProcAddr(device, "vkGetDeviceQueue"));

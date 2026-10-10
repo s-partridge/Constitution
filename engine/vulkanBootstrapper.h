@@ -18,8 +18,11 @@ namespace cge::vulkan
 	// TODO: Implement initial internal call directly at the OS level so no hand-off is necessary.
 	// Requires OS-specific code for Windows, Linux, and MacOS to fetch vkGetInstanceProcAddr from the Vulkan loader library.
 	// This would remove the need for GLFW or other libraries to provide this function pointer.
-	struct InstanceFunctions
+	struct VulkanFunctions
 	{
+		/////////////////////////////////////////////////////////////////////////////
+		// Global functions that are loaded before creating a Vulkan instance.
+
 		// Initial lookup function required to load all other Vulkan functions.
 		PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = nullptr;
 		// Fetch the count and properties of the available instance layers. Layers can be used for debugging, validation, and other purposes.
@@ -27,6 +30,7 @@ namespace cge::vulkan
 		// Create an instance of the Vulkan API. This is the first function that must be called after loading the Vulkan library.
 		PFN_vkCreateInstance vkCreateInstance = nullptr;
 
+		/////////////////////////////////////////////////////////////////////////////
 		// Instance-level functions that are loaded after creating a Vulkan instance.
 		// Destroy the Vulkan instance and free associated resources.
 		PFN_vkDestroyInstance vkDestroyInstance = nullptr;
@@ -68,7 +72,7 @@ namespace cge::vulkan
 	* 
 	* @note getInstanceProcAddr must be a valid function pointer to vkGetInstanceProcAddr before calling this function.
 	*/
-	bool loadGlobalfunctions(InstanceFunctions &instanceFunctions, PFN_vkGetInstanceProcAddr getInstanceProcAddr);
+	bool loadGlobalfunctions(VulkanFunctions &instanceFunctions, PFN_vkGetInstanceProcAddr getInstanceProcAddr);
 	/**
 	* Load instance-level Vulkan functions that are required after creating a Vulkan instance.
 	* 
@@ -79,7 +83,7 @@ namespace cge::vulkan
 	* 
 	* @note instance must be a valid VkInstance that has been created using vkCreateInstance before calling this function.
 	*/
-	bool loadInstanceFunctions(InstanceFunctions &instanceFunctions, VkInstance instance);
+	bool loadInstanceFunctions(VulkanFunctions &instanceFunctions, VkInstance instance);
 	/**
 	* Load device-level Vulkan functions that are required after creating a Vulkan device.
 	* 
@@ -91,7 +95,7 @@ namespace cge::vulkan
 	* 
 	* @note device must be a valid VkDevice that has been created using vkCreateDevice before calling this function. instanceFunctions must have been populated with valid function pointers from loadInstanceFunctions.
 	*/
-	bool loadDeviceFunctions(DeviceFunctions &deviceFunctions, InstanceFunctions &instanceFunctions, VkDevice device);
+	bool loadDeviceFunctions(DeviceFunctions &deviceFunctions, VulkanFunctions &instanceFunctions, VkDevice device);
 }
 
 #endif // CGE_VULKAN_BOOTSTRAPPER_HD
