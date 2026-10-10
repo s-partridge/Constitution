@@ -69,6 +69,13 @@ namespace cge::vulkan
 		PFN_vkCreateSwapchainKHR vkCreateSwapchainKHR = nullptr;
 		// Destroy a swapchain and free associated resources
 		PFN_vkDestroySwapchainKHR vkDestroySwapchainKHR = nullptr;
+
+		// Retrieve the images associated with a swapchain. These images are used for rendering and presentation to the surface.
+		PFN_vkGetSwapchainImagesKHR vkGetSwapchainImagesKHR = nullptr;
+		// Create an image view for a swapchain image. These describe how the image will be accessed and used in shaders.
+		PFN_vkCreateImageView vkCreateImageView = nullptr;
+		// Destroy an image view and free associated resources.
+		PFN_vkDestroyImageView vkDestroyImageView = nullptr;
 	};
 
 	/**

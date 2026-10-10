@@ -42,12 +42,20 @@ namespace cge::vulkan
 	{
 		deviceFunctions.vkDestroyDevice = reinterpret_cast<PFN_vkDestroyDevice>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyDevice"));
 		deviceFunctions.vkGetDeviceQueue = reinterpret_cast<PFN_vkGetDeviceQueue>(instanceFunctions.vkGetDeviceProcAddr(device, "vkGetDeviceQueue"));
+
 		deviceFunctions.vkCreateSwapchainKHR = reinterpret_cast<PFN_vkCreateSwapchainKHR>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreateSwapchainKHR"));
 		deviceFunctions.vkDestroySwapchainKHR = reinterpret_cast<PFN_vkDestroySwapchainKHR>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroySwapchainKHR"));
+
+		deviceFunctions.vkGetSwapchainImagesKHR = reinterpret_cast<PFN_vkGetSwapchainImagesKHR>(instanceFunctions.vkGetDeviceProcAddr(device, "vkGetSwapchainImagesKHR"));
+		deviceFunctions.vkCreateImageView = reinterpret_cast<PFN_vkCreateImageView>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreateImageView"));
+		deviceFunctions.vkDestroyImageView = reinterpret_cast<PFN_vkDestroyImageView>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyImageView"));
 
 		return deviceFunctions.vkDestroyDevice != nullptr &&
 			deviceFunctions.vkGetDeviceQueue != nullptr &&
 			deviceFunctions.vkCreateSwapchainKHR != nullptr &&
-			deviceFunctions.vkDestroySwapchainKHR != nullptr;
+			deviceFunctions.vkDestroySwapchainKHR != nullptr &&
+			deviceFunctions.vkGetSwapchainImagesKHR != nullptr &&
+			deviceFunctions.vkCreateImageView != nullptr &&
+			deviceFunctions.vkDestroyImageView != nullptr;
 	}
 }

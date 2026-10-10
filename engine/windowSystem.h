@@ -18,6 +18,9 @@ struct VkPhysicalDevice_T;
 struct VkDevice_T;
 struct VkQueue_T;
 
+struct VkImage_T;
+struct VkImageView_T;
+
 namespace cge::vulkan
 {
 	struct VulkanFunctions;
@@ -73,9 +76,18 @@ namespace cge
 		uint32_t m_swapchainWidth = 0;
 		uint32_t m_swapchainHeight = 0;
 
+		// Number of images actually created in the swapchain. This is used to manage the images that are presented to the window.
+		uint32_t m_swapchainImageCount = 0;
+		// Array of handles to the images in the swapchain. The images are managed by the swapchain, but the array is owned by the WindowSystem and must be deleted in tearDown.
+		VkImage_T **m_swapchainImages = nullptr;
+		// Array of handles to the image views for the images in the swapchain. There is one view per image.
+		VkImageView_T **m_swapchainImageViews = nullptr;
+
 		// NOTE:
 		// m_vulkan and m_deviceFunctions are created and owned by WindowSystem, and are deleted in tearDown.
-		// m_window, m_vkInstance, m_surface, and m_device require cleanup in tearDown, but are not deleted.
+		// The indices of m_swapchainImageViews require cleanup in tearDown. m_swapchainImages are managed by the swapchain, and do not require explicit cleanup.
+		// The arrays containing m_swapchainImages and m_swapchainImageViews are created in onSetUp, and are deleted in tearDown.
+		// m_window, m_vkInstance, m_surface, m_device, and m_swapchain require cleanup in tearDown, but are not deleted.
 		// m_queue is created and destroyed along with m_device, and does not require explicit cleanup.
 		// m_physicalDevice requires no cleanup; it is managed by the Vulkan loader.
 		

@@ -292,9 +292,43 @@ namespace cge
 			return; // TODO: Log this once error handling system exists.
 		}
 
+		// Store the swapchain format and dimensions for later use.
 		m_swapchainFormat = (uint32_t)surfaceFormat.format;
 		m_swapchainWidth = swapchainExtent.width;
 		m_swapchainHeight = swapchainExtent.height;
+
+		///////////////////////////////////////////////////////////
+		// Create and retrieve the swapchain image views and images
+		///////////////////////////////////////////////////////////
+
+		m_deviceFunctions->vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_swapchainImageCount, nullptr);
+		m_swapchainImages = new VkImage[m_swapchainImageCount];
+		m_deviceFunctions->vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_swapchainImageCount, m_swapchainImages);
+
+		// Create an image view for each swapchain image. Image views describe how the images will be accessed and used in shaders.
+		// The array is value-initialized to nullptr so that if part of the array fails to initialize it can still be destroyed smoothly.
+		m_swapchainImageViews = new VkImageView[m_swapchainImageCount]();
+
+		for(std::uint32_t imageIdx = 0; imageIdx < m_swapchainImageCount; ++imageIdx)
+		{
+			VkImageViewCreateInfo viewInfo = VkImageViewCreateInfo();
+			viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+			viewInfo.image = m_swapchainImages[imageIdx];
+			viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+			viewInfo.format = surfaceFormat.format;
+			// subresourceRange declares what part of an image the view is for. It can be configure for mipmaps, array layers, and aspects (color, depth, stencil).
+			viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			viewInfo.subresourceRange.baseMipLevel = 0;
+			viewInfo.subresourceRange.levelCount = 1;
+			viewInfo.subresourceRange.baseArrayLayer = 0;
+			viewInfo.subresourceRange.layerCount = 1;
+			//view.components.r also exists, along with g, b, and a, for remapping with VK_COMPONENT_SWIZZLE_* values.
+			
+			if(m_deviceFunctions->vkCreateImageView(m_device, &viewInfo, nullptr, &m_swapchainImageViews[imageIdx]) != VK_SUCCESS)
+			{
+				return; // TODO: Log this once error handling system exists.
+			}
+		}
 	}
 
 	void WindowSystem::update(std::chrono::steady_clock::duration dt)
@@ -316,6 +350,23 @@ namespace cge
 	void WindowSystem::onTearDown()
 	{
 		// Clean up Vulkan resources and destroy the Vulkan instance.
+		if(m_swapchainImageViews != nullptr)
+		{
+			for(std::uint32_t imageIdx = 0; imageIdx < m_swapchainImageCount; ++imageIdx)
+			{
+				if(m_swapchainImageViews[imageIdx] != nullptr)
+					m_deviceFunctions->vkDestroyImageView(m_device, m_swapchainImageViews[imageIdx], nullptr);
+			}
+			delete[] m_swapchainImageViews;
+			m_swapchainImageViews = nullptr;
+		}
+
+		if(m_swapchainImages != nullptr)
+		{
+			delete[] m_swapchainImages;
+			m_swapchainImages = nullptr;
+		}
+
 		if(m_swapchain != nullptr)
 		{
 			m_deviceFunctions->vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
