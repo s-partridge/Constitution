@@ -24,6 +24,9 @@ struct VkImageView_T;
 struct VkCommandPool_T;
 struct VkCommandBuffer_T;
 
+struct VkSemaphore_T;
+struct VkFence_T;
+
 namespace cge::vulkan
 {
 	struct VulkanFunctions;
@@ -91,6 +94,13 @@ namespace cge
 		// Handle to the command buffer. The buffer is where rendering commands are recorded before being submitted to the GPU.
 		VkCommandBuffer_T *m_commandBuffer = nullptr;
 
+		// Signaled when the acquired swapchain image is available for rendering.
+		VkSemaphore_T *m_imageAvailable = nullptr;
+		// One per swapchain image. Signaled when drawing that image is finished and it is ready for presentation.
+		VkSemaphore_T **m_renderFinished = nullptr;
+		// Signaled when the GPU finishes rendering the current frame so the CPU can use the command buffer again.
+		VkFence_T *m_frameFence = nullptr;
+
 		// NOTE:
 		// m_vulkan and m_deviceFunctions are created and owned by WindowSystem, and are deleted in tearDown.
 		// The indices of m_swapchainImageViews require cleanup in tearDown. m_swapchainImages are managed by the swapchain, and do not require explicit cleanup.
@@ -99,6 +109,9 @@ namespace cge
 		// m_queue is created and destroyed along with m_device, and does not require explicit cleanup.
 		// m_commandBuffer is allocated from m_commandPool, and is freed when m_commandPool is destroyed, so it does not require explicit cleanup.
 		// m_physicalDevice requires no cleanup; it is managed by the Vulkan loader.
+		//
+		// m_frameFence, m_imageAvailable, and the pointers in m_renderFinished are created in onSetUp, and are destroyed in tearDown, but not deleted. 
+		// m_renderFinished is created in onSetUp, and is deleted in tearDown.
 		
 		int m_windowWidth = 1280;
 		int m_windowHeight = 720;

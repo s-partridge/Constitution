@@ -54,6 +54,11 @@ namespace cge::vulkan
 		deviceFunctions.vkDestroyCommandPool = reinterpret_cast<PFN_vkDestroyCommandPool>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyCommandPool"));
 		deviceFunctions.vkAllocateCommandBuffers = reinterpret_cast<PFN_vkAllocateCommandBuffers>(instanceFunctions.vkGetDeviceProcAddr(device, "vkAllocateCommandBuffers"));
 
+		deviceFunctions.vkCreateSemaphore = reinterpret_cast<PFN_vkCreateSemaphore>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreateSemaphore"));
+		deviceFunctions.vkDestroySemaphore = reinterpret_cast<PFN_vkDestroySemaphore>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroySemaphore"));
+		deviceFunctions.vkCreateFence = reinterpret_cast<PFN_vkCreateFence>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreateFence"));
+		deviceFunctions.vkDestroyFence = reinterpret_cast<PFN_vkDestroyFence>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyFence"));
+
 		return deviceFunctions.vkDestroyDevice != nullptr &&
 			deviceFunctions.vkGetDeviceQueue != nullptr &&
 			deviceFunctions.vkCreateSwapchainKHR != nullptr &&
@@ -63,6 +68,10 @@ namespace cge::vulkan
 			deviceFunctions.vkDestroyImageView != nullptr &&
 			deviceFunctions.vkCreateCommandPool != nullptr &&
 			deviceFunctions.vkDestroyCommandPool != nullptr &&
-			deviceFunctions.vkAllocateCommandBuffers != nullptr;
+			deviceFunctions.vkAllocateCommandBuffers != nullptr &&
+			deviceFunctions.vkCreateSemaphore != nullptr &&
+			deviceFunctions.vkDestroySemaphore != nullptr &&
+			deviceFunctions.vkCreateFence != nullptr &&
+			deviceFunctions.vkDestroyFence != nullptr;
 	}
 }

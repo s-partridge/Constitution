@@ -83,6 +83,14 @@ namespace cge::vulkan
 		PFN_vkDestroyCommandPool vkDestroyCommandPool = nullptr;
 		// Allocate command buffers from a command pool. Command buffers are used to record rendering and compute commands.
 		PFN_vkAllocateCommandBuffers vkAllocateCommandBuffers = nullptr;
+
+		/////////////////
+		//Synchronization
+		// TODO: Are these from the Synchronization2 extension? What if it doesn't exist?
+		PFN_vkCreateSemaphore vkCreateSemaphore = nullptr;
+		PFN_vkDestroySemaphore vkDestroySemaphore = nullptr;
+		PFN_vkCreateFence vkCreateFence = nullptr;
+		PFN_vkDestroyFence vkDestroyFence = nullptr;
 	};
 
 	/**

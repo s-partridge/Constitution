@@ -357,6 +357,37 @@ namespace cge
 		{
 			return; // TODO: Log this once error handling system exists.
 		}
+
+		/////////////////////////////////////
+		// Create Vulkan semaphores and fence
+		/////////////////////////////////////
+
+		VkSemaphoreCreateInfo semaphoreInfo = VkSemaphoreCreateInfo();
+		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		if(m_deviceFunctions->vkCreateSemaphore(m_device, &semaphoreInfo, nullptr, &m_imageAvailable) != VK_SUCCESS)
+		{
+			return; // TODO: Log this once error handling system exists.
+		}
+
+		// Create one semaphore for each swapchain image to signal when rendering is finished.
+		m_renderFinished = new VkSemaphore[m_swapchainImageCount]();
+		for(std::uint32_t imageIdx = 0; imageIdx < m_swapchainImageCount; ++imageIdx)
+		{
+			if(m_deviceFunctions->vkCreateSemaphore(m_device, &semaphoreInfo, nullptr, &m_renderFinished[imageIdx]) != VK_SUCCESS)
+			{
+				return; // TODO: Log this once error handling system exists.
+			}
+		}
+
+		// Create a fence to synchronize CPU and GPU work.
+		VkFenceCreateInfo fenceInfo = VkFenceCreateInfo();
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		// Create the fence in a signaled state so that the first frame can be rendered without waiting.
+		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+		if(m_deviceFunctions->vkCreateFence(m_device, &fenceInfo, nullptr, &m_frameFence) != VK_SUCCESS)
+		{
+			return; // TODO: Log this once error handling system exists.
+		}
 	}
 
 	void WindowSystem::update(std::chrono::steady_clock::duration dt)
@@ -377,6 +408,29 @@ namespace cge
 
 	void WindowSystem::onTearDown()
 	{
+		if(m_frameFence != nullptr)
+		{
+			m_deviceFunctions->vkDestroyFence(m_device, m_frameFence, nullptr);
+			m_frameFence = nullptr;
+		}
+
+		if(m_renderFinished != nullptr)
+		{
+			for(std::uint32_t imageIdx = 0; imageIdx < m_swapchainImageCount; ++imageIdx)
+			{
+				if(m_renderFinished[imageIdx] != nullptr)
+					m_deviceFunctions->vkDestroySemaphore(m_device, m_renderFinished[imageIdx], nullptr);
+			}
+			delete[] m_renderFinished;
+			m_renderFinished = nullptr;
+		}
+
+		if(m_imageAvailable != nullptr)
+		{
+			m_deviceFunctions->vkDestroySemaphore(m_device, m_imageAvailable, nullptr);
+			m_imageAvailable = nullptr;
+		}
+
 		if(m_commandPool != nullptr)
 		{
 			m_deviceFunctions->vkDestroyCommandPool(m_device, m_commandPool, nullptr);
