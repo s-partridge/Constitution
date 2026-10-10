@@ -50,12 +50,19 @@ namespace cge::vulkan
 		deviceFunctions.vkCreateImageView = reinterpret_cast<PFN_vkCreateImageView>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreateImageView"));
 		deviceFunctions.vkDestroyImageView = reinterpret_cast<PFN_vkDestroyImageView>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyImageView"));
 
+		deviceFunctions.vkCreateCommandPool = reinterpret_cast<PFN_vkCreateCommandPool>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreateCommandPool"));
+		deviceFunctions.vkDestroyCommandPool = reinterpret_cast<PFN_vkDestroyCommandPool>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyCommandPool"));
+		deviceFunctions.vkAllocateCommandBuffers = reinterpret_cast<PFN_vkAllocateCommandBuffers>(instanceFunctions.vkGetDeviceProcAddr(device, "vkAllocateCommandBuffers"));
+
 		return deviceFunctions.vkDestroyDevice != nullptr &&
 			deviceFunctions.vkGetDeviceQueue != nullptr &&
 			deviceFunctions.vkCreateSwapchainKHR != nullptr &&
 			deviceFunctions.vkDestroySwapchainKHR != nullptr &&
 			deviceFunctions.vkGetSwapchainImagesKHR != nullptr &&
 			deviceFunctions.vkCreateImageView != nullptr &&
-			deviceFunctions.vkDestroyImageView != nullptr;
+			deviceFunctions.vkDestroyImageView != nullptr &&
+			deviceFunctions.vkCreateCommandPool != nullptr &&
+			deviceFunctions.vkDestroyCommandPool != nullptr &&
+			deviceFunctions.vkAllocateCommandBuffers != nullptr;
 	}
 }

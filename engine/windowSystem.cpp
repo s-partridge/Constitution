@@ -329,6 +329,34 @@ namespace cge
 				return; // TODO: Log this once error handling system exists.
 			}
 		}
+
+		////////////////////////////////////////
+		// Create Vulkan command pool and buffer
+		////////////////////////////////////////
+
+		VkCommandPoolCreateInfo poolInfo = VkCommandPoolCreateInfo();
+		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		// Allow each buffer to be individually reset. This is useful for re-recording command buffers without having to reset the entire pool.
+		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		poolInfo.queueFamilyIndex = m_activeQueueFamilyIndex;
+
+		// Create the command pool
+		if(m_deviceFunctions->vkCreateCommandPool(m_device, &poolInfo, nullptr, &m_commandPool) != VK_SUCCESS)
+		{
+			return; // TODO: Log this once error handling system exists.
+		}
+
+		VkCommandBufferAllocateInfo bufferInfo = VkCommandBufferAllocateInfo();
+		bufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		bufferInfo.commandPool = m_commandPool;
+		bufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // Primary buffers can be submitted to a queue, while secondary buffers can only be called from primary buffers.
+		bufferInfo.commandBufferCount = 1;
+
+		// Allocate the command buffer
+		if(m_deviceFunctions->vkAllocateCommandBuffers(m_device, &bufferInfo, &m_commandBuffer) != VK_SUCCESS)
+		{
+			return; // TODO: Log this once error handling system exists.
+		}
 	}
 
 	void WindowSystem::update(std::chrono::steady_clock::duration dt)
@@ -349,6 +377,13 @@ namespace cge
 
 	void WindowSystem::onTearDown()
 	{
+		if(m_commandPool != nullptr)
+		{
+			m_deviceFunctions->vkDestroyCommandPool(m_device, m_commandPool, nullptr);
+			m_commandPool = nullptr;
+			m_commandBuffer = nullptr; // Command buffers are freed when the pool is destroyed, so we don't need to free it explicitly.
+		}
+
 		// Clean up Vulkan resources and destroy the Vulkan instance.
 		if(m_swapchainImageViews != nullptr)
 		{

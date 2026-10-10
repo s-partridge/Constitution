@@ -76,6 +76,13 @@ namespace cge::vulkan
 		PFN_vkCreateImageView vkCreateImageView = nullptr;
 		// Destroy an image view and free associated resources.
 		PFN_vkDestroyImageView vkDestroyImageView = nullptr;
+
+		// Create a command pool for allocating command buffers. Command pools manage the memory used for command buffers.
+		PFN_vkCreateCommandPool vkCreateCommandPool = nullptr;
+		// Destroy a command pool and free associated resources.
+		PFN_vkDestroyCommandPool vkDestroyCommandPool = nullptr;
+		// Allocate command buffers from a command pool. Command buffers are used to record rendering and compute commands.
+		PFN_vkAllocateCommandBuffers vkAllocateCommandBuffers = nullptr;
 	};
 
 	/**

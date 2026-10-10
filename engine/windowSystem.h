@@ -21,6 +21,9 @@ struct VkQueue_T;
 struct VkImage_T;
 struct VkImageView_T;
 
+struct VkCommandPool_T;
+struct VkCommandBuffer_T;
+
 namespace cge::vulkan
 {
 	struct VulkanFunctions;
@@ -83,12 +86,18 @@ namespace cge
 		// Array of handles to the image views for the images in the swapchain. There is one view per image.
 		VkImageView_T **m_swapchainImageViews = nullptr;
 
+		// Handle to the command pool. This is used to allocate command buffers for recording rendering commands.
+		VkCommandPool_T *m_commandPool = nullptr;
+		// Handle to the command buffer. The buffer is where rendering commands are recorded before being submitted to the GPU.
+		VkCommandBuffer_T *m_commandBuffer = nullptr;
+
 		// NOTE:
 		// m_vulkan and m_deviceFunctions are created and owned by WindowSystem, and are deleted in tearDown.
 		// The indices of m_swapchainImageViews require cleanup in tearDown. m_swapchainImages are managed by the swapchain, and do not require explicit cleanup.
 		// The arrays containing m_swapchainImages and m_swapchainImageViews are created in onSetUp, and are deleted in tearDown.
-		// m_window, m_vkInstance, m_surface, m_device, and m_swapchain require cleanup in tearDown, but are not deleted.
+		// m_window, m_vkInstance, m_surface, m_device, m_swapchain, and m_commandPool require cleanup in tearDown, but are not deleted.
 		// m_queue is created and destroyed along with m_device, and does not require explicit cleanup.
+		// m_commandBuffer is allocated from m_commandPool, and is freed when m_commandPool is destroyed, so it does not require explicit cleanup.
 		// m_physicalDevice requires no cleanup; it is managed by the Vulkan loader.
 		
 		int m_windowWidth = 1280;
