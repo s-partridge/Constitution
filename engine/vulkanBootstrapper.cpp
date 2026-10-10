@@ -20,6 +20,9 @@ namespace cge::vulkan
 		instanceFunctions.vkGetDeviceProcAddr = reinterpret_cast<PFN_vkGetDeviceProcAddr>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkGetDeviceProcAddr"));
 		instanceFunctions.vkCreateDevice = reinterpret_cast<PFN_vkCreateDevice>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkCreateDevice"));
 
+		instanceFunctions.vkGetPhysicalDeviceSurfaceCapabilitiesKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR"));
+		instanceFunctions.vkGetPhysicalDeviceSurfaceFormatsKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceFormatsKHR>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceSurfaceFormatsKHR"));
+
 		instanceFunctions.vkGetPhysicalDeviceQueueFamilyProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceQueueFamilyProperties>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceQueueFamilyProperties"));
 		instanceFunctions.vkGetPhysicalDeviceSurfaceSupportKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceSupportKHR>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceSurfaceSupportKHR"));
 
@@ -29,6 +32,8 @@ namespace cge::vulkan
 			instanceFunctions.vkGetPhysicalDeviceProperties != nullptr &&
 			instanceFunctions.vkGetDeviceProcAddr != nullptr &&
 			instanceFunctions.vkCreateDevice != nullptr &&
+			instanceFunctions.vkGetPhysicalDeviceSurfaceCapabilitiesKHR &&
+			instanceFunctions.vkGetPhysicalDeviceSurfaceFormatsKHR != nullptr &&
 			instanceFunctions.vkGetPhysicalDeviceQueueFamilyProperties != nullptr &&
 			instanceFunctions.vkGetPhysicalDeviceSurfaceSupportKHR != nullptr;
 	}
@@ -37,8 +42,12 @@ namespace cge::vulkan
 	{
 		deviceFunctions.vkDestroyDevice = reinterpret_cast<PFN_vkDestroyDevice>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyDevice"));
 		deviceFunctions.vkGetDeviceQueue = reinterpret_cast<PFN_vkGetDeviceQueue>(instanceFunctions.vkGetDeviceProcAddr(device, "vkGetDeviceQueue"));
+		deviceFunctions.vkCreateSwapchainKHR = reinterpret_cast<PFN_vkCreateSwapchainKHR>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreateSwapchainKHR"));
+		deviceFunctions.vkDestroySwapchainKHR = reinterpret_cast<PFN_vkDestroySwapchainKHR>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroySwapchainKHR"));
 
 		return deviceFunctions.vkDestroyDevice != nullptr &&
-			deviceFunctions.vkGetDeviceQueue != nullptr;
+			deviceFunctions.vkGetDeviceQueue != nullptr &&
+			deviceFunctions.vkCreateSwapchainKHR != nullptr &&
+			deviceFunctions.vkDestroySwapchainKHR != nullptr;
 	}
 }

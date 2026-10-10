@@ -17,6 +17,10 @@ namespace cge
 
 	void WindowSystem::onSetUp()
 	{
+		//////////////////
+		// Initialize GLFW
+		//////////////////
+
 		// Initialize the GLFW context and validate that it was successful.
 		if(glfwInit() == GLFW_FALSE)
 			return; // TODO: Log this once error handling system exists.
@@ -27,6 +31,11 @@ namespace cge
 		// Monitor is for fullscreen mode, and share is a shared context is for sharing OpenGL contexts.
 		m_window = glfwCreateWindow(m_windowWidth, m_windowHeight, m_windowTitle.c_str(), nullptr, nullptr);
 
+		////////////////////////////////////////////////////////////////
+		// Initialize core Vulkan functions and create a Vulkan instance
+		////////////////////////////////////////////////////////////////
+
+		// Create a new VulkanFunctions object to hold the function pointers for Vulkan functions.
 		m_vulkan = new vulkan::VulkanFunctions();
 		// Get the initial function pointer for vkGetInstanceProcAddr from GLFW. This function is used to load other Vulkan functions.
 		PFN_vkGetInstanceProcAddr vulcanLocator = reinterpret_cast<PFN_vkGetInstanceProcAddr>(glfwGetInstanceProcAddress(nullptr, "vkGetInstanceProcAddr"));
@@ -62,6 +71,9 @@ namespace cge
 		instanceInfo.enabledExtensionCount = instanceExtensionCount;
 		instanceInfo.ppEnabledExtensionNames = extensions;
 
+		/////////////////////////////////////////
+		// Vulkan Debugging and Validation Layers
+		/////////////////////////////////////////
 #ifdef _DEBUG
 		// Enable validation layers in debug builds, if available.
 		// VK_LAYER_KHRONOS_validation is only available when the Vulkan SDK is present on the system.
@@ -101,6 +113,10 @@ namespace cge
 		// TODO: Add a debug messenger (VK_EXT_debug_utils) once a renderer system exists, to route validation messages to the engine's log.
 		// Until then, the validation layer prints its own messages to the console and, on Windows, the debugger output.
 #endif
+		/////////////////////////////////////////////////////////////////////////////
+		// Create vulkan instance, load instance-level functions, create GLFW surface
+		/////////////////////////////////////////////////////////////////////////////
+
 		// Create the Vulkan instance using the configuration specified in the createInfo structure.
 		if(m_vulkan->vkCreateInstance(&instanceInfo, nullptr, &m_vkInstance) != VK_SUCCESS)
 		{
@@ -116,6 +132,10 @@ namespace cge
 		{
 			return; // TODO: Log this once error handling system exists.
 		}
+
+		///////////////////////////////////////////////////
+		// Select a Vulkan physical device and queue family
+		///////////////////////////////////////////////////
 
 		std::uint32_t deviceCount = 0;
 		m_vulkan->vkEnumeratePhysicalDevices(m_vkInstance, &deviceCount, nullptr);
@@ -163,6 +183,10 @@ namespace cge
 		{
 			return; // TODO: Log this once error handling system exists.
 		}
+		
+		/////////////////////////////////////////
+		// Create Vulkan logical device and queue
+		/////////////////////////////////////////
 
 		// Create a queue from the family and physical device selected.
 		// Priority is a float between 0.0 and 1.0, where 1.0 is the highest priority. This is used to determine how the GPU schedules work across multiple queues.
@@ -203,6 +227,74 @@ namespace cge
 
 		// Fetch the queue from the logical device
 		m_deviceFunctions->vkGetDeviceQueue(m_device, m_activeQueueFamilyIndex, 0, &m_queue);
+
+		////////////////////////////
+		// Create a Vulkan swapchain
+		////////////////////////////
+
+		// Check surface capabilities to determine the supported formats, present modes, etc.
+		VkSurfaceCapabilitiesKHR surfaceCapabilities = VkSurfaceCapabilitiesKHR();
+		m_vulkan->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &surfaceCapabilities);
+
+		// Choose a pixel format.
+		std::uint32_t formatCount = 0;
+		m_vulkan->vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &formatCount, nullptr);
+		VkSurfaceFormatKHR *surfaceFormats = new VkSurfaceFormatKHR[formatCount];
+		m_vulkan->vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &formatCount, surfaceFormats);
+
+		// Default to the first format in the list, but prefer VK_FORMAT_B8G8R8A8_SRGB with VK_COLOR_SPACE_SRGB_NONLINEAR_KHR if available.
+		// This format is standard for sRGB color space on desktops and is widely supported.
+		VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
+		for(std::uint32_t formatIdx = 0; formatIdx < formatCount; ++formatIdx)
+		{
+			if(surfaceFormats[formatIdx].format == VK_FORMAT_B8G8R8A8_SRGB && surfaceFormats[formatIdx].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			{
+				surfaceFormat = surfaceFormats[formatIdx];
+				break;
+			}
+		}
+		delete[] surfaceFormats;
+
+		VkExtent2D swapchainExtent = surfaceCapabilities.currentExtent;
+		if(swapchainExtent.width == UINT32_MAX || swapchainExtent.height == UINT32_MAX)
+		{
+			// If the surface size is undefined, we can set it to our desired size.
+			int width = 0;
+			int height = 0;
+			glfwGetFramebufferSize(m_window, &width, &height);
+			swapchainExtent.width = (std::uint32_t)width;
+			swapchainExtent.height = (std::uint32_t)height;
+		}
+
+		// Ensure there is at least one more image than the minimum required by the surface. This allows for buffering.
+		std::uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
+		if(surfaceCapabilities.maxImageCount > 0 && imageCount > surfaceCapabilities.maxImageCount)
+		{
+			imageCount = surfaceCapabilities.maxImageCount;
+		}
+		VkSwapchainCreateInfoKHR swapchainInfo = VkSwapchainCreateInfoKHR();
+		swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+		swapchainInfo.surface = m_surface;
+		swapchainInfo.minImageCount = imageCount;
+		swapchainInfo.imageFormat = surfaceFormat.format;
+		swapchainInfo.imageColorSpace = surfaceFormat.colorSpace;
+		swapchainInfo.imageExtent = swapchainExtent;
+		swapchainInfo.imageArrayLayers = 1; // 1 for normal 2D images, 2 for stereoscopic 3D images.
+		swapchainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // Tells Vulkan that we will draw to these images.
+		swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE; // Images are owned by one queue family at a time.
+		swapchainInfo.preTransform = surfaceCapabilities.currentTransform; // No transformation is applied to the images. This keeps whatever the surface is currently doing.
+		swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; // Don't use the alpha channel. Makes the entire window opaque. This is standard for most applications.
+		swapchainInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR; // Display frames in order, one per vertical refresh. This is the only mode guaranteed to be available on all platforms.
+		swapchainInfo.clipped = VK_TRUE; // Don't care about pixels that are obscured by other windows. This allows the GPU to optimize rendering. Presumably this should be disabled for recording or streaming the application window in case it does not have focus? Can this be changed at runtime? TODO: Research this.
+
+		if(m_deviceFunctions->vkCreateSwapchainKHR(m_device, &swapchainInfo, nullptr, &m_swapchain) != VK_SUCCESS)
+		{
+			return; // TODO: Log this once error handling system exists.
+		}
+
+		m_swapchainFormat = (uint32_t)surfaceFormat.format;
+		m_swapchainWidth = swapchainExtent.width;
+		m_swapchainHeight = swapchainExtent.height;
 	}
 
 	void WindowSystem::update(std::chrono::steady_clock::duration dt)
@@ -224,20 +316,25 @@ namespace cge
 	void WindowSystem::onTearDown()
 	{
 		// Clean up Vulkan resources and destroy the Vulkan instance.
+		if(m_swapchain != nullptr)
+		{
+			m_deviceFunctions->vkDestroySwapchainKHR(m_device, m_swapchain, nullptr);
+			m_swapchain = nullptr;
+		}
+
+		if(m_device != nullptr)
+		{
+			m_deviceFunctions->vkDestroyDevice(m_device, nullptr);
+			m_device = nullptr;
+		}
+
+		if(m_surface != nullptr)
+		{
+			m_vulkan->vkDestroySurfaceKHR(m_vkInstance, m_surface, nullptr);
+			m_surface = nullptr;
+		}
 		if(m_vkInstance != nullptr)
 		{
-			if(m_device != nullptr)
-			{
-				m_deviceFunctions->vkDestroyDevice(m_device, nullptr);
-				m_device = nullptr;
-			}
-
-			if(m_surface != nullptr)
-			{
-				m_vulkan->vkDestroySurfaceKHR(m_vkInstance, m_surface, nullptr);
-				m_surface = nullptr;
-			}
-
 			m_vulkan->vkDestroyInstance(m_vkInstance, nullptr);
 			m_vkInstance = nullptr;
 		}
@@ -248,6 +345,7 @@ namespace cge
 		delete m_vulkan;
 		m_vulkan = nullptr;
 
+		// Clean up GLFW resources and terminate the GLFW context.
 		if(m_window != nullptr)
 		{
 			glfwDestroyWindow(m_window);

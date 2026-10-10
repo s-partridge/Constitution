@@ -10,7 +10,10 @@
 // Types for GLFW and Vulkan instances and functions
 struct GLFWwindow;
 struct VkInstance_T;
+
 struct VkSurfaceKHR_T;
+struct VkSwapchainKHR_T;
+
 struct VkPhysicalDevice_T;
 struct VkDevice_T;
 struct VkQueue_T;
@@ -58,9 +61,17 @@ namespace cge
 		// Queue used to submit rendering commands to the GPU.
 		VkQueue_T *m_queue = nullptr;
 
+		// Handle to the Vulkan swapchain. This is used to manage the images that are presented to the window.
+		VkSwapchainKHR_T *m_swapchain = nullptr;
+
 		// Queue family index for the chosen GPU. This is used to submit rendering commands to the GPU.
 		// A queue family is a group of queues that can execute commands on the GPU. Different queue families may support different types of operations (graphics, compute, transfer, etc.).
 		uint32_t m_activeQueueFamilyIndex = 0;
+		// Format of the images in the swapchain. This is used to ensure that the images are compatible with the window surface.
+		// The format is specified as a VkFormat enum value, but that can't be forward-declared. VkFormat is a C enum, so we can use a uint32_t to store it instead.
+		uint32_t m_swapchainFormat = 0;
+		uint32_t m_swapchainWidth = 0;
+		uint32_t m_swapchainHeight = 0;
 
 		// NOTE:
 		// m_vulkan and m_deviceFunctions are created and owned by WindowSystem, and are deleted in tearDown.

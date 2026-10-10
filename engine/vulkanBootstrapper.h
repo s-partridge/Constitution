@@ -46,6 +46,10 @@ namespace cge::vulkan
 		PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties = nullptr;
 		// Check whether a queue family can show images on a gien surface.
 		PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR = nullptr;
+		// Retrieve the capabilities of a surface for a given physical device, including max image count, current extent, supported transforms.
+		PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR = nullptr;
+		// Retrieve the supported pixel formats for a surface.
+		PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR = nullptr;
 
 		// Retrieve a function pointer for a device-level function. This is used to load device-level functions after creating a Vulkan device.
 		PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr = nullptr;
@@ -60,6 +64,11 @@ namespace cge::vulkan
 		PFN_vkDestroyDevice vkDestroyDevice = nullptr;
 		// Retrieve a queue from the Vulkan device. Queues are used to submit commands for execution on the GPU.
 		PFN_vkGetDeviceQueue vkGetDeviceQueue = nullptr;
+
+		// Create a swapchain for a surface
+		PFN_vkCreateSwapchainKHR vkCreateSwapchainKHR = nullptr;
+		// Destroy a swapchain and free associated resources
+		PFN_vkDestroySwapchainKHR vkDestroySwapchainKHR = nullptr;
 	};
 
 	/**
