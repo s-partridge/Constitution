@@ -38,6 +38,10 @@ namespace cge::vulkan
 		PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices = nullptr;
 		// Retrieve properties of a physical device, including name, type, API and driver versions, vendor and device IDs, and limits.
 		PFN_vkGetPhysicalDeviceProperties vkGetPhysicalDeviceProperties = nullptr;
+		// List a physical device's queue families and their properties (draw, compute, copy).
+		PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties = nullptr;
+		// Check whether a queue family can show images on a gien surface.
+		PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR = nullptr;
 
 		// Retrieve a function pointer for a device-level function. This is used to load device-level functions after creating a Vulkan device.
 		PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr = nullptr;

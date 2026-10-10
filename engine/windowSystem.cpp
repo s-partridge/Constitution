@@ -40,6 +40,12 @@ namespace cge
 		// TODO: Figure out what these extensions are, why they might be required, and when.
 		std::uint32_t instanceExtensionCount = 0;
 		const char **extensions = glfwGetRequiredInstanceExtensions(&instanceExtensionCount);
+		// A nullptr here would mean that Vulkan is present, but is not able to interface with the window system. This could happen, for example, on a server without a display. In that case, we should log and return.
+		// The window system likely shouldn't be loaded at all in those configurations, but we should still handle it gracefully.
+		if(extensions == nullptr)
+		{
+			return; // TODO: Log this once error handling system exists.
+		}
 
 		// Create a Vulkan application info structure. This is used to provide information about the application to the Vulkan driver.
 		VkApplicationInfo appInfo = VkApplicationInfo();
@@ -107,6 +113,53 @@ namespace cge
 
 		// Create a Vulkan surface for the GLFW window. This surface is used to present rendered images to the window.
 		if(glfwCreateWindowSurface(m_vkInstance, m_window, nullptr, &m_surface) != VK_SUCCESS)
+		{
+			return; // TODO: Log this once error handling system exists.
+		}
+
+		std::uint32_t deviceCount = 0;
+		m_vulkan->vkEnumeratePhysicalDevices(m_vkInstance, &deviceCount, nullptr);
+		// Make sure there actually is a Vulkan-capable GPU available on the system.
+		if(deviceCount == 0)
+		{
+			return; // TODO: Log this once error handling system exists.
+		}
+
+		#pragma warning (push)
+		#pragma warning (disable : 6385) // Disable warning about reading out of bounds. The size won't grow between these two calls.
+		// List the available physical devices (GPUs) that support Vulkan.
+		VkPhysicalDevice *devices = new VkPhysicalDevice[deviceCount];
+		m_vulkan->vkEnumeratePhysicalDevices(m_vkInstance, &deviceCount, devices);
+		for(std::uint32_t deviceIdx = 0; deviceIdx < deviceCount; ++deviceIdx)
+		{
+			std::uint32_t queueFamilyCount = 0;
+			m_vulkan->vkGetPhysicalDeviceQueueFamilyProperties(devices[deviceIdx], &queueFamilyCount, nullptr);
+
+			VkQueueFamilyProperties *queueFamilies = new VkQueueFamilyProperties[queueFamilyCount];
+			m_vulkan->vkGetPhysicalDeviceQueueFamilyProperties(devices[deviceIdx], &queueFamilyCount, queueFamilies);
+
+			// Find a queue family that can draw and show images on the surface.
+			for(std::uint32_t queueIdx = 0; queueIdx < queueFamilyCount; ++queueIdx)
+			{
+				VkBool32 canPresent = VK_FALSE;
+				m_vulkan->vkGetPhysicalDeviceSurfaceSupportKHR(devices[deviceIdx], queueIdx, m_surface, &canPresent);
+
+				// Check that the family supports graphics operations and can also present to a surface.
+				if((queueFamilies[queueIdx].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0 && canPresent == VK_TRUE)
+				{
+					m_activeDevice = devices[deviceIdx];
+					m_activeQueueFamilyIndex = queueIdx;
+					break;
+				}
+			}
+			delete[] queueFamilies;
+			if(m_activeDevice != nullptr)
+				break;
+		}
+		#pragma warning (pop)
+		delete[] devices;
+
+		if(m_activeDevice == nullptr)
 		{
 			return; // TODO: Log this once error handling system exists.
 		}

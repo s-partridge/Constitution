@@ -20,12 +20,17 @@ namespace cge::vulkan
 		instanceFunctions.vkGetDeviceProcAddr = reinterpret_cast<PFN_vkGetDeviceProcAddr>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkGetDeviceProcAddr"));
 		instanceFunctions.vkCreateDevice = reinterpret_cast<PFN_vkCreateDevice>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkCreateDevice"));
 
+		instanceFunctions.vkGetPhysicalDeviceQueueFamilyProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceQueueFamilyProperties>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceQueueFamilyProperties"));
+		instanceFunctions.vkGetPhysicalDeviceSurfaceSupportKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceSupportKHR>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceSurfaceSupportKHR"));
+
 		return instanceFunctions.vkDestroyInstance != nullptr &&
 			instanceFunctions.vkDestroySurfaceKHR != nullptr &&
 			instanceFunctions.vkEnumeratePhysicalDevices != nullptr &&
 			instanceFunctions.vkGetPhysicalDeviceProperties != nullptr &&
 			instanceFunctions.vkGetDeviceProcAddr != nullptr &&
-			instanceFunctions.vkCreateDevice != nullptr;
+			instanceFunctions.vkCreateDevice != nullptr &&
+			instanceFunctions.vkGetPhysicalDeviceQueueFamilyProperties != nullptr &&
+			instanceFunctions.vkGetPhysicalDeviceSurfaceSupportKHR != nullptr;
 	}
 
 	bool loadDeviceFunctions(DeviceFunctions &deviceFunctions, InstanceFunctions &instanceFunctions, VkDevice device)
