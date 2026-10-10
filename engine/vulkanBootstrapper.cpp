@@ -5,21 +5,23 @@ namespace cge::vulkan
 	bool loadGlobalfunctions(InstanceFunctions &instanceFunctions, PFN_vkGetInstanceProcAddr getInstanceProcAddr)
 	{
 		instanceFunctions.vkGetInstanceProcAddr = getInstanceProcAddr;
+		instanceFunctions.vkEnumerateInstanceLayerProperties = reinterpret_cast<PFN_vkEnumerateInstanceLayerProperties>(getInstanceProcAddr(nullptr, "vkEnumerateInstanceLayerProperties"));
 		instanceFunctions.vkCreateInstance = reinterpret_cast<PFN_vkCreateInstance>(getInstanceProcAddr(nullptr, "vkCreateInstance"));
-
-		return instanceFunctions.vkCreateInstance != nullptr;
+		return instanceFunctions.vkEnumerateInstanceLayerProperties != nullptr &&
+			instanceFunctions.vkCreateInstance != nullptr;
 	}
 
 	bool loadInstanceFunctions(InstanceFunctions &instanceFunctions, VkInstance instance)
 	{
-		//don't autocomplete'
 		instanceFunctions.vkDestroyInstance = reinterpret_cast<PFN_vkDestroyInstance>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkDestroyInstance"));
+		instanceFunctions.vkDestroySurfaceKHR = reinterpret_cast<PFN_vkDestroySurfaceKHR>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkDestroySurfaceKHR"));
 		instanceFunctions.vkEnumeratePhysicalDevices = reinterpret_cast<PFN_vkEnumeratePhysicalDevices>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkEnumeratePhysicalDevices"));
 		instanceFunctions.vkGetPhysicalDeviceProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceProperties>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceProperties"));
 		instanceFunctions.vkGetDeviceProcAddr = reinterpret_cast<PFN_vkGetDeviceProcAddr>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkGetDeviceProcAddr"));
 		instanceFunctions.vkCreateDevice = reinterpret_cast<PFN_vkCreateDevice>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkCreateDevice"));
 
 		return instanceFunctions.vkDestroyInstance != nullptr &&
+			instanceFunctions.vkDestroySurfaceKHR != nullptr &&
 			instanceFunctions.vkEnumeratePhysicalDevices != nullptr &&
 			instanceFunctions.vkGetPhysicalDeviceProperties != nullptr &&
 			instanceFunctions.vkGetDeviceProcAddr != nullptr &&
