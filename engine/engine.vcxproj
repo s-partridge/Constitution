@@ -197,6 +197,10 @@
     <ClInclude Include="windowSystem.h" />
     <ClInclude Include="..\extern\volk\volk.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\fragmentColor.frag" />
+    <None Include="shaders\vertexColor.vert" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
