@@ -27,6 +27,8 @@ namespace cge
 
 		// Set configuration hints for the GLFW window. We don't need an OpenGL context since we'll be using Vulkan.
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // No OpenGL context; we'll use Vulkan later.
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); // TODO: This is temporary, but the resizing mechanism comes later.
+
 		// Create the window with the specified width, height, and title. The last two parameters are for monitor and shared context, which we don't need.
 		// Monitor is for fullscreen mode, and share is a shared context is for sharing OpenGL contexts.
 		m_window = glfwCreateWindow(m_windowWidth, m_windowHeight, m_windowTitle.c_str(), nullptr, nullptr);
@@ -46,8 +48,8 @@ namespace cge
 			return;
 
 		// Get the required Vulkan instance extensions from GLFW. These are necessary for creating a Vulkan instance that can interface with the window system.
-		// TODO: Figure out what these extensions are, why they might be required, and when.
 		std::uint32_t instanceExtensionCount = 0;
+		// The extensions should be VK_KHR_surface and a platform-specific extension like VK_KHR_win32_surface, required for drawing to a window.
 		const char **extensions = glfwGetRequiredInstanceExtensions(&instanceExtensionCount);
 		// A nullptr here would mean that Vulkan is present, but is not able to interface with the window system. This could happen, for example, on a server without a display. In that case, we should log and return.
 		// The window system likely shouldn't be loaded at all in those configurations, but we should still handle it gracefully.
@@ -61,7 +63,7 @@ namespace cge
 		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 		appInfo.pApplicationName = m_windowTitle.c_str();
 		appInfo.pEngineName = "Constitution";
-		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0); // No idea whether this is useful. TODO: Make this configurable.
+		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0); // Verion number for this application. Can be anything, should match the version of the game.
 		appInfo.apiVersion = VK_API_VERSION_1_4;
 
 		// Create a Vulkan "InstanceCreateInfo" structure. This is used to specify the parameters for creating a Vulkan instance.
@@ -199,7 +201,8 @@ namespace cge
 		queueInfo.pQueuePriorities = &queuePriority;
 
 		// Enable dynamic rendering and synchronization features for the logical device.
-		// TODO: Check whether these features are actually supported by the physical device before enabling them. If not, we should log and return.
+		// TODO: Check whether these features are actually supported by the physical device before enabling them. If not, we should log and return. This is useful if there are multiple GPUs with different capabilities on the system and a fallback can be selected.
+		// Required features can be checked with vkGetPhysicalDeviceFeatures2 and the appropriate feature structure. Feature structures can be chained together with the pNext pointer.
 		//   This should be handled by device creation returning VK_ERROR_FEATURE_NOT_PRESENT
 		VkPhysicalDeviceVulkan13Features deviceFeatures = VkPhysicalDeviceVulkan13Features();
 		deviceFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -285,7 +288,7 @@ namespace cge
 		swapchainInfo.preTransform = surfaceCapabilities.currentTransform; // No transformation is applied to the images. This keeps whatever the surface is currently doing.
 		swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR; // Don't use the alpha channel. Makes the entire window opaque. This is standard for most applications.
 		swapchainInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR; // Display frames in order, one per vertical refresh. This is the only mode guaranteed to be available on all platforms.
-		swapchainInfo.clipped = VK_TRUE; // Don't care about pixels that are obscured by other windows. This allows the GPU to optimize rendering. Presumably this should be disabled for recording or streaming the application window in case it does not have focus? Can this be changed at runtime? TODO: Research this.
+		swapchainInfo.clipped = VK_TRUE; // Don't care about pixels that are obscured by other windows. This allows the GPU to optimize rendering. On Windows, this won't matter for screen recording, but apparently that's because of how Windows composites windows. And also apparently this can't be flipped during runtime, so the context would need to be recreated if the user wants to change it.
 
 		if(m_deviceFunctions->vkCreateSwapchainKHR(m_device, &swapchainInfo, nullptr, &m_swapchain) != VK_SUCCESS)
 		{
@@ -403,11 +406,166 @@ namespace cge
 
 	void WindowSystem::render()
 	{
-		// Render the window contents. Nothing to render yet.
+		// Make sure setup was successful before trying to render. If not, just return.
+		// The fence was the last thing created in setup, so if it is nullptr, we know setup did not complete successfully.
+		// TODO: We shouldn't need this. The engine should not call render() if setup failed. This is a temporary measure until the engine has a proper error handling system.
+		if(m_frameFence == nullptr)
+			return;
+
+		// Wait until the GPU hhas finished the previous frame.
+		m_deviceFunctions->vkWaitForFences(m_device, 1, &m_frameFence, VK_TRUE, UINT64_MAX);
+
+		// Get the next image in the swapchain.
+		std::uint32_t imageIndex = 0;
+		// Wait on the semaphore that signals when the image is available.
+		VkResult acquireResult = m_deviceFunctions->vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX, m_imageAvailable, nullptr, &imageIndex);
+		if(acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR)
+		{
+			// VK_SUBOPTIMAL_KHR is allowed, but it means the swapchain is no longer optimal for the surface. This can happen if the window is resized, for example.
+			// There are a dozen codes that can be returned. See https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkAcquireNextImageKHR.html for the full list.
+			return; // Skip this frame. TODO: Recreate the swapchain once resizing is implemented.
+		}
+
+		// This has to be done here, after the frame may be skipped, because if it were set first and the frame were skipped,
+		// nothing would reset the fence and the next frame would wait forever.
+		m_deviceFunctions->vkResetFences(m_device, 1, &m_frameFence);
+
+		// Start recording commands
+		VkCommandBufferBeginInfo beginInfo = VkCommandBufferBeginInfo();
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		// I don't understand why this is recreated every frame.
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		m_deviceFunctions->vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
+		// Beginning clears out the command buffer because RESET_COMMAND_BUFFER_BIT was set when the command pool was created.
+		// If it weren't set, then individual command buffers couldn't be reset and would have to be re-recorded every frame.
+
+		// Prepare the image for rendering.
+		VkImageMemoryBarrier2 toDrawing = VkImageMemoryBarrier2();
+		toDrawing.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+		// GPU operations run in stages.
+		// See https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPipelineStageFlagBits2.html for a list of stage bits.
+		// The color attachment output stage is where the final color values are written to the image.
+		toDrawing.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		toDrawing.srcAccessMask = 0;
+		toDrawing.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		toDrawing.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+		toDrawing.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; // This value means we don't care about the previous data.
+		toDrawing.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		toDrawing.image = m_swapchainImages[imageIndex];
+		toDrawing.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		toDrawing.subresourceRange.levelCount = 1;
+		toDrawing.subresourceRange.layerCount = 1;
+
+		// No idea what this is. This is way too confusing
+		VkDependencyInfo toDrawingDependency = VkDependencyInfo();
+		toDrawingDependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		toDrawingDependency.imageMemoryBarrierCount = 1;
+		toDrawingDependency.pImageMemoryBarriers = &toDrawing;
+		// Pass the magical dependency to the command buffer
+		m_deviceFunctions->vkCmdPipelineBarrier2(m_commandBuffer, &toDrawingDependency);
+
+		// Clear the image to a solid color.
+		VkRenderingAttachmentInfo colorAttachment =  VkRenderingAttachmentInfo();
+		colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		// Bind the current swapchain image to the color attachment.
+		colorAttachment.imageView = m_swapchainImageViews[imageIndex];
+		colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		// CLEAR fills the image with  clearValue when drawing begins, and STORE keeps the result afterward.
+		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		// RGBA
+		colorAttachment.clearValue.color.float32[0] = 0.1f;
+		colorAttachment.clearValue.color.float32[1] = 0.1f;
+		colorAttachment.clearValue.color.float32[2] = 0.2f;
+		colorAttachment.clearValue.color.float32[3] = 1.0f;
+
+		VkRenderingInfo renderingInfo = VkRenderingInfo();
+		renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+		renderingInfo.renderArea.extent.width = m_swapchainWidth;
+		renderingInfo.renderArea.extent.height = m_swapchainHeight;
+		renderingInfo.layerCount = 1;
+		renderingInfo.colorAttachmentCount = 1;
+		renderingInfo.pColorAttachments = &colorAttachment;
+
+		m_deviceFunctions->vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
+		// Later, draw calls will go here.
+		m_deviceFunctions->vkCmdEndRendering(m_commandBuffer);
+
+		// Prepare the image for presentation.
+		VkImageMemoryBarrier2 toPresent = VkImageMemoryBarrier2();
+		toPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+		// What are these stages? This is the same as the settings for toDrawing, but the srcAccessMask is set this time.
+		toPresent.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		toPresent.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+		// ???
+		toPresent.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
+		toPresent.dstAccessMask = 0;
+		toPresent.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		toPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		toPresent.image = m_swapchainImages[imageIndex];
+		// Where do the subresource values come from?
+		toPresent.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		toPresent.subresourceRange.levelCount = 1;
+		toPresent.subresourceRange.layerCount = 1;
+
+		VkDependencyInfo toPresentDependency = VkDependencyInfo();
+		toPresentDependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		toPresentDependency.imageMemoryBarrierCount = 1;
+		toPresentDependency.pImageMemoryBarriers = &toPresent;
+		m_deviceFunctions->vkCmdPipelineBarrier2(m_commandBuffer, &toPresentDependency);
+
+		m_deviceFunctions->vkEndCommandBuffer(m_commandBuffer);
+
+		// Info structs for subbmitting the semaphores and command buffer to the queue.
+		VkSemaphoreSubmitInfo waitInfo = VkSemaphoreSubmitInfo();
+		waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+		waitInfo.semaphore = m_imageAvailable;
+		waitInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+		VkSemaphoreSubmitInfo signalInfo = VkSemaphoreSubmitInfo();
+		signalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+		signalInfo.semaphore = m_renderFinished[imageIndex];
+		signalInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+
+		VkCommandBufferSubmitInfo commandInfo = VkCommandBufferSubmitInfo();
+		commandInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+		commandInfo.commandBuffer = m_commandBuffer;
+
+		// Bind the info structs to a submit info struct
+		VkSubmitInfo2 submitInfo = VkSubmitInfo2();
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+		submitInfo.waitSemaphoreInfoCount = 1;
+		submitInfo.pWaitSemaphoreInfos = &waitInfo;
+		submitInfo.commandBufferInfoCount = 1;
+		submitInfo.pCommandBufferInfos = &commandInfo;
+		submitInfo.signalSemaphoreInfoCount = 1;
+		submitInfo.pSignalSemaphoreInfos = &signalInfo;
+
+		// Submit the work to the queue and signal the fence when it is done.
+		m_deviceFunctions->vkQueueSubmit2(m_queue, 1, &submitInfo, m_frameFence);
+
+		// Present the image to the surface.
+		VkPresentInfoKHR presentInfo = VkPresentInfoKHR();
+		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		// Wait on the semaphore that signals when rendering is finished.
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = &m_renderFinished[imageIndex];
+		presentInfo.swapchainCount = 1;
+		presentInfo.pSwapchains = &m_swapchain;
+		presentInfo.pImageIndices = &imageIndex;
+
+		// Present the image to the surface.
+		m_deviceFunctions->vkQueuePresentKHR(m_queue, &presentInfo);
 	}
 
 	void WindowSystem::onTearDown()
 	{
+		// Synchronize before destroying resources to ensure that all GPU operations are complete.
+		if(m_device != nullptr)
+		{
+			m_deviceFunctions->vkDeviceWaitIdle(m_device);
+		}
+
 		if(m_frameFence != nullptr)
 		{
 			m_deviceFunctions->vkDestroyFence(m_device, m_frameFence, nullptr);

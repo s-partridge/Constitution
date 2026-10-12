@@ -91,6 +91,30 @@ namespace cge::vulkan
 		PFN_vkDestroySemaphore vkDestroySemaphore = nullptr;
 		PFN_vkCreateFence vkCreateFence = nullptr;
 		PFN_vkDestroyFence vkDestroyFence = nullptr;
+
+		//////////////////////////////////////
+		// Live commands used during rendering
+
+		// Wait for one or more fences to be signaled, indicating that the GPU has finished executing commands associated with those fences.
+		PFN_vkWaitForFences vkWaitForFences = nullptr;
+		// Reset one or more fences to the unsignaled state, allowing them to be reused for synchronization.
+		PFN_vkResetFences vkResetFences = nullptr;
+		// Get the index of the next available swapchain image for rendering.
+		PFN_vkAcquireNextImageKHR vkAcquireNextImageKHR = nullptr;
+
+		// Start and finish recording commands to a command buffer.
+		PFN_vkBeginCommandBuffer vkBeginCommandBuffer = nullptr;
+		PFN_vkEndCommandBuffer vkEndCommandBuffer = nullptr;
+		
+		// Recorded commands? What commands?
+		PFN_vkCmdPipelineBarrier2 vkCmdPipelineBarrier2 = nullptr; //Barrier2? What about Barrier? What's the difference?
+		PFN_vkCmdBeginRendering vkCmdBeginRendering = nullptr;
+		PFN_vkCmdEndRendering vkCmdEndRendering = nullptr;
+
+		PFN_vkQueueSubmit2 vkQueueSubmit2 = nullptr;	//Submit2? What about Submit? What's the difference?
+		PFN_vkQueuePresentKHR vkQueuePresentKHR = nullptr;
+		// Wait for the device to finish all pending operations. This is used to ensure that all commands have completed before cleaning up resources or exiting the application.
+		PFN_vkDeviceWaitIdle vkDeviceWaitIdle = nullptr;
 	};
 
 	/**
