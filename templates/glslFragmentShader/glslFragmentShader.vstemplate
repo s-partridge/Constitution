@@ -1,0 +1,12 @@
+<VSTemplate Version="3.0.0" Type="Item" xmlns="http://schemas.microsoft.com/developer/vstemplate/2005">
+  <TemplateData>
+    <Name>GLSL Fragment Shader (.frag)</Name>
+    <Description>An empty GLSL fragment shader for Vulkan.</Description>
+    <ProjectType>VC</ProjectType>
+    <DefaultName>shader.frag</DefaultName>
+    <SortOrder>1001</SortOrder>
+  </TemplateData>
+  <TemplateContent>
+    <ProjectItem ReplaceParameters="false" TargetFileName="$fileinputname$.frag">fragment.frag</ProjectItem>
+  </TemplateContent>
+</VSTemplate>

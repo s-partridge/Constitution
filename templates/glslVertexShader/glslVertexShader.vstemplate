@@ -1,0 +1,12 @@
+<VSTemplate Version="3.0.0" Type="Item" xmlns="http://schemas.microsoft.com/developer/vstemplate/2005">
+  <TemplateData>
+    <Name>GLSL Vertex Shader (.vert)</Name>
+    <Description>An empty GLSL vertex shader for Vulkan.</Description>
+    <ProjectType>VC</ProjectType>
+    <DefaultName>shader.vert</DefaultName>
+    <SortOrder>1000</SortOrder>
+  </TemplateData>
+  <TemplateContent>
+    <ProjectItem ReplaceParameters="false" TargetFileName="$fileinputname$.vert">vertex.vert</ProjectItem>
+  </TemplateContent>
+</VSTemplate>
