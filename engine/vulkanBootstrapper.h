@@ -255,6 +255,44 @@ namespace cge::vulkan
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkDeviceWaitIdle.html
 		*/
 		PFN_vkDeviceWaitIdle vkDeviceWaitIdle = nullptr;
+
+		//////////////////////
+		// Shader functions //
+		//////////////////////
+		
+		/**
+		* Create a shader module from SPIR-V bytecode
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCreateShaderModule.html
+		*/
+		PFN_vkCreateShaderModule vkCreateShaderModule = nullptr;
+		/**
+		* Destroy a shader module and free associated resources
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkDestroyShaderModule.html
+		*/
+		PFN_vkDestroyShaderModule vkDestroyShaderModule = nullptr;
+
+		/**
+		* Create a pipeline layout
+		* A pipeline layout defines the interface between shader stages and shader resources
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCreatePipelineLayout.html
+		*/
+		PFN_vkCreatePipelineLayout vkCreatePipelineLayout = nullptr;
+		/**
+		* Destroy a pipeline layout and free associated resources
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkDestroyPipelineLayout.html
+		*/
+		PFN_vkDestroyPipelineLayout vkDestroyPipelineLayout = nullptr;
+		/**
+		* Create one or more graphics pipelines
+		* Graphics pipelines define the stages of the graphics pipeline (vertex shader, fragment shader, etc.) and how they are connected.
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCreateGraphicsPipelines.html
+		*/
+		PFN_vkCreateGraphicsPipelines vkCreateGraphicsPipelines = nullptr;
+		/**
+		* Destroy a graphics pipeline and free associated resources
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkDestroyPipeline.html
+		*/
+		PFN_vkDestroyPipeline vkDestroyPipeline = nullptr;
 	};
 
 	/**

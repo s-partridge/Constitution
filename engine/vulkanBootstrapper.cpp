@@ -88,6 +88,14 @@ namespace cge::vulkan
 		// Load device idle function
 		deviceFunctions.vkDeviceWaitIdle = reinterpret_cast<PFN_vkDeviceWaitIdle>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDeviceWaitIdle"));
 
+		// Load shader functions
+		deviceFunctions.vkCreateShaderModule = reinterpret_cast<PFN_vkCreateShaderModule>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreateShaderModule"));
+		deviceFunctions.vkDestroyShaderModule = reinterpret_cast<PFN_vkDestroyShaderModule>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyShaderModule"));
+		deviceFunctions.vkCreatePipelineLayout = reinterpret_cast<PFN_vkCreatePipelineLayout>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreatePipelineLayout"));
+		deviceFunctions.vkDestroyPipelineLayout = reinterpret_cast<PFN_vkDestroyPipelineLayout>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyPipelineLayout"));
+		deviceFunctions.vkCreateGraphicsPipelines = reinterpret_cast<PFN_vkCreateGraphicsPipelines>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreateGraphicsPipelines"));
+		deviceFunctions.vkDestroyPipeline = reinterpret_cast<PFN_vkDestroyPipeline>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyPipeline"));
+
 		// Ensure that all required device functions were successfully loaded
 		return deviceFunctions.vkDestroyDevice != nullptr &&
 			deviceFunctions.vkGetDeviceQueue != nullptr &&
@@ -113,6 +121,12 @@ namespace cge::vulkan
 			deviceFunctions.vkCmdEndRendering != nullptr &&
 			deviceFunctions.vkQueueSubmit2 != nullptr &&
 			deviceFunctions.vkQueuePresentKHR != nullptr &&
-			deviceFunctions.vkDeviceWaitIdle != nullptr;
+			deviceFunctions.vkDeviceWaitIdle != nullptr &&
+			deviceFunctions.vkCreateShaderModule != nullptr &&
+			deviceFunctions.vkDestroyShaderModule != nullptr &&
+			deviceFunctions.vkCreatePipelineLayout != nullptr &&
+			deviceFunctions.vkDestroyPipelineLayout != nullptr &&
+			deviceFunctions.vkCreateGraphicsPipelines != nullptr &&
+			deviceFunctions.vkDestroyPipeline != nullptr;
 	}
 }

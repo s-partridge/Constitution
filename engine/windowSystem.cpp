@@ -1,6 +1,10 @@
+#include <cstddef>
+
 #include "windowSystem.h"
 #include "event.h"
 #include "engine.h"
+#include "resourceLoader.h"
+#include "renderPrimitives.h"
 
 #include "vulkanBootstrapper.h"
 #define GLFW_INCLUDE_VULKAN	// Using Vulkan instead of OpenGL.
@@ -15,24 +19,8 @@ namespace cge
 		m_shutdownChannel = &Engine::Instance().getEventRegistry().getChannel<bool>(EngineEvent::EngineShutdown);
 	}
 
-	void WindowSystem::onSetUp()
+	bool WindowSystem::setUpVulkan()
 	{
-		//////////////////
-		// Initialize GLFW
-		//////////////////
-
-		// Initialize the GLFW context and validate that it was successful.
-		if(glfwInit() == GLFW_FALSE)
-			return; // TODO: Log this once error handling system exists.
-
-		// Set configuration hints for the GLFW window. We don't need an OpenGL context since we'll be using Vulkan.
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // No OpenGL context; we'll use Vulkan later.
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); // TODO: This is temporary, but the resizing mechanism comes later.
-
-		// Create the window with the specified width, height, and title. The last two parameters are for monitor and shared context, which we don't need.
-		// Monitor is for fullscreen mode, and share is a shared context is for sharing OpenGL contexts.
-		m_window = glfwCreateWindow(m_windowWidth, m_windowHeight, m_windowTitle.c_str(), nullptr, nullptr);
-
 		////////////////////////////////////////////////////////////////
 		// Initialize core Vulkan functions and create a Vulkan instance
 		////////////////////////////////////////////////////////////////
@@ -40,12 +28,12 @@ namespace cge
 		// Create a new VulkanFunctions object to hold the function pointers for Vulkan functions.
 		m_vulkan = new vulkan::VulkanFunctions();
 		// Get the initial function pointer for vkGetInstanceProcAddr from GLFW. This function is used to load other Vulkan functions.
-		PFN_vkGetInstanceProcAddr vulcanLocator = reinterpret_cast<PFN_vkGetInstanceProcAddr>(glfwGetInstanceProcAddress(nullptr, "vkGetInstanceProcAddr"));
+		PFN_vkGetInstanceProcAddr vulkanLocator = reinterpret_cast<PFN_vkGetInstanceProcAddr>(glfwGetInstanceProcAddress(nullptr, "vkGetInstanceProcAddr"));
 		// Pass it to the Vulkan bootstrapper to load the global functions. If it fails, we log and return.
-		if(vulcanLocator == nullptr || !vulkan::loadGlobalfunctions(*m_vulkan, vulcanLocator))
+		if(vulkanLocator == nullptr || !vulkan::loadGlobalfunctions(*m_vulkan, vulkanLocator))
 			// Nothing to do here; the engine will fail to start if Vulkan is not available. Just log this and return.
 			// TODO: Log this once error handling system exists.
-			return;
+			return false;
 
 		// Get the required Vulkan instance extensions from GLFW. These are necessary for creating a Vulkan instance that can interface with the window system.
 		std::uint32_t instanceExtensionCount = 0;
@@ -55,7 +43,7 @@ namespace cge
 		// The window system likely shouldn't be loaded at all in those configurations, but we should still handle it gracefully.
 		if(extensions == nullptr)
 		{
-			return; // TODO: Log this once error handling system exists.
+			return false; // TODO: Log this once error handling system exists.
 		}
 
 		// Create a Vulkan application info structure. This is used to provide information about the application to the Vulkan driver.
@@ -123,7 +111,7 @@ namespace cge
 		if(m_vulkan->vkCreateInstance(&instanceInfo, nullptr, &m_vkInstance) != VK_SUCCESS)
 		{
 			// TODO: Log this once error handling system exists.
-			return;
+			return false;
 		}
 
 		// Load the instance-level Vulkan functions using the created Vulkan instance. This allows us to use Vulkan functions that require a valid instance.
@@ -132,7 +120,7 @@ namespace cge
 		// Create a Vulkan surface for the GLFW window. This surface is used to present rendered images to the window.
 		if(glfwCreateWindowSurface(m_vkInstance, m_window, nullptr, &m_surface) != VK_SUCCESS)
 		{
-			return; // TODO: Log this once error handling system exists.
+			return false; // TODO: Log this once error handling system exists.
 		}
 
 		///////////////////////////////////////////////////
@@ -144,7 +132,7 @@ namespace cge
 		// Make sure there actually is a Vulkan-capable GPU available on the system.
 		if(deviceCount == 0)
 		{
-			return; // TODO: Log this once error handling system exists.
+			return false; // TODO: Log this once error handling system exists.
 		}
 
 		#pragma warning (push)
@@ -183,7 +171,7 @@ namespace cge
 
 		if(m_physicalDevice == nullptr)
 		{
-			return; // TODO: Log this once error handling system exists.
+			return false; // TODO: Log this once error handling system exists.
 		}
 		
 		/////////////////////////////////////////
@@ -222,7 +210,7 @@ namespace cge
 		// Create the logical device along with its associated queue
 		if(m_vulkan->vkCreateDevice(m_physicalDevice, &deviceInfo, nullptr, &m_device) != VK_SUCCESS)
 		{
-			return; // TODO: Log this once error handling system exists.
+			return false; // TODO: Log this once error handling system exists.
 		}
 
 		m_deviceFunctions = new vulkan::DeviceFunctions();
@@ -292,7 +280,7 @@ namespace cge
 
 		if(m_deviceFunctions->vkCreateSwapchainKHR(m_device, &swapchainInfo, nullptr, &m_swapchain) != VK_SUCCESS)
 		{
-			return; // TODO: Log this once error handling system exists.
+			return false; // TODO: Log this once error handling system exists.
 		}
 
 		// Store the swapchain format and dimensions for later use.
@@ -329,7 +317,7 @@ namespace cge
 			
 			if(m_deviceFunctions->vkCreateImageView(m_device, &viewInfo, nullptr, &m_swapchainImageViews[imageIdx]) != VK_SUCCESS)
 			{
-				return; // TODO: Log this once error handling system exists.
+				return false; // TODO: Log this once error handling system exists.
 			}
 		}
 
@@ -346,7 +334,7 @@ namespace cge
 		// Create the command pool
 		if(m_deviceFunctions->vkCreateCommandPool(m_device, &poolInfo, nullptr, &m_commandPool) != VK_SUCCESS)
 		{
-			return; // TODO: Log this once error handling system exists.
+			return false; // TODO: Log this once error handling system exists.
 		}
 
 		VkCommandBufferAllocateInfo bufferInfo = VkCommandBufferAllocateInfo();
@@ -358,7 +346,7 @@ namespace cge
 		// Allocate the command buffer
 		if(m_deviceFunctions->vkAllocateCommandBuffers(m_device, &bufferInfo, &m_commandBuffer) != VK_SUCCESS)
 		{
-			return; // TODO: Log this once error handling system exists.
+			return false; // TODO: Log this once error handling system exists.
 		}
 
 		/////////////////////////////////////
@@ -369,7 +357,7 @@ namespace cge
 		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 		if(m_deviceFunctions->vkCreateSemaphore(m_device, &semaphoreInfo, nullptr, &m_imageAvailable) != VK_SUCCESS)
 		{
-			return; // TODO: Log this once error handling system exists.
+			return false; // TODO: Log this once error handling system exists.
 		}
 
 		// Create one semaphore for each swapchain image to signal when rendering is finished.
@@ -378,7 +366,7 @@ namespace cge
 		{
 			if(m_deviceFunctions->vkCreateSemaphore(m_device, &semaphoreInfo, nullptr, &m_renderFinished[imageIdx]) != VK_SUCCESS)
 			{
-				return; // TODO: Log this once error handling system exists.
+				return false; // TODO: Log this once error handling system exists.
 			}
 		}
 
@@ -388,6 +376,236 @@ namespace cge
 		// Create the fence in a signaled state so that the first frame can be rendered without waiting.
 		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 		if(m_deviceFunctions->vkCreateFence(m_device, &fenceInfo, nullptr, &m_frameFence) != VK_SUCCESS)
+		{
+			return false; // TODO: Log this once error handling system exists.
+		}
+
+		return true;
+	}
+
+	bool WindowSystem::setUpShaders()
+	{
+		/////////////////////
+		// Shader creation //
+		/////////////////////
+		VkShaderModule vertexShader = loadVulkanShaderModule(*m_deviceFunctions, m_device, "../engine/shaders/vertexColor.vert.spv");
+		if(vertexShader == nullptr)
+		{
+			return false;
+		}
+
+		VkShaderModule fragmentShader = loadVulkanShaderModule(*m_deviceFunctions, m_device, "../engine/shaders/fragmentColor.frag.spv");
+
+		// VkShaderModule is an owning handle, so if the fragment shader fails to load, we need to destroy the vertex shader before returning.
+		if(fragmentShader == nullptr)
+		{
+			m_deviceFunctions->vkDestroyShaderModule(m_device, vertexShader, nullptr);
+			return false; // TODO: Log this once error handling system exists.
+		}
+
+		/////////////////////////////
+		// Crerate pipeline layout //
+		/////////////////////////////
+		
+		// For vertexColor.vert we have aa single constant for the MVC transform matrix
+		// We have to specify it by exact size and offset within the shader's push constant block, and the shader stage that will use it
+		VkPushConstantRange pushConstantRange = VkPushConstantRange();
+		pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		pushConstantRange.offset = 0;
+		pushConstantRange.size = 64;	// A 4x4 matrix of floats, 16 * 4 bytes = 64 bytes.
+
+		// Create the pipeline layout, which specifies the resources that will be available to the shaders.
+		VkPipelineLayoutCreateInfo layoutInfo = VkPipelineLayoutCreateInfo();
+		layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		layoutInfo.pushConstantRangeCount = 1;
+		layoutInfo.pPushConstantRanges = &pushConstantRange;
+
+		if(m_deviceFunctions->vkCreatePipelineLayout(m_device, &layoutInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS)
+		{
+			m_deviceFunctions->vkDestroyShaderModule(m_device, vertexShader, nullptr);
+			m_deviceFunctions->vkDestroyShaderModule(m_device, fragmentShader, nullptr);
+			return false; // TODO: Log this once error handling system exists.
+		}
+
+		//////////////////////////
+		// Create shader stages //
+		//////////////////////////
+		VkPipelineShaderStageCreateInfo stages[2];
+		// Vertex shader
+		stages[0] = VkPipelineShaderStageCreateInfo();
+		stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+		stages[0].module = vertexShader;
+		stages[0].pName = "main"; // Entry point of the shader. This is the function that will be called when the shader is executed.
+
+		// Fragment shader
+		stages[1] = VkPipelineShaderStageCreateInfo();
+		stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		stages[1].module = fragmentShader;
+		stages[1].pName = "main"; // Entry point of the shader. This is the function that will be called when the shader is executed.
+
+		//////////////////////////
+		// Vertex shader layout //
+		//////////////////////////
+
+		// Binding describes how the vertex data is laid out in memory. It specifies the stride (size of each vertex) and the input rate (per-vertex or per-instance).
+		VkVertexInputBindingDescription vertexBinding = VkVertexInputBindingDescription();
+		vertexBinding.binding = 0; // Binding index for the vertex buffer
+		vertexBinding.stride = sizeof(primitives::Vertex); // Size of each vertex in bytes
+		vertexBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; // Move to the next vertex for each vertex shader invocation. This can also be per-instance. I don't know what "instance" means. Whole entire mesh? Contiguous surface? The documentation doesn't seem to specify
+
+		// Per-vertex attributes that will be passed to the vertex shader
+		VkVertexInputAttributeDescription vertexAttributes[2];
+		vertexAttributes[0] = VkVertexInputAttributeDescription();
+		vertexAttributes[0].location = 0; // Location of the attribute in the shader. This should match the location specified in the shader.
+		vertexAttributes[0].binding = 0; // Binding index for the vertex buffer.
+		vertexAttributes[0].format = VK_FORMAT_R32G32B32_SFLOAT; // Format of the attribute. This should match the type of the attribute in the shader. This is used both for colors (rgb) and positions (xyz) if their source type is a three-component float vector.
+		vertexAttributes[0].offset = offsetof(primitives::Vertex, position); // Offset of the attribute in the vertex struct.
+
+		vertexAttributes[1] = VkVertexInputAttributeDescription();
+		vertexAttributes[1].location = 1; // Location of the attribute in the shader. This should match the location specified in the shader.
+		vertexAttributes[1].binding = 0; // Binding index for the vertex buffer.
+		vertexAttributes[1].format = VK_FORMAT_R32G32B32_SFLOAT; // Format of the attribute. This should match the type of the attribute in the shader.
+		vertexAttributes[1].offset = offsetof(primitives::Vertex, color); // Offset of the attribute in the vertex struct.
+
+		// Link the binding and attribute descriptions to the pipeline input state for the vertex shader
+		// This explicitly tells Vulkan to expect a vertex buffer with the specified layout, and how to interpret the data in that buffer
+		VkPipelineVertexInputStateCreateInfo vertexInputInfo = VkPipelineVertexInputStateCreateInfo();
+		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertexInputInfo.vertexBindingDescriptionCount = 1;
+		vertexInputInfo.pVertexBindingDescriptions = &vertexBinding;
+		vertexInputInfo.vertexAttributeDescriptionCount = 2;
+		vertexInputInfo.pVertexAttributeDescriptions = vertexAttributes;
+
+		///////////////////////////
+		// Fixed pipeline inputs //
+		///////////////////////////
+
+		// Input assembly describes how the vertices will be assembled into primitives. In this case, we are using a triangle list, which means that every three vertices will form a triangle. This, as opposed to a triangle strip or fan.
+		VkPipelineInputAssemblyStateCreateInfo inputAssembly = VkPipelineInputAssemblyStateCreateInfo();
+		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		
+		// Viewport state defines the viewport and scissor rectangles. These determine the region of the framebuffer that the output will be rendered to.
+		// The viewport maps  the image space onto real pixels on the screen, while the scissor rectangle defines the region of the framebuffer that will be affected by rendering. Anything outside the scissor rectangle will be discarded.
+		VkPipelineViewportStateCreateInfo viewportState = VkPipelineViewportStateCreateInfo();
+		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		viewportState.viewportCount = 1; // One viewport
+		viewportState.scissorCount = 1; // One scissor rectangle
+
+		// Settings for the rasterization pipeline
+		// Rasterization is the process of converting the vertex data into fragments (pixels) that will be drawn to the framebuffer. This includes culling, depth testing, and other operations.
+		VkPipelineRasterizationStateCreateInfo rasterizationInfo = VkPipelineRasterizationStateCreateInfo();
+		rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
+		rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT; // Cull backfaces
+		rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; // Normal winding order is counter-clockwise
+		rasterizationInfo.lineWidth = 1.0f; // This must be 1.0 unless wide lines are enabled, which is not supported on all hardware. non-one values are actually fine when drawing in fill mode but will produce a warning in the validation layer.
+
+		// For antialiasing, which for now is disabled
+		VkPipelineMultisampleStateCreateInfo multisampleInfo = VkPipelineMultisampleStateCreateInfo();
+		multisampleInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		multisampleInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT; // No multisampling
+
+		// Set which color channels will be written to the framebuffer and whether blending is enabled. Blending is used for transparency and other effects
+		// There must be one colorBlendAttachment for each output image, which will be declared in the pipeline rendering state
+		VkPipelineColorBlendAttachmentState colorBlendAttachment = VkPipelineColorBlendAttachmentState();
+		colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		colorBlendAttachment.blendEnable = VK_FALSE; // No blending
+
+		// Create the color blend state, which specifies how the color blending will be applied to the framebuffer
+		// AttachmentCount must match the number of color attachments in the pipeline rendering state
+		VkPipelineColorBlendStateCreateInfo colorBlendInfo = VkPipelineColorBlendStateCreateInfo();
+		colorBlendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		colorBlendInfo.attachmentCount = 1;
+		colorBlendInfo.pAttachments = &colorBlendAttachment;
+
+		///////////////////
+		// Dynamic state //
+		///////////////////
+		// Dynamic state allows certain pipeline states to be changed without recreating the pipeline. This is useful for states that change frequently, like viewport and scissor.
+		// Anything not listed here is static and cannot be changed without recreating the pipeline. This includes input assembly, rasterization, multisampling, and color blending.
+		VkDynamicState dynamicStates[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+
+		// Create the dynamic state info, which will point to the array of dynamic states
+		VkPipelineDynamicStateCreateInfo dynamicStateInfo = VkPipelineDynamicStateCreateInfo();
+		dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dynamicStateInfo.dynamicStateCount = 2;
+		dynamicStateInfo.pDynamicStates = dynamicStates;
+		
+		//////////////////
+		// Image format //
+		//////////////////
+
+		// The format of the swapchain images, which will be used as the color attachment in the pipeline rendering state. The cast is necessary because VkFormat can't be forward-declared.
+		//TODO: This must be fixed when the rendering code is extracted into its own class so no cast is necessary. Header-includers are avoided here so that game projects never need to link against Vulkan.
+		VkFormat colorFormat = (VkFormat)m_swapchainFormat;
+
+		VkPipelineRenderingCreateInfo renderFormat = VkPipelineRenderingCreateInfo();
+		renderFormat.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+		// Must match the value passed to vkCmdBeginRendering. This is the number of color attachments that will be used in the rendering pass.
+		renderFormat.colorAttachmentCount = 1;
+		// Must match the format of the swapchain images. This is the format that will be used for the color attachment in the rendering pass.
+		renderFormat.pColorAttachmentFormats = &colorFormat;
+		// If we need a depth buffer, we can add it here.
+		//renderFormat.depthAttachmentFormat
+
+		///////////////////////////
+		// Pipeline construction //
+		///////////////////////////
+		
+		VkGraphicsPipelineCreateInfo pipelineInfo = VkGraphicsPipelineCreateInfo();
+		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		pipelineInfo.pNext = &renderFormat; // Chain the rendering format info to the pipeline create info
+		pipelineInfo.stageCount = 2;		// There are two shader stages for this pipeline
+		pipelineInfo.pStages = stages;		// The array of shader stages
+		pipelineInfo.pVertexInputState = &vertexInputInfo; // The vertex input state
+		// Fixed pipeline states
+		pipelineInfo.pInputAssemblyState = &inputAssembly;
+		pipelineInfo.pViewportState = &viewportState;
+		pipelineInfo.pRasterizationState = &rasterizationInfo;
+		pipelineInfo.pMultisampleState = &multisampleInfo;
+		pipelineInfo.pColorBlendState = &colorBlendInfo;
+		pipelineInfo.pDynamicState = &dynamicStateInfo; // The dynamic state info
+		pipelineInfo.layout = m_pipelineLayout; // The pipeline layout, not including per-vertex data. This is the layout of the push constants and descriptor sets.
+
+		VkResult pipelineResult = m_deviceFunctions->vkCreateGraphicsPipelines(m_device, nullptr, 1, &pipelineInfo, nullptr, &m_pipeline);
+
+		// Clean up initialization resources. The shader modules are no longer needed after the pipeline is created, so they can be destroyed.
+		m_deviceFunctions->vkDestroyShaderModule(m_device, vertexShader, nullptr);
+		m_deviceFunctions->vkDestroyShaderModule(m_device, fragmentShader, nullptr);
+
+		if(pipelineResult != VK_SUCCESS)
+			return false;
+
+		return true;
+	}
+
+	void WindowSystem::onSetUp()
+	{
+		//////////////////
+		// Initialize GLFW
+		//////////////////
+
+		// Initialize the GLFW context and validate that it was successful.
+		if(glfwInit() == GLFW_FALSE)
+			return; // TODO: Log this once error handling system exists.
+
+		// Set configuration hints for the GLFW window. We don't need an OpenGL context since we'll be using Vulkan.
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // No OpenGL context; we'll use Vulkan later.
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); // TODO: This is temporary, but the resizing mechanism comes later.
+
+		// Create the window with the specified width, height, and title. The last two parameters are for monitor and shared context, which we don't need.
+		// Monitor is for fullscreen mode, and share is a shared context is for sharing OpenGL contexts.
+		m_window = glfwCreateWindow(m_windowWidth, m_windowHeight, m_windowTitle.c_str(), nullptr, nullptr);
+
+		if(!setUpVulkan())
+		{
+			return; // TODO: Log this once error handling system exists.
+		}
+
+		if(!setUpShaders())
 		{
 			return; // TODO: Log this once error handling system exists.
 		}
@@ -407,12 +625,12 @@ namespace cge
 	void WindowSystem::render()
 	{
 		// Make sure setup was successful before trying to render. If not, just return.
-		// The fence was the last thing created in setup, so if it is nullptr, we know setup did not complete successfully.
+		// The fence was the last thing created in Vulkan setup, so if it's nullptr, we know setup did not complete successfully.
 		// TODO: We shouldn't need this. The engine should not call render() if setup failed. This is a temporary measure until the engine has a proper error handling system.
 		if(m_frameFence == nullptr)
 			return;
 
-		// Wait until the GPU hhas finished the previous frame.
+		// Wait until the GPU has finished the previous frame.
 		m_deviceFunctions->vkWaitForFences(m_device, 1, &m_frameFence, VK_TRUE, UINT64_MAX);
 
 		// Get the next image in the swapchain.
@@ -558,14 +776,25 @@ namespace cge
 		m_deviceFunctions->vkQueuePresentKHR(m_queue, &presentInfo);
 	}
 
-	void WindowSystem::onTearDown()
+	void WindowSystem::tearDownShaders()
 	{
-		// Synchronize before destroying resources to ensure that all GPU operations are complete.
 		if(m_device != nullptr)
 		{
-			m_deviceFunctions->vkDeviceWaitIdle(m_device);
+			if(m_pipeline != nullptr)
+			{
+				m_deviceFunctions->vkDestroyPipeline(m_device, m_pipeline, nullptr);
+				m_pipeline = nullptr;
+			}
+			if(m_pipelineLayout != nullptr)
+			{
+				m_deviceFunctions->vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
+				m_pipelineLayout = nullptr;
+			}
 		}
+	}
 
+	void WindowSystem::tearDownVulkan()
+	{
 		if(m_frameFence != nullptr)
 		{
 			m_deviceFunctions->vkDestroyFence(m_device, m_frameFence, nullptr);
@@ -642,7 +871,18 @@ namespace cge
 
 		delete m_vulkan;
 		m_vulkan = nullptr;
+	}
 
+	void WindowSystem::onTearDown()
+	{
+		// Synchronize before destroying resources to ensure that all GPU operations are complete.
+		if(m_device != nullptr)
+		{
+			m_deviceFunctions->vkDeviceWaitIdle(m_device);
+		}
+
+		tearDownShaders();
+		tearDownVulkan();
 		// Clean up GLFW resources and terminate the GLFW context.
 		if(m_window != nullptr)
 		{

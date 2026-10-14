@@ -27,6 +27,9 @@ struct VkCommandBuffer_T;
 struct VkSemaphore_T;
 struct VkFence_T;
 
+struct VkPipelineLayout_T;
+struct VkPipeline_T;
+
 namespace cge::vulkan
 {
 	struct VulkanFunctions;
@@ -44,6 +47,15 @@ namespace cge
 		void update(std::chrono::steady_clock::duration dt) override;
 		void render() override;
 		void onTearDown() override;
+
+	protected:
+		bool setUpVulkan();
+		bool setUpShaders();
+
+
+
+		void tearDownShaders();
+		void tearDownVulkan();
 
 	private:
 		cge::event::BroadcasterBase m_windowSystemBroadcaster;
@@ -100,6 +112,11 @@ namespace cge
 		VkSemaphore_T **m_renderFinished = nullptr;
 		// Signaled when the GPU finishes rendering the current frame so the CPU can use the command buffer again.
 		VkFence_T *m_frameFence = nullptr;
+
+		// Handle to the pipeline layout. This is used to define the layout of resources (uniforms, textures, etc.) that are used by the shaders in the graphics pipeline.
+		VkPipelineLayout_T *m_pipelineLayout = nullptr;
+		// Handle to the graphics pipeline. This is used to define the stages of the graphics pipeline (vertex shader, fragment shader, etc.) and how they are connected.
+		VkPipeline_T *m_pipeline = nullptr;
 
 		// NOTE:
 		// m_vulkan and m_deviceFunctions are created and owned by WindowSystem, and are deleted in tearDown.
