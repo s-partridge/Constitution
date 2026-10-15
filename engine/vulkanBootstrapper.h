@@ -1,5 +1,6 @@
 #ifndef CGE_VULKAN_BOOTSTRAPPER_H
 #define CGE_VULKAN_BOOTSTRAPPER_H
+#include <cstdint>
 
 // Include this header before anything else that includes vulkan.h.
 #ifndef VK_NO_PROTOTYPES
@@ -329,6 +330,17 @@ namespace cge::vulkan
 	* @note device must be a valid VkDevice that has been created using vkCreateDevice before calling this function. instanceFunctions must have been populated with valid function pointers from loadInstanceFunctions.
 	*/
 	bool loadDeviceFunctions(DeviceFunctions &deviceFunctions, VulkanFunctions &instanceFunctions, VkDevice device);
+
+	/**
+	* Fetch the index of a memory type that satisfies the requested properties and is compatible with the allowed type bits
+	* 
+	* @param memoryProperties The memory properties of the physical device, obtained from vkGetPhysicalDeviceMemoryProperties()
+	* @param allowedTypeBits A bitmask of allowed memory types, typically obtained from VkMemoryRequirements::memoryTypeBits
+	* @param wantedFlags The desired memory property flags, such as VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+	* 
+	* @return The index of a suitable memory type
+	*/
+	std::uint32_t findMemoryType(const VkPhysicalDeviceMemoryProperties &memoryProperties, std::uint32_t allowedTypeBits, VkMemoryPropertyFlags wantedFlags);
 }
 
 #endif // CGE_VULKAN_BOOTSTRAPPER_HD

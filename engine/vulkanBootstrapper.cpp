@@ -129,4 +129,18 @@ namespace cge::vulkan
 			deviceFunctions.vkCreateGraphicsPipelines != nullptr &&
 			deviceFunctions.vkDestroyPipeline != nullptr;
 	}
+
+	std::uint32_t findMemoryType(const VkPhysicalDeviceMemoryProperties &memoryProperties, std::uint32_t allowedTypeBits, VkMemoryPropertyFlags wantedFlags)
+	{
+		for(std::uint32_t typeIdx = 0; typeIdx < memoryProperties.memoryTypeCount; ++typeIdx)
+		{
+			// A type is allowed if its bit is set in the allowedTypeBits bitmask
+			bool allowed = (allowedTypeBits & (1 << typeIdx)) != 0;
+			bool hasWantedFlags = (memoryProperties.memoryTypes[typeIdx].propertyFlags & wantedFlags) == wantedFlags;
+
+			if(allowed && hasWantedFlags)
+				return typeIdx;
+		}
+		return UINT32_MAX;
+	}
 }
