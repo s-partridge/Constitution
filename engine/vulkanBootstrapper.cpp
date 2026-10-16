@@ -34,6 +34,9 @@ namespace cge::vulkan
 		instanceFunctions.vkGetPhysicalDeviceQueueFamilyProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceQueueFamilyProperties>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceQueueFamilyProperties"));
 		instanceFunctions.vkGetPhysicalDeviceSurfaceSupportKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceSupportKHR>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceSurfaceSupportKHR"));
 
+		// Load memory functions
+		instanceFunctions.vkGetPhysicalDeviceMemoryProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties>(instanceFunctions.vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceMemoryProperties"));
+
 		// Ensure that all required instance functions were successfully loaded
 		return instanceFunctions.vkDestroyInstance != nullptr &&
 			instanceFunctions.vkDestroySurfaceKHR != nullptr &&

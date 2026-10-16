@@ -1,4 +1,5 @@
-#include <cstddef>
+#include <cstddef> // for std::uint32_t
+#include <cstring> // for memcpy
 
 #include "windowSystem.h"
 #include "event.h"
@@ -599,25 +600,38 @@ namespace cge
 			primitives::colorPalette, 6
 		);
 
-		///////////////////
-		// Vertex buffer //
-		///////////////////
+		//////////////////////////////
+		// Vertex and index buffers //
+		//////////////////////////////
 
-		// Logical size of the vertex buffer in bytes
+		// Logical size of the vertex and index buffers in bytes
 		VkDeviceSize vertexBufferSize = mesh.vertexCount * sizeof(primitives::Vertex);
-		// Configure the buffer to be used as a vertex buffer and as a transfer destination
+		VkDeviceSize indexBufferSize = mesh.indexCount * sizeof(std::uint32_t);
+
+		// Configure the buffers to be used as vertex and index buffers, and to be transfer destinations for the staging buffer. This allows us to copy data from the staging buffer to the vertex and index buffers on the GPU.
 		VkBufferUsageFlags vertexUsage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		VkBufferUsageFlags indexUsage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
 		// Configure the backing memory to be device-local, as opposed to host-visible.
 		// This means that the memory will be allocated on the GPU, which is faster for rendering, but cannot be accessed directly by the CPU.
 		// We'll need to use a staging buffer to transfer data from the CPU to the GPU.
-		VkMemoryPropertyFlags vertexMemoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		VkMemoryPropertyFlags bufferFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 		// Create the vertex buffer and allocate memory for it. This is a helper function that encapsulates the Vulkan buffer creation and memory allocation process.
 		if(!vulkan::createBuffer(
 			*m_deviceFunctions, m_device,
 			memoryProperties, vertexBufferSize,
-			vertexUsage, vertexMemoryFlags,
+			vertexUsage, bufferFlags,
 			m_vertexBuffer, m_vertexMemory))
+		{
+			return false; // TODO: Log this once error handling system exists.
+		}
+
+		if(!vulkan::createBuffer(
+			*m_deviceFunctions, m_device,
+			memoryProperties, indexBufferSize,
+			indexUsage, bufferFlags,
+			m_indexBuffer, m_indexMemory))
 		{
 			return false; // TODO: Log this once error handling system exists.
 		}
@@ -634,11 +648,12 @@ namespace cge
 		// Create local variables to hold the staging buffer and its memory
 		VkBuffer stagingBuffer = VK_NULL_HANDLE;
 		VkDeviceMemory stagingMemory = VK_NULL_HANDLE;
+		VkDeviceSize stagingBufferSize = vertexBufferSize + indexBufferSize;
 
 		// Create the staging buffer and allocate memory for it. This is a helper function that encapsulates the Vulkan buffer creation and memory allocation process.
 		if(!vulkan::createBuffer(
 			*m_deviceFunctions, m_device,
-			memoryProperties, vertexBufferSize,
+			memoryProperties, stagingBufferSize,
 			stagingUsage, stagingMemoryFlags,
 			stagingBuffer, stagingMemory))
 		{
@@ -651,7 +666,7 @@ namespace cge
 
 		// Map the staging buffer memory to a CPU-accessible pointer. This allows us to write data to the buffer directly from the CPU.
 		void *stagingData = nullptr;
-		if(m_deviceFunctions->vkMapMemory(m_device, stagingMemory, 0, vertexBufferSize, 0, &stagingData) != VK_SUCCESS)
+		if(m_deviceFunctions->vkMapMemory(m_device, stagingMemory, 0, stagingBufferSize, 0, &stagingData) != VK_SUCCESS)
 		{
 			// Clear up the staging buffer and its memory before returning, since we failed to map the memory.
 			m_deviceFunctions->vkFreeMemory(m_device, stagingMemory, nullptr);
@@ -662,6 +677,8 @@ namespace cge
 		// Copy the vertex data from the mesh to the staging buffer
 		// This puts the data in the staging buffer on the CPU side, which will then be transferred to the GPU-side vertex buffer in a later step
 		std::memcpy(stagingData, mesh.vertices, static_cast<std::size_t>(vertexBufferSize));
+		// And the index data, offset by the size of the vertex buffer
+		std::memcpy(static_cast<char *>(stagingData) + vertexBufferSize, mesh.indices, static_cast<std::size_t>(indexBufferSize));
 
 		// Unmap the staging buffer memory now that we're done writing to it
 		// Since the buffer is going to be freed immediately after this, it isn't actually necessary to unmap it, but it's here for consistency.
@@ -677,13 +694,21 @@ namespace cge
 		copyBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 		m_deviceFunctions->vkBeginCommandBuffer(m_commandBuffer, &copyBeginInfo);
 
-		// Select the entire buffer to be copied. No offset, size of the input buffer
+		// Configure the region of the buffer to copy. This specifies the source and destination offsets, and the size of the data to copy.
 		VkBufferCopy copyRegion = VkBufferCopy();
 		copyRegion.srcOffset = 0;
 		copyRegion.dstOffset = 0;
 		copyRegion.size = vertexBufferSize;
 		// Copy the data from the staging buffer to the vertex buffer
 		m_deviceFunctions->vkCmdCopyBuffer(m_commandBuffer, stagingBuffer, m_vertexBuffer, 1, &copyRegion);
+
+		// And again for the index buffer, offset by the size of the vertex buffer
+		// Reusing the same copyRegion struct since vkCmdCopyBuffer is already done with it
+		// Since we're copying to a different destination buffer, we need to keep the destination offset at 0 and set the source offset to the size of the vertex buffer
+		copyRegion.srcOffset = vertexBufferSize;
+		copyRegion.dstOffset = 0;
+		copyRegion.size = indexBufferSize;
+		m_deviceFunctions->vkCmdCopyBuffer(m_commandBuffer, stagingBuffer, m_indexBuffer, 1, &copyRegion);
 
 		m_deviceFunctions->vkEndCommandBuffer(m_commandBuffer);
 
@@ -710,6 +735,8 @@ namespace cge
 		{
 			return false; // TODO: Log this once error handling system exists.
 		}
+
+		m_indexCount = static_cast<std::uint32_t>(mesh.indexCount);
 
 		return true;
 	}
@@ -913,20 +940,47 @@ namespace cge
 		m_deviceFunctions->vkQueuePresentKHR(m_queue, &presentInfo);
 	}
 
+	void WindowSystem::tearDownMeshBuffers()
+	{
+		if(m_device == nullptr)
+			return;
+
+		if(m_indexMemory != nullptr)
+		{
+			m_deviceFunctions->vkFreeMemory(m_device, m_indexMemory, nullptr);
+			m_indexMemory = nullptr;
+		}
+		if(m_indexBuffer != nullptr)
+		{
+			m_deviceFunctions->vkDestroyBuffer(m_device, m_indexBuffer, nullptr);
+			m_indexBuffer = nullptr;
+		}
+		if(m_vertexMemory != nullptr)
+		{
+			m_deviceFunctions->vkFreeMemory(m_device, m_vertexMemory, nullptr);
+			m_vertexMemory = nullptr;
+		}
+		if(m_vertexBuffer != nullptr)
+		{
+			m_deviceFunctions->vkDestroyBuffer(m_device, m_vertexBuffer, nullptr);
+			m_vertexBuffer = nullptr;
+		}
+	}
+
 	void WindowSystem::tearDownShaders()
 	{
-		if(m_device != nullptr)
+		if(m_device	== nullptr)
+			return;
+		
+		if(m_pipeline != nullptr)
 		{
-			if(m_pipeline != nullptr)
-			{
-				m_deviceFunctions->vkDestroyPipeline(m_device, m_pipeline, nullptr);
-				m_pipeline = nullptr;
-			}
-			if(m_pipelineLayout != nullptr)
-			{
-				m_deviceFunctions->vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
-				m_pipelineLayout = nullptr;
-			}
+			m_deviceFunctions->vkDestroyPipeline(m_device, m_pipeline, nullptr);
+			m_pipeline = nullptr;
+		}
+		if(m_pipelineLayout != nullptr)
+		{
+			m_deviceFunctions->vkDestroyPipelineLayout(m_device, m_pipelineLayout, nullptr);
+			m_pipelineLayout = nullptr;
 		}
 	}
 
@@ -1017,7 +1071,7 @@ namespace cge
 		{
 			m_deviceFunctions->vkDeviceWaitIdle(m_device);
 		}
-
+		tearDownMeshBuffers();
 		tearDownShaders();
 		tearDownVulkan();
 		// Clean up GLFW resources and terminate the GLFW context.

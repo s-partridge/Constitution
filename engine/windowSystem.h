@@ -1,9 +1,9 @@
 #ifndef CGE_WINDOWSYSTEM_H
 #define CGE_WINDOWSYSTEM_H
 
+#include "engine.h"
 #include "system.h"
 #include "event.h"
-#include "engine.h"
 #include "broadcaster.h"
 
 
@@ -56,7 +56,7 @@ namespace cge
 		bool setUpShaders();
 		bool setUpMeshBuffers();
 
-		bool tearDownMeshBuffers();
+		void tearDownMeshBuffers();
 		void tearDownShaders();
 		void tearDownVulkan();
 
@@ -131,9 +131,9 @@ namespace cge
 		// Handle to the memory allocated for the index buffer
 		VkDeviceMemory_T *m_indexMemory = nullptr;
 
-		uint32_t m_indexCount; // Required during draw calls
+		uint32_t m_indexCount = 0; // Required during draw calls
 
-		// NOTE:
+		// NOTES:
 		// m_vulkan and m_deviceFunctions are created and owned by WindowSystem, and are deleted in tearDown.
 		// 
 		// m_window, m_vkInstance, m_surface, m_device, m_swapchain, and m_commandPool require cleanup in tearDown, but are not deleted.
@@ -147,6 +147,8 @@ namespace cge
 		// 
 		// m_commandBuffer is allocated from m_commandPool, and is freed when m_commandPool is destroyed, so it does not require explicit cleanup.
 		// m_physicalDevice requires no cleanup; it is managed by the Vulkan loader.
+		// 
+		// m_vertexBuffer, m_indexBuffer, m_vertexMemory, and m_indexMemory require cleanup in tearDown, but are not deleted.
 		//
 		// m_frameFence, m_imageAvailable, and the pointers in m_renderFinished are created in onSetUp, and are destroyed in tearDown, but not deleted. 
 		// m_renderFinished is created in onSetUp, and is deleted in tearDown.
