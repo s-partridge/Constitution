@@ -44,7 +44,8 @@ namespace cge::vulkan
 			instanceFunctions.vkGetPhysicalDeviceSurfaceCapabilitiesKHR &&
 			instanceFunctions.vkGetPhysicalDeviceSurfaceFormatsKHR != nullptr &&
 			instanceFunctions.vkGetPhysicalDeviceQueueFamilyProperties != nullptr &&
-			instanceFunctions.vkGetPhysicalDeviceSurfaceSupportKHR != nullptr;
+			instanceFunctions.vkGetPhysicalDeviceSurfaceSupportKHR != nullptr &&
+			instanceFunctions.vkGetPhysicalDeviceMemoryProperties != nullptr;
 	}
 
 	bool loadDeviceFunctions(DeviceFunctions &deviceFunctions, VulkanFunctions &instanceFunctions, VkDevice device)
@@ -95,6 +96,13 @@ namespace cge::vulkan
 		deviceFunctions.vkDestroyPipelineLayout = reinterpret_cast<PFN_vkDestroyPipelineLayout>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyPipelineLayout"));
 		deviceFunctions.vkCreateGraphicsPipelines = reinterpret_cast<PFN_vkCreateGraphicsPipelines>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreateGraphicsPipelines"));
 		deviceFunctions.vkDestroyPipeline = reinterpret_cast<PFN_vkDestroyPipeline>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyPipeline"));
+		deviceFunctions.vkCreateBuffer = reinterpret_cast<PFN_vkCreateBuffer>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreateBuffer"));
+		deviceFunctions.vkDestroyBuffer = reinterpret_cast<PFN_vkDestroyBuffer>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyBuffer"));
+		deviceFunctions.vkGetBufferMemoryRequirements = reinterpret_cast<PFN_vkGetBufferMemoryRequirements>(instanceFunctions.vkGetDeviceProcAddr(device, "vkGetBufferMemoryRequirements"));
+		
+		deviceFunctions.vkAllocateMemory = reinterpret_cast<PFN_vkAllocateMemory>(instanceFunctions.vkGetDeviceProcAddr(device, "vkAllocateMemory"));
+		deviceFunctions.vkFreeMemory = reinterpret_cast<PFN_vkFreeMemory>(instanceFunctions.vkGetDeviceProcAddr(device, "vkFreeMemory"));
+		deviceFunctions.vkBindBufferMemory = reinterpret_cast<PFN_vkBindBufferMemory>(instanceFunctions.vkGetDeviceProcAddr(device, "vkBindBufferMemory"));
 
 		// Ensure that all required device functions were successfully loaded
 		return deviceFunctions.vkDestroyDevice != nullptr &&
@@ -127,7 +135,13 @@ namespace cge::vulkan
 			deviceFunctions.vkCreatePipelineLayout != nullptr &&
 			deviceFunctions.vkDestroyPipelineLayout != nullptr &&
 			deviceFunctions.vkCreateGraphicsPipelines != nullptr &&
-			deviceFunctions.vkDestroyPipeline != nullptr;
+			deviceFunctions.vkDestroyPipeline != nullptr &&
+			deviceFunctions.vkCreateBuffer != nullptr &&
+			deviceFunctions.vkDestroyBuffer != nullptr &&
+			deviceFunctions.vkGetBufferMemoryRequirements != nullptr &&
+			deviceFunctions.vkAllocateMemory != nullptr &&
+			deviceFunctions.vkFreeMemory != nullptr &&
+			deviceFunctions.vkBindBufferMemory != nullptr;
 	}
 
 	std::uint32_t findMemoryType(const VkPhysicalDeviceMemoryProperties &memoryProperties, std::uint32_t allowedTypeBits, VkMemoryPropertyFlags wantedFlags)
@@ -142,5 +156,76 @@ namespace cge::vulkan
 				return typeIdx;
 		}
 		return UINT32_MAX;
+	}
+
+	bool createBuffer(const DeviceFunctions &deviceFunctions, VkDevice device,
+		const VkPhysicalDeviceMemoryProperties &memoryProperties,
+		VkDeviceSize size, VkBufferUsageFlags usage,
+		VkMemoryPropertyFlags memoryFlags, VkBuffer &buffer,
+		VkDeviceMemory &memory)
+	{
+		///////////////////
+		// Create buffer //
+		///////////////////
+
+		// Create a buffer with the specified size and usage flags
+		// The buffer will be used for vertex data, index data, uniform data, etc., depending on the usage flags provided
+		VkBufferCreateInfo bufferInfo = VkBufferCreateInfo();
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = size;
+		bufferInfo.usage = usage;
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		if(deviceFunctions.vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
+		{
+			return false; // TODO: Log this once error handling system exists
+		}
+
+		//////////////////////////
+		// Memory configuration //
+		//////////////////////////
+
+		// Get the size, alignment, and memory type requirements for the buffer
+		VkMemoryRequirements requirements = VkMemoryRequirements();
+		deviceFunctions.vkGetBufferMemoryRequirements(device, buffer, &requirements);
+
+		// Find a memory type that is suitable for the vertex buffer
+		std::uint32_t memoryType = findMemoryType(memoryProperties, requirements.memoryTypeBits, memoryFlags);
+		// If this is UINT32_MAX, then somehow there was no suitable memory type found. AFAICT this should never happen unless we ask for a memory flags that are not supported by the device
+		if(memoryType == UINT32_MAX)
+		{
+			// Clear the buffer if we failed to find a suitable memory type
+			deviceFunctions.vkDestroyBuffer(device, buffer, nullptr);
+			buffer = VK_NULL_HANDLE;
+			return false; // TODO: Log this once error handling system exists
+		}
+
+		// Configure memory allocation for the buffer
+		VkMemoryAllocateInfo allocInfo = VkMemoryAllocateInfo();
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = requirements.size;
+		allocInfo.memoryTypeIndex = memoryType;
+
+		// Attempt to allocate memory for the buffer
+		if(deviceFunctions.vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS)
+		{
+			// Clear the buffer if we failed to allocate memory
+			deviceFunctions.vkDestroyBuffer(device, buffer, nullptr);
+			buffer = VK_NULL_HANDLE;
+			return false; // TODO: Log this once error handling system exists
+		}
+
+		// Bind the allocated memory to the buffer
+		if(deviceFunctions.vkBindBufferMemory(device, buffer, memory, 0) != VK_SUCCESS)
+		{
+			// Clear the buffer and free the memory if we failed to bind the memory to the buffer
+			deviceFunctions.vkFreeMemory(device, memory, nullptr);
+			memory = VK_NULL_HANDLE;
+			deviceFunctions.vkDestroyBuffer(device, buffer, nullptr);
+			buffer = VK_NULL_HANDLE;
+			return false; // TODO: Log this once error handling system exists
+		}
+
+		return true;
 	}
 }

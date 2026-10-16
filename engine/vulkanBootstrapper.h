@@ -26,19 +26,19 @@ namespace cge::vulkan
 		///////////////////////////////////////////////////////////////
 
 		/**
-		 * Return a function pointer for a command
+		 * Return function pointer for command
 		 * This must be set before any other Vulkan function can be called
 		 * @see https://docs.vulkan.org/refpages/latest/refpages/source/vkGetInstanceProcAddr.html
 		 */
 		PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = nullptr;
 		/**
-		* Enumerate the available Vulkan instance layers on the system
+		* Enumerate available Vulkan instance layers on the system
 		* Used to check for validation layers and other optional features
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkEnumerateInstanceLayerProperties.html
 		*/
 		PFN_vkEnumerateInstanceLayerProperties vkEnumerateInstanceLayerProperties = nullptr;
 		/**
-		* Create a Vulkan instance
+		* Create Vulkan instance
 		* This is the first function that must be called after loading the Vulkan library.
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCreateInstance.html
 		*/
@@ -48,20 +48,20 @@ namespace cge::vulkan
 		// Instance-level function loaded after creating a Vulkan instance //
 		/////////////////////////////////////////////////////////////////////
 		/**
-		* Destroy the Vulkan instance and free associated resources
+		* Destroy Vulkan instance and free associated resources
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkDestroyInstance.html
 		*/
 		PFN_vkDestroyInstance vkDestroyInstance = nullptr;
 
 		/**
-		* Destroy a Vulkan surface created for a window
+		* Destroy Vulkan surface created for a window
 		* Used to clean up the surface when it is no longer needed.
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkDestroySurfaceKHR.html
 		*/
 		PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR = nullptr;
 
 		/**
-		* Enumerate the physical devices (GPUs) available on the system that support Vulkan
+		* Enumerate physical devices (GPUs) available on the system that support Vulkan
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkEnumeratePhysicalDevices.html
 		*/
 		PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices = nullptr;
@@ -72,7 +72,7 @@ namespace cge::vulkan
 		*/
 		PFN_vkGetPhysicalDeviceProperties vkGetPhysicalDeviceProperties = nullptr;
 		/**
-		* List a physical device's queue families and their properties (draw, compute, copy)
+		* List physical device's queue families and their properties (draw, compute, copy)
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkGetPhysicalDeviceQueueFamilyProperties.html
 		*/
 		PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties = nullptr;
@@ -82,27 +82,36 @@ namespace cge::vulkan
 		*/
 		PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR = nullptr;
 		/**
-		* Retrieve the capabilities of a surface for a given physical device, including max image count, current extent, supported transforms
+		* Retrieve capabilities of surface for a given physical device
+		* Includes max image count, current extent, supported transforms, etc.
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkGetPhysicalDeviceSurfaceCapabilitiesKHR.html
 		*/
 		PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR vkGetPhysicalDeviceSurfaceCapabilitiesKHR = nullptr;
 		/**
-		* Retrieve the supported pixel formats for a surface
+		* Retrieve supported pixel formats for a surface
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkGetPhysicalDeviceSurfaceFormatsKHR.html
 		*/
 		PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR = nullptr;
 
 		/**
-		* Retrieve a function pointer for a device-level function
+		* Retrieve function pointer for a device-level function
 		* Required to load device-level functions after creating a Vulkan device.
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkGetDeviceProcAddr.html
 		*/
 		PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr = nullptr;
 		/**
-		* Create a logical device from a physical device. This is used to create a device that can be used for rendering and compute operations.
+		* Create logical device from a physical device
+		* Used to create a device that can be used for rendering and compute operations
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCreateDevice.html
 		*/
 		PFN_vkCreateDevice vkCreateDevice = nullptr;
+
+		/**
+		* Retrieve memory properties of a physical device
+		* Used to determine the types of memory available for buffers and images, and their properties.
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkGetPhysicalDeviceMemoryProperties.html
+		*/
+		PFN_vkGetPhysicalDeviceMemoryProperties vkGetPhysicalDeviceMemoryProperties = nullptr;
 	};
 
 	struct DeviceFunctions
@@ -119,7 +128,7 @@ namespace cge::vulkan
 		PFN_vkDestroyDevice vkDestroyDevice = nullptr;
 		/**
 		* Retrieve a queue from the Vulkan device
-		* Queues are used to submit commands for execution on the GPU.
+		* Queues are used to submit commands for execution on the GPU
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkGetDeviceQueue.html
 		*/
 		PFN_vkGetDeviceQueue vkGetDeviceQueue = nullptr;
@@ -152,25 +161,25 @@ namespace cge::vulkan
 		/////////////////////////
 
 		/**
-		* Create an image view for a swapchain image
-		* These describe how an image will be accessed and used in shaders.
+		* Create image view for a swapchain image
+		* These describe how an image will be accessed and used in shaders
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCreateImageView.html
 		*/
 		PFN_vkCreateImageView vkCreateImageView = nullptr;
 		/**
-		* Destroy an image view and free associated resources.
+		* Destroy image view and free associated resources
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkDestroyImageView.html
 		*/
 		PFN_vkDestroyImageView vkDestroyImageView = nullptr;
 
 		/**
-		* Create a command pool for allocating command buffers
-		* Command pools manage the memory used for command buffers.
+		* Create command pool
+		* Command pools manage the memory used for command buffers
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCreateCommandPool.html
 		*/
 		PFN_vkCreateCommandPool vkCreateCommandPool = nullptr;
 		/**
-		* Destroy a command pool and free associated resources
+		* Destroy command pool and free associated resources
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkDestroyCommandPool.html
 		*/
 		PFN_vkDestroyCommandPool vkDestroyCommandPool = nullptr;
@@ -205,7 +214,7 @@ namespace cge::vulkan
 		*/
 		PFN_vkResetFences vkResetFences = nullptr;
 		/**
-		* Get the index of the next available swapchain image for rendering.
+		* Get index of the next available swapchain image for rendering.
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkAcquireNextImageKHR.html
 		*/
 		PFN_vkAcquireNextImageKHR vkAcquireNextImageKHR = nullptr;
@@ -213,7 +222,7 @@ namespace cge::vulkan
 		/**
 		* 
 		/**
-		* Start and recording commands to a command buffer
+		* Start recording commands to a command buffer
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkBeginCommandBuffer.html
 		*/
 		PFN_vkBeginCommandBuffer vkBeginCommandBuffer = nullptr;
@@ -224,17 +233,17 @@ namespace cge::vulkan
 		PFN_vkEndCommandBuffer vkEndCommandBuffer = nullptr;
 		
 		/**
-		* Insert a pipeline barrier into a command buffer to synchronize access to resources between different stages of the pipeline
+		* Insert pipeline barrier into command buffer to synchronize access to resources between different stages of the pipeline
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdPipelineBarrier2.html
 		*/
 		PFN_vkCmdPipelineBarrier2 vkCmdPipelineBarrier2 = nullptr;
 		/**
-		* Begin a rendering pass in a command buffer
+		* Begin rendering pass in a command buffer
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdBeginRendering.html
 		*/
 		PFN_vkCmdBeginRendering vkCmdBeginRendering = nullptr;
 		/**
-		* End a rendering pass in a command buffer
+		* End rendering pass in a command buffer
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdEndRendering.html
 		*/
 		PFN_vkCmdEndRendering vkCmdEndRendering = nullptr;
@@ -245,7 +254,7 @@ namespace cge::vulkan
 		*/
 		PFN_vkQueueSubmit2 vkQueueSubmit2 = nullptr;
 		/**
-		* Queue an image for presentation
+		* Queue image for presentation
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkQueuePresentKHR.html
 		*/
 		PFN_vkQueuePresentKHR vkQueuePresentKHR = nullptr;
@@ -262,24 +271,24 @@ namespace cge::vulkan
 		//////////////////////
 		
 		/**
-		* Create a shader module from SPIR-V bytecode
+		* Create shader module from SPIR-V bytecode
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCreateShaderModule.html
 		*/
 		PFN_vkCreateShaderModule vkCreateShaderModule = nullptr;
 		/**
-		* Destroy a shader module and free associated resources
+		* Destroy shader module and free associated resources
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkDestroyShaderModule.html
 		*/
 		PFN_vkDestroyShaderModule vkDestroyShaderModule = nullptr;
 
 		/**
-		* Create a pipeline layout
+		* Create pipeline layout
 		* A pipeline layout defines the interface between shader stages and shader resources
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCreatePipelineLayout.html
 		*/
 		PFN_vkCreatePipelineLayout vkCreatePipelineLayout = nullptr;
 		/**
-		* Destroy a pipeline layout and free associated resources
+		* Destroy pipeline layout and free associated resources
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkDestroyPipelineLayout.html
 		*/
 		PFN_vkDestroyPipelineLayout vkDestroyPipelineLayout = nullptr;
@@ -290,14 +299,47 @@ namespace cge::vulkan
 		*/
 		PFN_vkCreateGraphicsPipelines vkCreateGraphicsPipelines = nullptr;
 		/**
-		* Destroy a graphics pipeline and free associated resources
+		* Destroy graphics pipeline and free associated resources
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkDestroyPipeline.html
 		*/
 		PFN_vkDestroyPipeline vkDestroyPipeline = nullptr;
+
+		/**
+		* Create buffer object for storing vertex data, index data, uniform data, etc.
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCreateBuffer.html
+		*/
+		PFN_vkCreateBuffer vkCreateBuffer = nullptr;
+		/**
+		* Destroy buffer object and free associated resources
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkDestroyBuffer.html
+		*/
+		PFN_vkDestroyBuffer vkDestroyBuffer = nullptr;
+
+		/**
+		* Retrieve memory requirements for a buffer object
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkGetBufferMemoryRequirements.html
+		*/
+		PFN_vkGetBufferMemoryRequirements vkGetBufferMemoryRequirements = nullptr;
+
+		/**
+		* Allocate device memory for buffers and images
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkAllocateMemory.html
+		*/
+		PFN_vkAllocateMemory vkAllocateMemory = nullptr;
+		/**
+		* Free device memory previously allocated with vkAllocateMemory
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkFreeMemory.html
+		*/
+		PFN_vkFreeMemory vkFreeMemory = nullptr;
+		/**
+		* Bind a buffer to a specific memory allocation
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkBindBufferMemory.html
+		*/
+		PFN_vkBindBufferMemory vkBindBufferMemory = nullptr;
 	};
 
 	/**
-	* Load global Vulkan functions that are required before creating a Vulkan instance.
+	* Load global Vulkan functions that are required before creating a Vulkan instance
 	* 
 	* @param instanceFunctions A reference to an InstanceFunctions struct where the loaded function pointers will be stored.
 	* @param getInstanceProcAddr A function pointer to vkGetInstanceProcAddr, which must be fetched from the Vulkan loader library (e.g., via GLFW or OS-specific methods).
@@ -308,7 +350,7 @@ namespace cge::vulkan
 	*/
 	bool loadGlobalfunctions(VulkanFunctions &instanceFunctions, PFN_vkGetInstanceProcAddr getInstanceProcAddr);
 	/**
-	* Load instance-level Vulkan functions that are required after creating a Vulkan instance.
+	* Load instance-level Vulkan functions that are required after creating a Vulkan instance
 	* 
 	* @param instanceFunctions A reference to an InstanceFunctions struct where the loaded function pointers will be stored.
 	* @param instance The Vulkan instance from which to load the functions.
@@ -319,7 +361,7 @@ namespace cge::vulkan
 	*/
 	bool loadInstanceFunctions(VulkanFunctions &instanceFunctions, VkInstance instance);
 	/**
-	* Load device-level Vulkan functions that are required after creating a Vulkan device.
+	* Load device-level Vulkan functions that are required after creating a Vulkan device
 	* 
 	* @param deviceFunctions A reference to a DeviceFunctions struct where the loaded function pointers will be stored.
 	* @param instanceFunctions A reference to an InstanceFunctions struct where instance-level function pointers are stored. Must already be loaded before calling this function.
@@ -341,6 +383,12 @@ namespace cge::vulkan
 	* @return The index of a suitable memory type
 	*/
 	std::uint32_t findMemoryType(const VkPhysicalDeviceMemoryProperties &memoryProperties, std::uint32_t allowedTypeBits, VkMemoryPropertyFlags wantedFlags);
+
+	bool createBuffer(const DeviceFunctions &deviceFunctions, VkDevice device,
+		const VkPhysicalDeviceMemoryProperties &memoryProperties,
+		VkDeviceSize size,  VkBufferUsageFlags usageFlags,
+		VkMemoryPropertyFlags memoryFlags, VkBuffer &buffer,
+		VkDeviceMemory &memory);
 }
 
 #endif // CGE_VULKAN_BOOTSTRAPPER_HD
