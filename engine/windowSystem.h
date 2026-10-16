@@ -30,6 +30,9 @@ struct VkFence_T;
 struct VkPipelineLayout_T;
 struct VkPipeline_T;
 
+struct VkBuffer_T;
+struct VkDeviceMemory_T;
+
 namespace cge::vulkan
 {
 	struct VulkanFunctions;
@@ -51,9 +54,9 @@ namespace cge
 	protected:
 		bool setUpVulkan();
 		bool setUpShaders();
+		bool setUpMeshBuffers();
 
-
-
+		bool tearDownMeshBuffers();
 		void tearDownShaders();
 		void tearDownVulkan();
 
@@ -118,12 +121,30 @@ namespace cge
 		// Handle to the graphics pipeline. This is used to define the stages of the graphics pipeline (vertex shader, fragment shader, etc.) and how they are connected.
 		VkPipeline_T *m_pipeline = nullptr;
 
+		// Handle to the vertex buffer for a single object
+		VkBuffer_T *m_vertexBuffer = nullptr;
+		// Handle to the index buffer for a single object
+		VkBuffer_T *m_indexBuffer = nullptr;
+
+		// Handle to the memory allocated for the vertex buffer
+		VkDeviceMemory_T *m_vertexMemory = nullptr;
+		// Handle to the memory allocated for the index buffer
+		VkDeviceMemory_T *m_indexMemory = nullptr;
+
+		uint32_t m_indexCount; // Required during draw calls
+
 		// NOTE:
 		// m_vulkan and m_deviceFunctions are created and owned by WindowSystem, and are deleted in tearDown.
-		// The indices of m_swapchainImageViews require cleanup in tearDown. m_swapchainImages are managed by the swapchain, and do not require explicit cleanup.
-		// The arrays containing m_swapchainImages and m_swapchainImageViews are created in onSetUp, and are deleted in tearDown.
+		// 
 		// m_window, m_vkInstance, m_surface, m_device, m_swapchain, and m_commandPool require cleanup in tearDown, but are not deleted.
+		// m_pipelineLayout and m_pipeline require cleanup in tearDown, but are not deleted.
+		// 
+		// The *indices* of m_swapchainImages are managed by the swapchain, and do not require explicit cleanup.
+		// The *indices* of m_swapchainImageViews require cleanup in tearDown, but are not deleted.
+		// The arrays *containing* m_swapchainImages and m_swapchainImageViews are created in onSetUp, and are deleted in tearDown.
+		// 
 		// m_queue is created and destroyed along with m_device, and does not require explicit cleanup.
+		// 
 		// m_commandBuffer is allocated from m_commandPool, and is freed when m_commandPool is destroyed, so it does not require explicit cleanup.
 		// m_physicalDevice requires no cleanup; it is managed by the Vulkan loader.
 		//

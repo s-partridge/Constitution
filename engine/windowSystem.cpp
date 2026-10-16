@@ -582,6 +582,72 @@ namespace cge
 		return true;
 	}
 
+	bool WindowSystem::setUpMeshBuffers()
+	{
+		///////////////////////
+		// Preliminary setup //
+		///////////////////////
+		// These are static for the given device, so we can fetch them once and store them for later use
+		// For now we're only using them here
+		VkPhysicalDeviceMemoryProperties memoryProperties = VkPhysicalDeviceMemoryProperties();
+		m_vulkan->vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memoryProperties);
+
+		// Placeholder struct standing in for actual obj data
+		mesh::Mesh mesh = mesh::buildSimpleMesh(
+			primitives::cubeFaces, 6,
+			primitives::cubePositions, 8,
+			primitives::colorPalette, 6
+		);
+
+		///////////////////
+		// Vertex buffer //
+		///////////////////
+
+		// Logical size of the vertex buffer in bytes
+		VkDeviceSize vertexBufferSize = mesh.vertexCount * sizeof(primitives::Vertex);
+		// Configure the buffer to be used as a vertex buffer and as a transfer destination
+		VkBufferUsageFlags vertexUsage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		// Configure the backing memory to be device-local, as opposed to host-visible.
+		// This means that the memory will be allocated on the GPU, which is faster for rendering, but cannot be accessed directly by the CPU.
+		// We'll need to use a staging buffer to transfer data from the CPU to the GPU.
+		VkMemoryPropertyFlags vertexMemoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+		// Create the vertex buffer and allocate memory for it. This is a helper function that encapsulates the Vulkan buffer creation and memory allocation process.
+		if(!vulkan::createBuffer(
+			*m_deviceFunctions, m_device,
+			memoryProperties, vertexBufferSize,
+			vertexUsage, vertexMemoryFlags,
+			m_vertexBuffer, m_vertexMemory))
+		{
+			return false; // TODO: Log this once error handling system exists.
+		}
+
+		////////////////////
+		// Staging buffer //
+		////////////////////
+		
+		// The staging buffer will be used as a transfer source, to copy data to the vertex buffer.
+		VkBufferUsageFlags stagingUsage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		// The staging buffer needs to be host-visible and coherent, so that the CPU can write to it directly and the GPU will see the changes without needing to flush or invalidate caches.
+		VkMemoryPropertyFlags stagingMemoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+		// Create local variables to hold the staging buffer and its memory
+		VkBuffer stagingBuffer = VK_NULL_HANDLE;
+		VkDeviceMemory stagingMemory = VK_NULL_HANDLE;
+
+		// Create the staging buffer and allocate memory for it. This is a helper function that encapsulates the Vulkan buffer creation and memory allocation process.
+		if(!vulkan::createBuffer(
+			*m_deviceFunctions, m_device,
+			memoryProperties, vertexBufferSize,
+			stagingUsage, stagingMemoryFlags,
+			stagingBuffer, stagingMemory))
+		{
+			return false; // TODO: Log this once error handling system exists.
+		}
+
+		return true;
+	}
+
 	void WindowSystem::onSetUp()
 	{
 		//////////////////
