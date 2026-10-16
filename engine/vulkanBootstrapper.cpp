@@ -56,17 +56,21 @@ namespace cge::vulkan
 		// Load device-level functions
 		deviceFunctions.vkDestroyDevice = reinterpret_cast<PFN_vkDestroyDevice>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyDevice"));
 		deviceFunctions.vkGetDeviceQueue = reinterpret_cast<PFN_vkGetDeviceQueue>(instanceFunctions.vkGetDeviceProcAddr(device, "vkGetDeviceQueue"));
+
 		// Load swapchain functions
 		deviceFunctions.vkCreateSwapchainKHR = reinterpret_cast<PFN_vkCreateSwapchainKHR>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreateSwapchainKHR"));
 		deviceFunctions.vkDestroySwapchainKHR = reinterpret_cast<PFN_vkDestroySwapchainKHR>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroySwapchainKHR"));
+
 		// Load swapchain image functions
 		deviceFunctions.vkGetSwapchainImagesKHR = reinterpret_cast<PFN_vkGetSwapchainImagesKHR>(instanceFunctions.vkGetDeviceProcAddr(device, "vkGetSwapchainImagesKHR"));
 		deviceFunctions.vkCreateImageView = reinterpret_cast<PFN_vkCreateImageView>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreateImageView"));
 		deviceFunctions.vkDestroyImageView = reinterpret_cast<PFN_vkDestroyImageView>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyImageView"));
+
 		// Load command pool and command buffer functions
 		deviceFunctions.vkCreateCommandPool = reinterpret_cast<PFN_vkCreateCommandPool>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreateCommandPool"));
 		deviceFunctions.vkDestroyCommandPool = reinterpret_cast<PFN_vkDestroyCommandPool>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyCommandPool"));
 		deviceFunctions.vkAllocateCommandBuffers = reinterpret_cast<PFN_vkAllocateCommandBuffers>(instanceFunctions.vkGetDeviceProcAddr(device, "vkAllocateCommandBuffers"));
+
 		// Load synchronization primitives
 		deviceFunctions.vkCreateSemaphore = reinterpret_cast<PFN_vkCreateSemaphore>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreateSemaphore"));
 		deviceFunctions.vkDestroySemaphore = reinterpret_cast<PFN_vkDestroySemaphore>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroySemaphore"));
@@ -78,12 +82,15 @@ namespace cge::vulkan
 		deviceFunctions.vkResetFences = reinterpret_cast<PFN_vkResetFences>(instanceFunctions.vkGetDeviceProcAddr(device, "vkResetFences"));
 		deviceFunctions.vkAcquireNextImageKHR = reinterpret_cast<PFN_vkAcquireNextImageKHR>(instanceFunctions.vkGetDeviceProcAddr(device, "vkAcquireNextImageKHR"));
 
-		// Load render-time command buffer functions
+		// Load command buffer functions
 		deviceFunctions.vkBeginCommandBuffer = reinterpret_cast<PFN_vkBeginCommandBuffer>(instanceFunctions.vkGetDeviceProcAddr(device, "vkBeginCommandBuffer"));
 		deviceFunctions.vkEndCommandBuffer = reinterpret_cast<PFN_vkEndCommandBuffer>(instanceFunctions.vkGetDeviceProcAddr(device, "vkEndCommandBuffer"));
 		deviceFunctions.vkCmdPipelineBarrier2 = reinterpret_cast<PFN_vkCmdPipelineBarrier2>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCmdPipelineBarrier2"));
 		deviceFunctions.vkCmdBeginRendering = reinterpret_cast<PFN_vkCmdBeginRendering>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCmdBeginRendering"));
 		deviceFunctions.vkCmdEndRendering = reinterpret_cast<PFN_vkCmdEndRendering>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCmdEndRendering"));
+		deviceFunctions.vkCmdBindPipeline = reinterpret_cast<PFN_vkCmdBindPipeline>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCmdBindPipeline"));
+		deviceFunctions.vkCmdSetViewport = reinterpret_cast<PFN_vkCmdSetViewport>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCmdSetViewport"));
+		deviceFunctions.vkCmdSetScissor = reinterpret_cast<PFN_vkCmdSetScissor>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCmdSetScissor"));
 
 		// Load render-time queue functions
 		deviceFunctions.vkQueueSubmit2 = reinterpret_cast<PFN_vkQueueSubmit2>(instanceFunctions.vkGetDeviceProcAddr(device, "vkQueueSubmit2"));
@@ -114,6 +121,10 @@ namespace cge::vulkan
 
 		deviceFunctions.vkCmdCopyBuffer = reinterpret_cast<PFN_vkCmdCopyBuffer>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCmdCopyBuffer"));
 		deviceFunctions.vkQueueWaitIdle = reinterpret_cast<PFN_vkQueueWaitIdle>(instanceFunctions.vkGetDeviceProcAddr(device, "vkQueueWaitIdle"));
+		deviceFunctions.vkCmdBindVertexBuffers = reinterpret_cast<PFN_vkCmdBindVertexBuffers>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCmdBindVertexBuffers"));
+		deviceFunctions.vkCmdBindIndexBuffer = reinterpret_cast<PFN_vkCmdBindIndexBuffer>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCmdBindIndexBuffer"));
+		deviceFunctions.vkCmdPushConstants = reinterpret_cast<PFN_vkCmdPushConstants>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCmdPushConstants"));
+		deviceFunctions.vkCmdDrawIndexed = reinterpret_cast<PFN_vkCmdDrawIndexed>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCmdDrawIndexed"));
 
 		// Ensure that all required device functions were successfully loaded
 		return deviceFunctions.vkDestroyDevice != nullptr &&
@@ -156,7 +167,14 @@ namespace cge::vulkan
 			deviceFunctions.vkMapMemory != nullptr &&
 			deviceFunctions.vkUnmapMemory != nullptr &&
 			deviceFunctions.vkCmdCopyBuffer != nullptr &&
-			deviceFunctions.vkQueueWaitIdle != nullptr;
+			deviceFunctions.vkQueueWaitIdle != nullptr &&
+			deviceFunctions.vkCmdBindPipeline != nullptr &&
+			deviceFunctions.vkCmdSetViewport != nullptr &&
+			deviceFunctions.vkCmdSetScissor != nullptr &&
+			deviceFunctions.vkCmdBindVertexBuffers != nullptr &&
+			deviceFunctions.vkCmdBindIndexBuffer != nullptr &&
+			deviceFunctions.vkCmdPushConstants != nullptr &&
+			deviceFunctions.vkCmdDrawIndexed != nullptr;
 	}
 
 	std::uint32_t findMemoryType(const VkPhysicalDeviceMemoryProperties &memoryProperties, std::uint32_t allowedTypeBits, VkMemoryPropertyFlags wantedFlags)

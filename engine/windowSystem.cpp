@@ -791,7 +791,7 @@ namespace cge
 		// Make sure setup was successful before trying to render. If not, just return.
 		// The fence was the last thing created in Vulkan setup, so if it's nullptr, we know setup did not complete successfully.
 		// TODO: We shouldn't need this. The engine should not call render() if setup failed. This is a temporary measure until the engine has a proper error handling system.
-		if(m_frameFence == nullptr)
+		if(m_frameFence == nullptr || m_pipeline == nullptr || m_vertexBuffer == nullptr || m_indexBuffer == nullptr)
 			return;
 
 		// Wait until the GPU has finished the previous frame.
@@ -869,14 +869,78 @@ namespace cge
 		renderingInfo.colorAttachmentCount = 1;
 		renderingInfo.pColorAttachments = &colorAttachment;
 
+		///////////////////////////
+		// Shader pipeline phase //
+		///////////////////////////
 		m_deviceFunctions->vkCmdBeginRendering(m_commandBuffer, &renderingInfo);
-		// Later, draw calls will go here.
+
+		// Bind the shader pipeline from setUpShaders() to the command buffer
+		// This tells Vulkan to use the specified pipeline for subsequent draw calls
+		m_deviceFunctions->vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+		VkViewport viewport = VkViewport();
+		viewport.x = 0.0f;
+		viewport.y = static_cast<float>(m_swapchainHeight);
+		viewport.width = static_cast<float>(m_swapchainWidth);
+		viewport.height = -static_cast<float>(m_swapchainHeight); // Force Vulkan to treat the viewport as having the origin at bottom-left instead of top-left. This is necessary because Vulkan's coordinate system has the origin at the top-left, while OpenGL's coordinate system has the origin at the bottom-left. This is a common source of confusion when porting code between the two APIs.
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+		// We only have one viewport, so we bind it to the command buffer at index 0. If we had multiple viewports, we would bind them at different indices.
+		m_deviceFunctions->vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
+
+		VkRect2D scissor = VkRect2D();
+		scissor.extent.width = m_swapchainWidth;
+		scissor.extent.height = m_swapchainHeight;
+		// Bind the single scissor rectangle to the command buffer
+		m_deviceFunctions->vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
+
+		VkDeviceSize vertexOffset = 0;
+		// All vertex data is stored in a single buffer, so we bind it to the command buffer at binding index 0. If we had multiple vertex buffers, we would bind them at different indices.
+		m_deviceFunctions->vkCmdBindVertexBuffers(m_commandBuffer, 0, 1, &m_vertexBuffer, &vertexOffset);
+		// Bind the index buffer to the command buffer. Only one index buffer can be bound at a time.
+		// Index type is set to 32-bit unsigned integers, which matches the type of the indices in the mesh. UINT16 can also be used for smaller meshes, capping the maximum index value at 65535.
+		m_deviceFunctions->vkCmdBindIndexBuffer(m_commandBuffer, m_indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+		// Identity matrix, written in column-major order.
+		// CRITICALLY, that means each *row* of the initialization list is a *column* of the matrix.
+		float mvp[4][4] = {
+			{1.0f, 0.0f, 0.0f, 0.0f},
+			{0.0f, 1.0f, 0.0f, 0.0f},
+			{0.0f, 0.0f, 1.0f, 0.0f},
+			{0.0f, 0.0f, 0.0f, 1.0f}
+		};
+		// [column z][row z] = -0.5f;
+		// Scale and flip the z-axis to fit the depth range of 0.0 to 1.0
+		mvp[2][2] = -0.5f;
+		// [column w][row z] = 0.5f;
+		// Translate the z-axis to fit the depth range of 0.0 to 1.0
+		mvp[3][2] = 0.5f; 
+
+		// Copy the MVP matrix to the push constant range of the pipeline layout as a flat array of floats, as declared in the shader layout, in the vertex stage at offset 0.
+		m_deviceFunctions->vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(mvp), mvp);
+
+		// Draw the mesh using the index buffer
+		m_deviceFunctions->vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
+		// End the rendering phase. This finalizes the rendering commands and prepares the image for presentation.
 		m_deviceFunctions->vkCmdEndRendering(m_commandBuffer);
 
+		////////////////////////
+		// Presentation Phase //
+		////////////////////////
 		// Prepare the image for presentation.
+		// A barrier synchronizes phases of the pipeline, dependent on the stage and access masks set. It ensures that required writes are completed before the reads begin, and that the data is visible to the next stage of the pipeline.
+		// In terms of stages and masks:
+		// After the `srcStage` step finishes,
+		// flush its `srcAccess` writes;
+		// then let the `dstStage` step begin,
+		// with fresh data for its `dstAccess` reads or writes.
+		
+		// For this barrier:
+		// After the color output step finishes,
+		// flush its color writes;
+		// then let nothing in particular begin, with nothing to refresh.
 		VkImageMemoryBarrier2 toPresent = VkImageMemoryBarrier2();
 		toPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-		// What are these stages? This is the same as the settings for toDrawing, but the srcAccessMask is set this time.
+		// 
 		toPresent.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 		toPresent.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 		// ???
@@ -898,12 +962,15 @@ namespace cge
 
 		m_deviceFunctions->vkEndCommandBuffer(m_commandBuffer);
 
-		// Info structs for subbmitting the semaphores and command buffer to the queue.
+		// Info structs for submitting the semaphores and command buffer to the queue.
+		// Configure a semaphore to wait on the color attachment output stage
 		VkSemaphoreSubmitInfo waitInfo = VkSemaphoreSubmitInfo();
 		waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
 		waitInfo.semaphore = m_imageAvailable;
 		waitInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 
+		// Configure a semaphore to signal when the rendering is finished (all commands have been executed and the image is ready for presentation)
+		// When passed as a signal semaphore to vkQueueSubmit2, the queue will signal the semaphore when the command buffer has finished executing.
 		VkSemaphoreSubmitInfo signalInfo = VkSemaphoreSubmitInfo();
 		signalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
 		signalInfo.semaphore = m_renderFinished[imageIndex];

@@ -249,6 +249,43 @@ namespace cge::vulkan
 		*/
 		PFN_vkCmdBeginRendering vkCmdBeginRendering = nullptr;
 		/**
+		* Bind a graphics or compute pipeline to a command buffer
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdBindPipeline.html
+		*/
+		PFN_vkCmdBindPipeline vkCmdBindPipeline = nullptr;
+		/**
+		* Set the viewport for a command buffer
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdSetViewport.html
+		*/
+		PFN_vkCmdSetViewport vkCmdSetViewport = nullptr;
+		/**
+		* Set the scissor rectangle for a command buffer
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdSetScissor.html
+		*/
+		PFN_vkCmdSetScissor vkCmdSetScissor = nullptr;
+		/**
+		* Bind vertex buffers to a command buffer
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdBindVertexBuffers.html
+		*/
+		PFN_vkCmdBindVertexBuffers vkCmdBindVertexBuffers = nullptr;
+		/**
+		* Bind index buffer to a command buffer
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdBindIndexBuffer.html
+		*/
+		PFN_vkCmdBindIndexBuffer vkCmdBindIndexBuffer = nullptr;
+		/**
+		* Push constants to a command buffer
+		* Push constants are small pieces of data that can be passed directly to shaders without the need for a buffer or descriptor set.
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdPushConstants.html
+		*/
+		PFN_vkCmdPushConstants vkCmdPushConstants = nullptr;
+		/**
+		* Issue a draw call using indexed geometry
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdDrawIndexed.html
+		*/
+		PFN_vkCmdDrawIndexed vkCmdDrawIndexed = nullptr;
+
+		/**
 		* End rendering pass in a command buffer
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdEndRendering.html
 		*/
