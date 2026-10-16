@@ -119,7 +119,6 @@ namespace cge::vulkan
 		//////////////////////
 		// Device functions //
 		//////////////////////
-		// 
 		
 		/** 
 		* Destroy the Vulkan device and free associated resources
@@ -136,7 +135,6 @@ namespace cge::vulkan
 		/////////////////////////
 		// Swapchain functions //
 		/////////////////////////
-
 		/**
 		* Create a swapchain for a surface
 		* Swap chains are used to manage multiple images that are presented to a surface in a controlled manner.
@@ -148,18 +146,20 @@ namespace cge::vulkan
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkDestroySwapchainKHR.html
 		*/
 		PFN_vkDestroySwapchainKHR vkDestroySwapchainKHR = nullptr;
-
 		/**
 		* Retrieve the images associated with a swapchain
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkGetSwapchainImagesKHR.html
 		*/
 		PFN_vkGetSwapchainImagesKHR vkGetSwapchainImagesKHR = nullptr;
-		// Create an image view for a swapchain image. These describe how the image will be accessed and used in shaders.
+		/**
+		* Get index of the next available swapchain image for rendering.
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkAcquireNextImageKHR.html
+		*/
+		PFN_vkAcquireNextImageKHR vkAcquireNextImageKHR = nullptr;
 
 		/////////////////////////
 		// ImageView functions //
 		/////////////////////////
-
 		/**
 		* Create image view for a swapchain image
 		* These describe how an image will be accessed and used in shaders
@@ -172,6 +172,9 @@ namespace cge::vulkan
 		*/
 		PFN_vkDestroyImageView vkDestroyImageView = nullptr;
 
+		////////////////////////////
+		// Command pool functions //
+		////////////////////////////
 		/**
 		* Create command pool
 		* Command pools manage the memory used for command buffers
@@ -183,12 +186,6 @@ namespace cge::vulkan
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkDestroyCommandPool.html
 		*/
 		PFN_vkDestroyCommandPool vkDestroyCommandPool = nullptr;
-		/**
-		* Allocate command buffers from a command pool
-		* Command buffers are used to record rendering and compute commands.
-		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkAllocateCommandBuffers.html
-		*/
-		PFN_vkAllocateCommandBuffers vkAllocateCommandBuffers = nullptr;
 
 		//////////////////////////////
 		//Synchronization functions //
@@ -199,10 +196,9 @@ namespace cge::vulkan
 		PFN_vkCreateFence vkCreateFence = nullptr;
 		PFN_vkDestroyFence vkDestroyFence = nullptr;
 
-		/////////////////////////////////////////
-		// Live commands used during rendering //
-		/////////////////////////////////////////
-
+		/////////////////////
+		// Fence functions //
+		/////////////////////
 		/**
 		* Wait for one or more fences owned by a device to become signaled
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkWaitForFences.html
@@ -213,14 +209,16 @@ namespace cge::vulkan
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkResetFences.html
 		*/
 		PFN_vkResetFences vkResetFences = nullptr;
-		/**
-		* Get index of the next available swapchain image for rendering.
-		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkAcquireNextImageKHR.html
-		*/
-		PFN_vkAcquireNextImageKHR vkAcquireNextImageKHR = nullptr;
 
+		//////////////////////////////
+		// Command buffer functions //
+		//////////////////////////////
 		/**
-		* 
+		* Allocate command buffers from a command pool
+		* Command buffers are used to record rendering and compute commands.
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkAllocateCommandBuffers.html
+		*/
+		PFN_vkAllocateCommandBuffers vkAllocateCommandBuffers = nullptr;
 		/**
 		* Start recording commands to a command buffer
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkBeginCommandBuffer.html
@@ -231,7 +229,15 @@ namespace cge::vulkan
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkEndCommandBuffer.html
 		*/
 		PFN_vkEndCommandBuffer vkEndCommandBuffer = nullptr;
+		/**
+		* Copy data from one buffer to another
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdCopyBuffer.html
+		*/
+		PFN_vkCmdCopyBuffer vkCmdCopyBuffer = nullptr;
 		
+		////////////////////////
+		// Pipeline functions //
+		////////////////////////
 		/**
 		* Insert pipeline barrier into command buffer to synchronize access to resources between different stages of the pipeline
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCmdPipelineBarrier2.html
@@ -258,6 +264,16 @@ namespace cge::vulkan
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkQueuePresentKHR.html
 		*/
 		PFN_vkQueuePresentKHR vkQueuePresentKHR = nullptr;
+
+		////////////////////
+		// Wait functions //
+		////////////////////
+		/**
+		* Wait for a queue to finish all pending operations
+		* This is used to ensure that all commands submitted to the queue have completed
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkQueueWaitIdle.html
+		*/
+		PFN_vkQueueWaitIdle vkQueueWaitIdle = nullptr;
 		/**
 		* Wait for the device to finish all pending operations
 		* This is used to ensure that all commands have completed before cleaning up resources
@@ -304,6 +320,9 @@ namespace cge::vulkan
 		*/
 		PFN_vkDestroyPipeline vkDestroyPipeline = nullptr;
 
+		//////////////////////
+		// Memory functions //
+		//////////////////////
 		/**
 		* Create buffer object for storing vertex data, index data, uniform data, etc.
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkCreateBuffer.html
@@ -336,6 +355,17 @@ namespace cge::vulkan
 		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkBindBufferMemory.html
 		*/
 		PFN_vkBindBufferMemory vkBindBufferMemory = nullptr;
+
+		/**
+		* Map a memory object into the application's address space
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkMapMemory.html
+		*/
+		PFN_vkMapMemory vkMapMemory = nullptr;
+		/**
+		* Unmap a previously mapped memory object
+		* @see https://docs.vulkan.org/refpages/latest/refpages/source/vkUnmapMemory.html
+		*/
+		PFN_vkUnmapMemory vkUnmapMemory = nullptr;
 	};
 
 	/**

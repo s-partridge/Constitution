@@ -98,11 +98,19 @@ namespace cge::vulkan
 		deviceFunctions.vkDestroyPipeline = reinterpret_cast<PFN_vkDestroyPipeline>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyPipeline"));
 		deviceFunctions.vkCreateBuffer = reinterpret_cast<PFN_vkCreateBuffer>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCreateBuffer"));
 		deviceFunctions.vkDestroyBuffer = reinterpret_cast<PFN_vkDestroyBuffer>(instanceFunctions.vkGetDeviceProcAddr(device, "vkDestroyBuffer"));
+		
+		// Load memory functions
 		deviceFunctions.vkGetBufferMemoryRequirements = reinterpret_cast<PFN_vkGetBufferMemoryRequirements>(instanceFunctions.vkGetDeviceProcAddr(device, "vkGetBufferMemoryRequirements"));
 		
 		deviceFunctions.vkAllocateMemory = reinterpret_cast<PFN_vkAllocateMemory>(instanceFunctions.vkGetDeviceProcAddr(device, "vkAllocateMemory"));
 		deviceFunctions.vkFreeMemory = reinterpret_cast<PFN_vkFreeMemory>(instanceFunctions.vkGetDeviceProcAddr(device, "vkFreeMemory"));
 		deviceFunctions.vkBindBufferMemory = reinterpret_cast<PFN_vkBindBufferMemory>(instanceFunctions.vkGetDeviceProcAddr(device, "vkBindBufferMemory"));
+
+		deviceFunctions.vkMapMemory = reinterpret_cast<PFN_vkMapMemory>(instanceFunctions.vkGetDeviceProcAddr(device, "vkMapMemory"));
+		deviceFunctions.vkUnmapMemory = reinterpret_cast<PFN_vkUnmapMemory>(instanceFunctions.vkGetDeviceProcAddr(device, "vkUnmapMemory"));
+
+		deviceFunctions.vkCmdCopyBuffer = reinterpret_cast<PFN_vkCmdCopyBuffer>(instanceFunctions.vkGetDeviceProcAddr(device, "vkCmdCopyBuffer"));
+		deviceFunctions.vkQueueWaitIdle = reinterpret_cast<PFN_vkQueueWaitIdle>(instanceFunctions.vkGetDeviceProcAddr(device, "vkQueueWaitIdle"));
 
 		// Ensure that all required device functions were successfully loaded
 		return deviceFunctions.vkDestroyDevice != nullptr &&
@@ -141,7 +149,11 @@ namespace cge::vulkan
 			deviceFunctions.vkGetBufferMemoryRequirements != nullptr &&
 			deviceFunctions.vkAllocateMemory != nullptr &&
 			deviceFunctions.vkFreeMemory != nullptr &&
-			deviceFunctions.vkBindBufferMemory != nullptr;
+			deviceFunctions.vkBindBufferMemory != nullptr &&
+			deviceFunctions.vkMapMemory != nullptr &&
+			deviceFunctions.vkUnmapMemory != nullptr &&
+			deviceFunctions.vkCmdCopyBuffer != nullptr &&
+			deviceFunctions.vkQueueWaitIdle != nullptr;
 	}
 
 	std::uint32_t findMemoryType(const VkPhysicalDeviceMemoryProperties &memoryProperties, std::uint32_t allowedTypeBits, VkMemoryPropertyFlags wantedFlags)

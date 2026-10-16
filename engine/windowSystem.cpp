@@ -645,6 +645,72 @@ namespace cge
 			return false; // TODO: Log this once error handling system exists.
 		}
 
+		////////////////////
+		// Memory mapping //
+		////////////////////
+
+		// Map the staging buffer memory to a CPU-accessible pointer. This allows us to write data to the buffer directly from the CPU.
+		void *stagingData = nullptr;
+		if(m_deviceFunctions->vkMapMemory(m_device, stagingMemory, 0, vertexBufferSize, 0, &stagingData) != VK_SUCCESS)
+		{
+			// Clear up the staging buffer and its memory before returning, since we failed to map the memory.
+			m_deviceFunctions->vkFreeMemory(m_device, stagingMemory, nullptr);
+			m_deviceFunctions->vkDestroyBuffer(m_device, stagingBuffer, nullptr);
+			return false; // TODO: Log this once error handling system exists.
+		}
+
+		// Copy the vertex data from the mesh to the staging buffer
+		// This puts the data in the staging buffer on the CPU side, which will then be transferred to the GPU-side vertex buffer in a later step
+		std::memcpy(stagingData, mesh.vertices, static_cast<std::size_t>(vertexBufferSize));
+
+		// Unmap the staging buffer memory now that we're done writing to it
+		// Since the buffer is going to be freed immediately after this, it isn't actually necessary to unmap it, but it's here for consistency.
+		// Unmapping is primarily necessary when the buffer needs to be re-mapped later
+		m_deviceFunctions->vkUnmapMemory(m_device, stagingMemory);
+
+		///////////////////
+		// Data transfer //
+		///////////////////
+		// Configure the command buffer to be used for the transfer operation
+		VkCommandBufferBeginInfo copyBeginInfo = VkCommandBufferBeginInfo();
+		copyBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		copyBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		m_deviceFunctions->vkBeginCommandBuffer(m_commandBuffer, &copyBeginInfo);
+
+		// Select the entire buffer to be copied. No offset, size of the input buffer
+		VkBufferCopy copyRegion = VkBufferCopy();
+		copyRegion.srcOffset = 0;
+		copyRegion.dstOffset = 0;
+		copyRegion.size = vertexBufferSize;
+		// Copy the data from the staging buffer to the vertex buffer
+		m_deviceFunctions->vkCmdCopyBuffer(m_commandBuffer, stagingBuffer, m_vertexBuffer, 1, &copyRegion);
+
+		m_deviceFunctions->vkEndCommandBuffer(m_commandBuffer);
+
+		// Configure the submit info for the command buffer
+		VkCommandBufferSubmitInfo copyCommandInfo = VkCommandBufferSubmitInfo();
+		copyCommandInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+		copyCommandInfo.commandBuffer = m_commandBuffer;
+
+		// Copy the data from the staging buffer to the vertex buffer
+		// No synchronization is used for this operation, since it is a one-time transfer and we don't need to synchronize with any other operations
+		VkSubmitInfo2 copySubmitInfo = VkSubmitInfo2();
+		copySubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+		copySubmitInfo.commandBufferInfoCount = 1;
+		copySubmitInfo.pCommandBufferInfos = &copyCommandInfo;
+
+		VkResult copyResult = m_deviceFunctions->vkQueueSubmit2(m_queue, 1, &copySubmitInfo, VK_NULL_HANDLE);
+		if(copyResult == VK_SUCCESS)
+			m_deviceFunctions->vkQueueWaitIdle(m_queue); // Wait for the transfer to complete before cleaning up the staging buffer
+
+		m_deviceFunctions->vkFreeMemory(m_device, stagingMemory, nullptr);
+		m_deviceFunctions->vkDestroyBuffer(m_device, stagingBuffer, nullptr);
+
+		if(copyResult != VK_SUCCESS)
+		{
+			return false; // TODO: Log this once error handling system exists.
+		}
+
 		return true;
 	}
 
@@ -672,6 +738,11 @@ namespace cge
 		}
 
 		if(!setUpShaders())
+		{
+			return; // TODO: Log this once error handling system exists.
+		}
+
+		if(!setUpMeshBuffers())
 		{
 			return; // TODO: Log this once error handling system exists.
 		}
