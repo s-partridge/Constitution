@@ -787,11 +787,57 @@ namespace cge
 		if(glfwWindowShouldClose(m_window) || glfwGetKey(m_window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 			m_windowSystemBroadcaster.broadcast(*m_shutdownChannel, true);
 
-		m_drawable.rotation.z += m_spinSpeed * std::chrono::duration<float>(dt).count();
-		if(m_drawable.rotation.z > math::PI)
-			m_drawable.rotation.z -= math::TAU;
-		else if(m_drawable.rotation.z < -math::PI)
-			m_drawable.rotation.z += math::TAU;
+		float deltaTime = std::chrono::duration<float>(dt).count();
+
+		// Move the drawable based on keyboard input
+		// Rotation up/down
+		if(glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS)
+			m_drawable.rotation.y += m_moveSpeed * deltaTime;
+		else if(glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS)
+			m_drawable.rotation.y -= m_moveSpeed * deltaTime;
+		// Rotation left/right
+		if(glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS)
+			m_drawable.rotation.x -= m_moveSpeed * deltaTime;
+		else if(glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS)
+			m_drawable.rotation.x += m_moveSpeed * deltaTime;
+		// Rotation roll
+		if(glfwGetKey(m_window, GLFW_KEY_Q) == GLFW_PRESS)
+			m_drawable.rotation.z -= m_moveSpeed * deltaTime;
+		else if(glfwGetKey(m_window, GLFW_KEY_E) == GLFW_PRESS)
+			m_drawable.rotation.z += m_moveSpeed * deltaTime;
+
+		// Translation up/down
+		if(glfwGetKey(m_window, GLFW_KEY_UP) == GLFW_PRESS)
+			m_drawable.position.z += m_moveSpeed * deltaTime;
+		else if(glfwGetKey(m_window, GLFW_KEY_DOWN) == GLFW_PRESS)
+			m_drawable.position.z -= m_moveSpeed * deltaTime;
+		// Translation left/right
+		if(glfwGetKey(m_window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+			m_drawable.position.x += m_moveSpeed * deltaTime;
+		else if(glfwGetKey(m_window, GLFW_KEY_LEFT) == GLFW_PRESS)
+			m_drawable.position.x -= m_moveSpeed * deltaTime;
+		// Translation forward/backward
+		if(glfwGetKey(m_window, GLFW_KEY_PAGE_UP) == GLFW_PRESS)
+			m_drawable.position.y += m_moveSpeed * deltaTime;
+		else if(glfwGetKey(m_window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS)
+			m_drawable.position.y -= m_moveSpeed * deltaTime;
+
+		// Reset the drawable's position and rotation
+		if(glfwGetKey(m_window, GLFW_KEY_R) == GLFW_PRESS)
+		{
+			m_drawable.position = math::Vec3f(0.0f, 3.0f, 0.0f);
+			m_drawable.rotation = math::Vec3f(0.0f, 0.0f, 0.0f);
+		}
+
+		// Auto-rotate
+		if(glfwGetKey(m_window, GLFW_KEY_SPACE) == GLFW_PRESS)
+		{
+			m_drawable.rotation.z += m_spinSpeed * deltaTime;
+			if(m_drawable.rotation.z > math::PI)
+				m_drawable.rotation.z -= math::TAU;
+			else if(m_drawable.rotation.z < -math::PI)
+				m_drawable.rotation.z += math::TAU;
+		}
 	}
 
 	void WindowSystem::render()

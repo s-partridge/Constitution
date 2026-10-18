@@ -136,6 +136,7 @@ namespace cge
 		// Transform data for an object on screen
 		mesh::DrawableBase m_drawable = mesh::DrawableBase();
 		float m_spinSpeed = 1.0f; // Radians per second
+		float m_moveSpeed = 0.5f; // Units per second
 
 		// NOTES:
 		// m_vulkan and m_deviceFunctions are created and owned by WindowSystem, and are deleted in tearDown.
