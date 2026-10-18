@@ -915,6 +915,10 @@ namespace cge
 		// Translate the z-axis to fit the depth range of 0.0 to 1.0
 		mvp[3][2] = 0.5f; 
 
+		// Fix aspect ratio of the viewport. Scale x by the ratio of height to width, so that the viewport is not stretched or squashed
+		// The viewport is in normalized device coordinates, from -1 to 1 in both x and y, so it has no knowledge of the pixel dimensions of the viewport.
+		mvp[0][0] = static_cast<float>(m_swapchainHeight) / static_cast<float>(m_swapchainWidth);
+
 		// Copy the MVP matrix to the push constant range of the pipeline layout as a flat array of floats, as declared in the shader layout, in the vertex stage at offset 0.
 		m_deviceFunctions->vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(mvp), mvp);
 
