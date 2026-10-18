@@ -5,7 +5,7 @@
 #include "system.h"
 #include "event.h"
 #include "broadcaster.h"
-
+#include "renderPrimitives.h"
 
 // Types for GLFW and Vulkan instances and functions
 struct GLFWwindow;
@@ -132,6 +132,10 @@ namespace cge
 		VkDeviceMemory_T *m_indexMemory = nullptr;
 
 		uint32_t m_indexCount = 0; // Required during draw calls
+
+		// Transform data for an object on screen
+		mesh::DrawableBase m_drawable = mesh::DrawableBase();
+		float m_spinSpeed = 1.0f; // Radians per second
 
 		// NOTES:
 		// m_vulkan and m_deviceFunctions are created and owned by WindowSystem, and are deleted in tearDown.

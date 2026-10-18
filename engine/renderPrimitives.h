@@ -11,6 +11,11 @@
 
 namespace cge::math
 {
+	constexpr double PI = 3.14159265358979323846;
+	constexpr double TAU = 2.0 * PI;
+	constexpr double DEG_TO_RAD = PI / 180.0;
+	constexpr double RAD_TO_DEG = 180.0 / PI;
+
 	namespace axis
 	{
 		constexpr std::size_t X = 0;
@@ -80,6 +85,11 @@ namespace cge::math
 				mat.mat[Z][Z] = 1.0f;
 				mat.mat[W][W] = 1.0f;
 				return mat;
+			}
+
+			static Mat4f rotation(const Vec3f& eulerAngles)
+			{
+				return rotation(eulerAngles.x, eulerAngles.y, eulerAngles.z);
 			}
 
 			// Euler triple rotation, applied in XYZ order. This is the same as Blender's default rotation order.
@@ -228,6 +238,11 @@ namespace cge::math
 				return mat;
 			}
 
+			static Mat4f translation(const Vec3f &translation)
+			{
+				return Mat4f::translation(translation.x, translation.y, translation.z);
+			}
+
 			static Mat4f translation(float x, float y, float z)
 			{
 				Mat4f mat = identity();
@@ -235,6 +250,11 @@ namespace cge::math
 				mat.mat[W][Y] = y;
 				mat.mat[W][Z] = z;
 				return mat;
+			}
+
+			static Mat4f scale(const Vec3f &scale)
+			{
+				return Mat4f::scale(scale.x, scale.y, scale.z);
 			}
 
 			static Mat4f scale(float x, float y, float z)
@@ -246,14 +266,29 @@ namespace cge::math
 				return mat;
 			}
 
+			void rotate(const Vec3f &rotation)
+			{
+				rotate(rotation.x, rotation.y, rotation.z);
+			}
+
 			void rotate(float x, float y, float z)
 			{
 				*this *= rotation(x, y, z);
 			}
 
+			void translate(const Vec3f &translation)
+			{
+				translate(translation.x, translation.y, translation.z);
+			}
+
 			void translate(float x, float y, float z)
 			{
 				*this *= translation(x, y, z);
+			}
+
+			void rescale(const Vec3f &scale)
+			{
+				rescale(scale.x, scale.y, scale.z);
 			}
 
 			void rescale(float x, float y, float z)
@@ -273,8 +308,6 @@ namespace cge::math
 			}
 
 			Mat4f &operator*=(const Mat4f &rhs);
-
-			Mat4f &operator*=(const Vec4f &rhs);
 		};
 
 		// Overload the multiplication operator for Mat4f to allow for matrix multiplication.
@@ -393,6 +426,7 @@ namespace cge::mesh
 	{
 		math::Vec3f position;
 		math::Vec3f rotation;
+		// TODO: This will default to 0,0,0, which is definitely not a good default. Need to fix this.
 		math::Vec3f scale;
 	};
 

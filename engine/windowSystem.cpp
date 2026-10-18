@@ -773,6 +773,8 @@ namespace cge
 		{
 			return; // TODO: Log this once error handling system exists.
 		}
+
+		m_drawable.position = math::Vec3f(0.0f, 3.0f, 0.0f);
 	}
 
 	void WindowSystem::update(std::chrono::steady_clock::duration dt)
@@ -784,6 +786,12 @@ namespace cge
 
 		if(glfwWindowShouldClose(m_window) || glfwGetKey(m_window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 			m_windowSystemBroadcaster.broadcast(*m_shutdownChannel, true);
+
+		m_drawable.rotation.z += m_spinSpeed * std::chrono::duration<float>(dt).count();
+		if(m_drawable.rotation.z > math::PI)
+			m_drawable.rotation.z -= math::TAU;
+		else if(m_drawable.rotation.z < -math::PI)
+			m_drawable.rotation.z += math::TAU;
 	}
 
 	void WindowSystem::render()
@@ -902,7 +910,7 @@ namespace cge
 
 		// Identity matrix, written in column-major order.
 		// CRITICALLY, that means each *row* of the initialization list is a *column* of the matrix.
-		float mvp[4][4] = {
+		float oldmvp[4][4] = {
 			{1.0f, 0.0f, 0.0f, 0.0f},
 			{0.0f, 1.0f, 0.0f, 0.0f},
 			{0.0f, 0.0f, 1.0f, 0.0f},
@@ -910,17 +918,30 @@ namespace cge
 		};
 		// [column z][row z] = -0.5f;
 		// Scale and flip the z-axis to fit the depth range of 0.0 to 1.0
-		mvp[2][2] = -0.5f;
+		oldmvp[2][2] = -0.5f;
 		// [column w][row z] = 0.5f;
 		// Translate the z-axis to fit the depth range of 0.0 to 1.0
-		mvp[3][2] = 0.5f; 
+		oldmvp[3][2] = 0.5f; 
 
 		// Fix aspect ratio of the viewport. Scale x by the ratio of height to width, so that the viewport is not stretched or squashed
 		// The viewport is in normalized device coordinates, from -1 to 1 in both x and y, so it has no knowledge of the pixel dimensions of the viewport.
-		mvp[0][0] = static_cast<float>(m_swapchainHeight) / static_cast<float>(m_swapchainWidth);
+		oldmvp[0][0] = static_cast<float>(m_swapchainHeight) / static_cast<float>(m_swapchainWidth);
+
+		math::Mat4f model = math::Mat4f::translation(m_drawable.position) * math::Mat4f::rotation(m_drawable.rotation);
+
+		// Converting world space (z-up, y-forward) to camera space is a rotation of -90 degrees around the x-axis.
+		math::Mat4f view = math::Mat4f:: rotation(-math::PI / 2.0f, 0.0f, 0.0f);
+
+		// Calculate the aspect ratio of the viewport, height / width
+		float aspectRatio = static_cast<float>(m_swapchainWidth) / static_cast<float>(m_swapchainHeight);
+		// Perspective projection matrix, with a 60 degree field of view, and near and far planes at 0.1 and 100.0 units away from the camera.
+		math::Mat4f projection = math::Mat4f::perspective(math::PI / 3.0f, aspectRatio, 0.1f, 100.0f);
+
+		// Matrix transforms are applied right-to-left. This means that the model matrix is applied first, then the view matrix, then the projection matrix.
+		math::Mat4f mvp = projection * view * model;
 
 		// Copy the MVP matrix to the push constant range of the pipeline layout as a flat array of floats, as declared in the shader layout, in the vertex stage at offset 0.
-		m_deviceFunctions->vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(mvp), mvp);
+		m_deviceFunctions->vkCmdPushConstants(m_commandBuffer, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(mvp.mat), mvp.mat);
 
 		// Draw the mesh using the index buffer
 		m_deviceFunctions->vkCmdDrawIndexed(m_commandBuffer, m_indexCount, 1, 0, 0, 0);
